@@ -1,6 +1,7 @@
 # Allows us to import tangles modules
 import sys
 import os
+from pathlib import Path
 sys.path.append("./tangles")
 
 # other imports
@@ -11,32 +12,36 @@ import src.data_types as data_types
 import src.utils as utils
 import src.tree_tangles as tree_tangles
 import src.cost_functions as cost_functions
+import src.plotting as plotting
+from src.loading import load_GMM
 from functools import partial
 
 # Parameters for data generation
-np.random.seed(314159628)
-means = [-1, 0, 1]
-stds = [0.1, 0.1, 0.1]
+seed = 314159628
+np.random.seed(seed)
+means = [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]
+stds = [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
 num_clusters = len(means)
 n = 10
-dim_points = 2
 total_num_samples = n * num_clusters
-agreement = 3
+agreement = 5
+figure_output_path = Path("./figures/full-triplets")
+
+# Data generation
+xs, ys = load_GMM(blob_sizes=[n] * num_clusters,
+                  blob_centers=means, blob_variances=stds, seed=seed)
+data = data_types.Data(xs=xs, ys=ys)
 
 
 def distance_function(x, y): return np.linalg.norm(x - y)
 
 
-# Generate a set N of n datapoints from a mixture of gaussians. Each mixture component represents
-# one ground truth cluster.
-gaussians = np.random.normal(means, stds, (n, dim_points, num_clusters))
-# unseparated clusters
-gaussians_mixed = gaussians.reshape((total_num_samples, dim_points))
-
 # some plotting to show that sampling works
 for k in range(num_clusters):
-    plt.scatter(gaussians[:, 0, k], gaussians[:, 1, k])
-plt.show()
+    points_in_k = data.xs[data.ys == k]
+    #
+    plt.scatter(points_in_k[:, 0], points_in_k[:, 1], label=str(k))
+plt.savefig(figure_output_path.joinpath("samples.png"))
 
 
 def is_triplet(a, b, c, dist=distance_function):
@@ -70,11 +75,11 @@ assert len(question_set) == math.comb(total_num_samples, 2)
 # to each bipartition.
 questionnaire = np.zeros((total_num_samples, len(question_set)))
 for i in range(total_num_samples):
-    a = gaussians_mixed[i]
+    a = data.xs[i]
     answers = []
     for question in question_set:
-        b = gaussians_mixed[question[0]]
-        c = gaussians_mixed[question[1]]
+        b = data.xs[question[0]]
+        c = data.xs[question[1]]
         answer = is_triplet(a, b, c)
         answers.append(answer)
     questionnaire[i] = np.array(answers)
@@ -101,9 +106,12 @@ tree_tangles.compute_soft_predictions_children(
 
 ys_predicted, _ = utils.compute_hard_predictions(contracted, cuts=bipartitions)
 
-colors = ['red', 'blue', 'green', 'black']
-# some plotting to show that sampling works
-for i in range(total_num_samples):
-    plt.scatter(gaussians_mixed[i, 0],
-                gaussians_mixed[i, 1], c=colors[ys_predicted[i]])
-plt.show()
+# show hard clustering
+plotting.plot_hard_predictions(data=data, ys_predicted=ys_predicted,
+                               path=figure_output_path)
+
+# plot soft predictions
+plotting.plot_soft_predictions(data=data,
+                               contracted_tree=contracted,
+                               eq_cuts=bipartitions.equations,
+                               path=figure_output_path)
