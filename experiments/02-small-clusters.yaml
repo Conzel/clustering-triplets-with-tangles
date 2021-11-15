@@ -9,4 +9,6 @@ n: 15
 agreement: 4
 result_output_path: "results/02-small-clusters"
 num_distance_function_samples: null
+density: 1.0
+noise: 0.0
   

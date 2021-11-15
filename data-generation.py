@@ -24,7 +24,8 @@ from questionnaire import generate_questionnaire, Questionnaire
 
 
 class Configuration():
-    def __init__(self, n, seed, means, stds, agreement, result_output_path, num_distance_function_samples):
+    def __init__(self, n, seed, means, stds, agreement,
+                 result_output_path, num_distance_function_samples, noise, density):
         self.n = n
         self.seed = seed
         self.means = means
@@ -32,6 +33,8 @@ class Configuration():
         self.agreement = agreement
         self.result_output_path = result_output_path
         self.num_distance_function_samples = num_distance_function_samples
+        self.noise = noise
+        self.density = density
 
     def from_yaml(yaml_dict):
         return Configuration(**yaml_dict)
@@ -52,6 +55,7 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
     """
     # ---- loading parameters ----
     np.random.seed(conf.seed)
+
     num_clusters = len(conf.means)
     total_num_samples = conf.n * num_clusters
     result_output_path = Path(conf.result_output_path)
@@ -62,7 +66,8 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
     data = data_types.Data(xs=xs, ys=ys)
 
     # Creating the questionnaire from the data
-    questionnaire = generate_questionnaire(data).values
+    questionnaire = generate_questionnaire(
+        data, noise=conf.noise, density=conf.density, seed=conf.seed, ).values
 
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = data_types.Cuts((questionnaire == 1).T)

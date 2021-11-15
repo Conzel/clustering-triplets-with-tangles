@@ -10,4 +10,6 @@ agreement: 10
 result_output_path: "results/full-triplets"
 # Use low sampling number to fill out the questionnaire in a reasonable time
 num_distance_function_samples: 25
+density: 1.0
+noise: 0.0
   

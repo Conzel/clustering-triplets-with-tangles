@@ -7,17 +7,23 @@ sys.path.append("./tangles")
 import numpy as np
 import math
 import src.data_types as data_types
+import random
+from operator import itemgetter
 from tqdm import tqdm
 
 
 def distance_function(x, y): return np.linalg.norm(x - y)
 
 
-def is_triplet(a, b, c, dist=distance_function):
+def is_triplet(a, b, c, dist=distance_function, noise=0.0):
     """"
-    Returns 1 if a is closer to b than c, 0 otherwise
+    Returns 1 if a is closer to b than c, 0 otherwise.
+    If noise > 0, then the question is randomly answered with probability 1 - noise.
     """
-    return int(dist(a, b) <= dist(a, c))
+    if noise > 0 and random.random() < noise:
+        return random.randint(0, 1)
+    else:
+        return int(dist(a, b) <= dist(a, c))
 
 
 def generate_k_subsets(values: list, k: int) -> "list[list]":
@@ -60,15 +66,31 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def generate_questionnaire(data: data_types.Data, verbose=True) -> Questionnaire:
+def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbose=True, seed=42) -> Questionnaire:
     """
     Generates a questionnaire for the given data.
 
-    Input: Data, in which the xs field contains the data points as rows and their coordinates
-    as columns
+    Input: 
+    - data: Data
+      xs field contains the data points as rows and their coordinates as columns
+    - noise: float
+      The percentage of noise to add to the questionnaire. 0 means all answers are truthful, 
+      1 means all answers are random.
+    - density: float
+      The peprcentage of questions we know the answers. 1.0 means we know the answers to all questions, 
+      0.0 means we don't know any of them. This amounts to the number of columns that will be contained 
+      in the questionnaire.
+    - seed: int
+
     --------------------------------------------------------------------------------------------
 
     """
+    if seed is not None:
+        np.random.seed(seed)
+        random.seed(seed)
+    assert 0 <= noise <= 1
+    assert 0 <= density <= 1
+
     log = create_log_function(verbose)
     total_num_samples = data.xs.shape[0]
     log("Generating questionnaire...")
@@ -76,6 +98,14 @@ def generate_questionnaire(data: data_types.Data, verbose=True) -> Questionnaire
     log("Generating subsets...")
     question_set = generate_k_subsets(list(range(total_num_samples)), 2)
     assert len(question_set) == math.comb(total_num_samples, 2)
+    question_labels = list(map(tuple, question_set))
+
+    # Removing questions from the set of all questions
+    if density < 1.0:
+        num_questions = math.floor(len(question_set) * density)
+        idx = random.sample(range(len(question_labels), num_questions))
+        question_set = itemgetter(*idx)(question_set)
+        question_labels = itemgetter(*idx)(question_labels)
 
     # Iterate over all points and answer all questions for them.
     # The questionnaire contains all answers for all questions.
@@ -92,4 +122,4 @@ def generate_questionnaire(data: data_types.Data, verbose=True) -> Questionnaire
             answers.append(answer)
         questionnaire[i] = np.array(answers)
 
-    return Questionnaire(questionnaire, list(map(tuple, question_set)))
+    return Questionnaire(questionnaire, question_labels)
