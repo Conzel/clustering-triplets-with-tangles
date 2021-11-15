@@ -103,7 +103,7 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbos
     # Removing questions from the set of all questions
     if density < 1.0:
         num_questions = math.floor(len(question_set) * density)
-        idx = random.sample(range(len(question_labels), num_questions))
+        idx = random.sample(range(len(question_labels)), num_questions)
         question_set = itemgetter(*idx)(question_set)
         question_labels = itemgetter(*idx)(question_labels)
 

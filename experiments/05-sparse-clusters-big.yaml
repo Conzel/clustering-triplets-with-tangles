@@ -1,0 +1,15 @@
+# Paramters illustrating sparse clustering, where we don't
+# have all questions answered. We can also increase the cluster size
+# here, as we don't use all cuts, this is better for the computational
+# performance.
+---
+seed: 314159628
+means: [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]
+stds: [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
+n: 70
+agreement: 25
+result_output_path: "results/05-sparse-clusters-big"
+num_distance_function_samples: null
+density: 0.03
+noise: 0.0
+  
