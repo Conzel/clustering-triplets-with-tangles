@@ -67,7 +67,7 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
 
     # Creating the questionnaire from the data
     questionnaire = generate_questionnaire(
-        data, noise=conf.noise, density=conf.density, seed=conf.seed, ).values
+        data, noise=conf.noise, density=conf.density, seed=conf.seed).values
 
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = data_types.Cuts((questionnaire == 1).T)

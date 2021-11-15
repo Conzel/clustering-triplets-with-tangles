@@ -118,7 +118,7 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbos
         for question in question_set:
             b = data.xs[question[0]]
             c = data.xs[question[1]]
-            answer = is_triplet(a, b, c)
+            answer = is_triplet(a, b, c, noise=noise)
             answers.append(answer)
         questionnaire[i] = np.array(answers)
 
