@@ -1,6 +1,5 @@
-# Parameters illustrating that we can easily
-# generate the questionnaire, but the tangle algorithm
-# crashes due to the number of bipartitions?
+# Parameters showcasing a totally random clustering due to noise.
+# As expected, we end with low NMI and random assignment.
 ---
 seed: 314159628
 means: [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]

@@ -1,6 +1,5 @@
-# Parameters illustrating that we can easily
-# generate the questionnaire, but the tangle algorithm
-# crashes due to the number of bipartitions?
+# Parameters illustrating correct, small clustering. We get an NMI of 1.0
+# and perfect cluster assignment.
 ---
 seed: 314159628
 means: [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]
