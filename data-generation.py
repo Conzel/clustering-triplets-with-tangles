@@ -15,6 +15,9 @@ import src.cost_functions as cost_functions
 import src.plotting as plotting
 from src.loading import load_GMM
 from functools import partial
+from questionnaire import generate_questionnaire, Questionnaire
+
+plt.style.use('ggplot')
 
 # Parameters for data generation
 seed = 314159628
@@ -32,63 +35,15 @@ xs, ys = load_GMM(blob_sizes=[n] * num_clusters,
                   blob_centers=means, blob_variances=stds, seed=seed)
 data = data_types.Data(xs=xs, ys=ys)
 
+# Creating the questionnaire from the data
+questionnaire = generate_questionnaire(data).values
 
-def distance_function(x, y): return np.linalg.norm(x - y)
-
-
-# some plotting to show that sampling works
-for k in range(num_clusters):
-    points_in_k = data.xs[data.ys == k]
-    #
-    plt.scatter(points_in_k[:, 0], points_in_k[:, 1], label=str(k))
-plt.savefig(figure_output_path.joinpath("samples.png"))
-
-
-def is_triplet(a, b, c, dist=distance_function):
-    """"
-    Returns 1 if a is closer to b than c, 0 otherwise
-    """
-    return int(dist(a, b) <= dist(a, c))
-
-# This function takes in a parameter k and a set of values to choose from.
-# It returns every possible subset of length k from the set of values
-
-
-def generate_k_subsets(values, k):
-    subsets = []
-    for i in range(len(values)):
-        if k == 1:
-            subsets.append([values[i]])
-        else:
-            for subset in generate_k_subsets(values[i + 1:], k - 1):
-                subsets.append([values[i]] + subset)
-    return subsets
-
-
-# Generate the triplet table
-question_set = generate_k_subsets(list(range(total_num_samples)), 2)
-assert len(question_set) == math.comb(total_num_samples, 2)
-
-# Iterate over all points and answer all questions for them.
-# The questionnaire contains all answers for all questions.
-# These represent bipartitions on our data. We can now assign a Hamming-Cost
-# to each bipartition.
-questionnaire = np.zeros((total_num_samples, len(question_set)))
-for i in range(total_num_samples):
-    a = data.xs[i]
-    answers = []
-    for question in question_set:
-        b = data.xs[question[0]]
-        c = data.xs[question[1]]
-        answer = is_triplet(a, b, c)
-        answers.append(answer)
-    questionnaire[i] = np.array(answers)
-
+# Interpreting the questionnaires as cuts and computing their costs
 bipartitions = data_types.Cuts((questionnaire == 1).T)
 cuts = utils.compute_cost_and_order_cuts(bipartitions, partial(
     cost_functions.mean_manhattan_distance, questionnaire, None))
 
-print("Building the tangle search tree", flush=True)
+# Building the tree, contracting and calculating predictions
 tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
                                                agreement=agreement,
                                                verbose=0  # print everything
@@ -106,12 +61,6 @@ tree_tangles.compute_soft_predictions_children(
 
 ys_predicted, _ = utils.compute_hard_predictions(contracted, cuts=bipartitions)
 
-# show hard clustering
+# Plotting the hard clustering
 plotting.plot_hard_predictions(data=data, ys_predicted=ys_predicted,
-                               path=figure_output_path)
-
-# plot soft predictions
-plotting.plot_soft_predictions(data=data,
-                               contracted_tree=contracted,
-                               eq_cuts=bipartitions.equations,
-                               path=figure_output_path)
+                               path=None)
