@@ -25,13 +25,14 @@ from questionnaire import generate_questionnaire, Questionnaire
 
 class Configuration():
     def __init__(self, n, seed, means, stds, agreement,
-                 result_output_path, num_distance_function_samples, noise, density):
+                 name, num_distance_function_samples, noise, density, base_folder="results"):
         self.n = n
         self.seed = seed
         self.means = means
         self.stds = stds
         self.agreement = agreement
-        self.result_output_path = result_output_path
+        self.name = name
+        self.base_folder = base_folder
         self.num_distance_function_samples = num_distance_function_samples
         self.noise = noise
         self.density = density
@@ -58,7 +59,7 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
 
     num_clusters = len(conf.means)
     total_num_samples = conf.n * num_clusters
-    result_output_path = Path(conf.result_output_path)
+    result_output_path = Path(os.path.join(conf.base_folder, conf.name))
 
     # Data generation
     xs, ys = load_GMM(blob_sizes=[conf.n] * num_clusters,
