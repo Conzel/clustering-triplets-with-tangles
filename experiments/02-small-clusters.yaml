@@ -1,0 +1,12 @@
+# Parameters illustrating that we can easily
+# generate the questionnaire, but the tangle algorithm
+# crashes due to the number of bipartitions?
+---
+seed: 314159628
+means: [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]
+stds: [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
+n: 15
+agreement: 4
+figure_output_path: "figures/02-small-clusters"
+num_distance_function_samples: null
+  

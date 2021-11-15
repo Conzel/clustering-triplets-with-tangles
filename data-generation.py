@@ -3,6 +3,8 @@ import sys
 import os
 from pathlib import Path
 sys.path.append("./tangles")
+# Otherwise the tangle tree algorithm may crash 
+sys.setrecursionlimit(5000)
 
 # other imports
 import math
@@ -22,7 +24,7 @@ from questionnaire import generate_questionnaire, Questionnaire
 plt.style.use('ggplot')
 
 # Parameters for data generation
-config_file = "experiments/01-tangle-algorithm-crashes.yaml"
+config_file = "experiments/02-small-clusters.yaml"
 with open(config_file, 'r') as f:
     data = yaml.safe_load(f)
 
@@ -54,7 +56,7 @@ cuts = utils.compute_cost_and_order_cuts(bipartitions, partial(
 # Building the tree, contracting and calculating predictions
 tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
                                                agreement=agreement,
-                                               verbose=0  # print everything
+                                               verbose=2  # print everything
                                                )
 
 contracted = tree_tangles.ContractedTangleTree(tangles_tree)
@@ -80,4 +82,4 @@ if data.ys is not None:
 
 # Plotting the hard clustering
 plotting.plot_hard_predictions(data=data, ys_predicted=ys_predicted,
-                               path=None)
+                               path=figure_output_path)
