@@ -22,7 +22,7 @@ from questionnaire import generate_questionnaire, Questionnaire
 plt.style.use('ggplot')
 
 # Parameters for data generation
-config_file = "parameters.yaml"
+config_file = "experiments/01-tangle-algorithm-crashes.yaml"
 with open(config_file, 'r') as f:
     data = yaml.safe_load(f)
 
@@ -81,4 +81,3 @@ if data.ys is not None:
 # Plotting the hard clustering
 plotting.plot_hard_predictions(data=data, ys_predicted=ys_predicted,
                                path=None)
-
