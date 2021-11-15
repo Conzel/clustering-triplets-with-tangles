@@ -41,6 +41,35 @@ def generate_k_subsets(values: list, k: int) -> "list[list]":
     return subsets
 
 
+def generate_question_set(num_datapoints: int, density=1.0):
+    max_amount_of_questions = math.comb(num_datapoints, 2)
+    if density > 0.1: # very rough, we could use a better metric here
+        question_set = generate_k_subsets(list(range(num_datapoints)), 2)
+        assert len(question_set) == max_amount_of_questions
+        # Removing questions from the set of all questions
+        if density < 1.0:
+            actual_amount_of_questions = math.floor(max_amount_of_questions * density)
+            idx = random.sample(range(max_amount_of_questions), actual_amount_of_questions)
+            question_set = itemgetter(*idx)(question_set)
+
+        return question_set
+
+    # very sparse set, we are better off directly sampling numbers
+    else:
+        total_questions = math.comb(num_datapoints, 2) * density
+        sampled_questions = set()
+        num_sampled = 0
+        while num_sampled < total_questions:
+            b, c = random.randint(
+                0, num_datapoints-1), random.randint(0, num_datapoints-1)
+            if b > c and (b, c) not in sampled_questions:
+                sampled_questions.add((b, c))
+                num_sampled += 1
+            else:
+                continue
+        return sampled_questions
+
+
 class Questionnaire():
     """
     Data type representing a questionnaire. 
@@ -92,27 +121,18 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbos
     assert 0 <= density <= 1
 
     log = create_log_function(verbose)
-    total_num_samples = data.xs.shape[0]
+    num_datapoints = data.xs.shape[0]
     log("Generating questionnaire...")
 
-    log("Generating subsets...")
-    question_set = generate_k_subsets(list(range(total_num_samples)), 2)
-    assert len(question_set) == math.comb(total_num_samples, 2)
-    question_labels = list(map(tuple, question_set))
-
-    # Removing questions from the set of all questions
-    if density < 1.0:
-        num_questions = math.floor(len(question_set) * density)
-        idx = random.sample(range(len(question_labels)), num_questions)
-        question_set = itemgetter(*idx)(question_set)
-        question_labels = itemgetter(*idx)(question_labels)
+    log("Generating question set...")
+    question_set = generate_question_set(num_datapoints, density)
 
     # Iterate over all points and answer all questions for them.
     # The questionnaire contains all answers for all questions.
     log("Filling out questionnaire...")
-    questionnaire = np.zeros((total_num_samples, len(question_set)))
+    questionnaire = np.zeros((num_datapoints, len(question_set)))
 
-    for i in tqdm(range(total_num_samples), disable=not verbose):
+    for i in tqdm(range(num_datapoints), disable=not verbose):
         a = data.xs[i]
         answers = []
         for question in question_set:
@@ -122,4 +142,4 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbos
             answers.append(answer)
         questionnaire[i] = np.array(answers)
 
-    return Questionnaire(questionnaire, question_labels)
+    return Questionnaire(questionnaire, list(map(tuple, question_set)))
