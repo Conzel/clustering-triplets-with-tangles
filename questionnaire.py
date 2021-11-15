@@ -7,6 +7,7 @@ sys.path.append("./tangles")
 import numpy as np
 import math
 import src.data_types as data_types
+from tqdm import tqdm
 
 
 def distance_function(x, y): return np.linalg.norm(x - y)
@@ -52,7 +53,14 @@ class Questionnaire():
         self.labels = labels
 
 
-def generate_questionnaire(data: data_types.Data) -> Questionnaire:
+def create_log_function(verbose):
+    if verbose:
+        return lambda x: print(x)
+    else:
+        return lambda _: None
+
+
+def generate_questionnaire(data: data_types.Data, verbose=True) -> Questionnaire:
     """
     Generates a questionnaire for the given data.
 
@@ -61,16 +69,20 @@ def generate_questionnaire(data: data_types.Data) -> Questionnaire:
     --------------------------------------------------------------------------------------------
 
     """
+    log = create_log_function(verbose)
     total_num_samples = data.xs.shape[0]
-    # Generate the triplet table
+    log("Generating questionnaire...")
+
+    log("Generating subsets...")
     question_set = generate_k_subsets(list(range(total_num_samples)), 2)
     assert len(question_set) == math.comb(total_num_samples, 2)
 
     # Iterate over all points and answer all questions for them.
     # The questionnaire contains all answers for all questions.
+    log("Filling out questionnaire...")
     questionnaire = np.zeros((total_num_samples, len(question_set)))
 
-    for i in range(total_num_samples):
+    for i in tqdm(range(total_num_samples), disable=not verbose):
         a = data.xs[i]
         answers = []
         for question in question_set:
