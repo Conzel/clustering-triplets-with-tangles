@@ -95,7 +95,7 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbose=True, seed=42) -> Questionnaire:
+def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbose=True, seed=None) -> Questionnaire:
     """
     Generates a questionnaire for the given data.
 
