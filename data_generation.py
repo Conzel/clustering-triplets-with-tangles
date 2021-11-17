@@ -43,6 +43,9 @@ class Configuration():
     def from_yaml(yaml_dict):
         return Configuration(**yaml_dict)
 
+    def __str__(self) -> str:
+        return "Configuration: " + str(self.__dict__)
+
 
 def run_experiment(conf: Configuration) -> "tuple[float, float]":
     """
