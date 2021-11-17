@@ -8,6 +8,8 @@ sys.path.append("./tangles")
 sys.setrecursionlimit(5000)
 
 # other imports
+import pandas as pd
+import copy
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +26,7 @@ from questionnaire import generate_questionnaire, Questionnaire
 
 
 class Configuration():
-    def __init__(self, n, seed, means, stds, agreement,
+    def __init__(self, n, n_runs, seed, means, stds, agreement,
                  name, num_distance_function_samples, noise, density, base_folder="results"):
         self.n = n
         self.seed = seed
@@ -36,6 +38,7 @@ class Configuration():
         self.num_distance_function_samples = num_distance_function_samples
         self.noise = noise
         self.density = density
+        self.n_runs = n_runs
 
     def from_yaml(yaml_dict):
         return Configuration(**yaml_dict)
@@ -54,11 +57,34 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
 
     Returns a tuple (ARS, NMI) of the resulting hard clustering.
     """
+    seed = conf.seed
+    ars_values = []
+    nmi_values = []
+
+    for i in range(conf.n_runs):
+        conf_copy = copy.deepcopy(conf)
+        conf_copy.seed = seed + i
+        # Get resulting values
+        ars, nmi = run_once(conf_copy)
+        ars_values.append(ars)
+        nmi_values.append(nmi)
+
+    df = pd.DataFrame({"run": list(range(conf.n_runs)),
+                      "ars": ars_values, "nmi": nmi_values})
+
+    df.to_csv(os.path.join(conf.base_folder,
+              conf.name, conf.name + "_metrics.csv"), index=False)
+    return sum(ars_values) / len(ars_values), sum(nmi_values) / len(nmi_values)
+
+
+def run_once(conf: Configuration) -> "tuple[float, float]":
+    """Runs the experiment once with the given configuration. Ignores
+       n_runs parameter.
+    """
     # ---- loading parameters ----
     np.random.seed(conf.seed)
 
     num_clusters = len(conf.means)
-    total_num_samples = conf.n * num_clusters
     result_output_path = Path(os.path.join(conf.base_folder, conf.name))
 
     # Data generation
@@ -102,10 +128,8 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
         ARS = sklearn.metrics.adjusted_rand_score(data.ys, ys_predicted)
         NMI = sklearn.metrics.normalized_mutual_info_score(
             data.ys, ys_predicted)
-
-        with open(result_output_path / "results.txt", "w+") as f:
-            f.write(
-                f"Adjusted Rand Score: {ARS:.4f}\nNormalized Mutual Information: {NMI:.4f}")
+    else:
+        raise ValueError("Data has no labels, not implemented yet.")
 
     # Plotting the hard clustering
     plotting.plot_hard_predictions(data=data, ys_predicted=ys_predicted,

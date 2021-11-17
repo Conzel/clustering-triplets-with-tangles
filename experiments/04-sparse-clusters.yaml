@@ -10,4 +10,4 @@ name: "04-sparse-clusters"
 num_distance_function_samples: null
 density: 0.5
 noise: 0.0
-  
+n_runs: 1

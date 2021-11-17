@@ -10,4 +10,4 @@ name: "02-small-clusters"
 num_distance_function_samples: null
 density: 1.0
 noise: 0.0
-  
+n_runs: 1

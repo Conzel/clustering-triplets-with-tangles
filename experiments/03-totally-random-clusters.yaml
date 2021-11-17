@@ -10,4 +10,4 @@ name: "03-totally-random-clusters"
 num_distance_function_samples: null
 density: 1.0
 noise: 1.0
-  
+n_runs: 1

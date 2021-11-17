@@ -12,4 +12,4 @@ name: "05-sparse-clusters-big"
 num_distance_function_samples: null
 density: 0.03
 noise: 0.0
-  
+n_runs: 1
