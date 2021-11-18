@@ -26,12 +26,15 @@ from questionnaire import generate_questionnaire, Questionnaire
 
 
 class Configuration():
-    def __init__(self, n, n_runs, seed, means, stds, agreement,
-                 name, num_distance_function_samples, noise, density, base_folder="results"):
+    def __init__(self, n, n_runs, seed, means, std, agreement,
+                 name, num_distance_function_samples, noise, density,
+                 redraw_means, min_cluster_dist, dimension,
+                 n_components,
+                 base_folder="results"):
         self.n = n
         self.seed = seed
         self.means = means
-        self.stds = stds
+        self.std = std
         self.agreement = agreement
         self.name = name
         self.base_folder = base_folder
@@ -39,12 +42,65 @@ class Configuration():
         self.noise = noise
         self.density = density
         self.n_runs = n_runs
+        self.redraw_means = redraw_means
+        self.min_cluster_dist = min_cluster_dist
+        self.dimension = dimension
+        self.n_components = n_components
 
     def from_yaml(yaml_dict):
         return Configuration(**yaml_dict)
 
     def __str__(self) -> str:
         return "Configuration: " + str(self.__dict__)
+
+
+def draw_cluster_means(num_clusters, dimension, minimum_cluster_distance):
+    """
+    Draws cluster centers for the gaussian mixture model. The cluster centers
+    are drawn according to a multidimensional gaussian. The cluster centers
+    are then scaled so that the minimal distance between two clusters is equal
+    to minimum_cluster_distance.
+
+    Input:
+        num_clusters: int,
+            number of cluster centers
+        dimension: int,
+            dimension of the cluster centers
+        minimum_cluster_distance: float,
+            minimum distance that two cluster centers have 
+    output: 
+        ndarray of dimension [num_clusters, dimension],
+        containing the cluster centers for each cluster
+    """
+    cluster_centers = np.random.randn(num_clusters, dimension)
+    return rescale_points(cluster_centers, minimum_cluster_distance)
+
+
+def rescale_points(x, desired_min_dist):
+    """
+    Scales an array x of points such that they have at least the given distance to each other.
+    """
+    if desired_min_dist > 0:
+        dists = sklearn.metrics.pairwise_distances(x)
+        current_min_dist = dists[~np.eye(dists.shape[0], dtype=bool)].min()
+        return x / current_min_dist * desired_min_dist
+    else:
+        return x
+
+
+def generate_gmm_data(conf: Configuration) -> data_types.Data:
+    if conf.redraw_means:
+        means = draw_cluster_means(conf.n_components, conf.dimension, conf.min_cluster_dist)
+    else:
+        means = conf.means
+    stds = conf.std * np.zeros(means.shape)
+    num_clusters = len(means)
+    assert num_clusters == conf.n_components
+
+    xs, ys = load_GMM(blob_sizes=[conf.n] * num_clusters,
+                      blob_centers=means, blob_variances=stds, seed=conf.seed)
+    data = data_types.Data(xs=xs, ys=ys)
+    return data
 
 
 def run_experiment(conf: Configuration) -> "tuple[float, float]":
@@ -59,16 +115,18 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
     We plot the clustering and evaluate the clustering quality using NMI and ARS.
 
     Returns a tuple (ARS, NMI) of the resulting hard clustering.
+
     """
     seed = conf.seed
     ars_values = []
     nmi_values = []
 
     for i in range(conf.n_runs):
-        conf_copy = copy.deepcopy(conf)
-        conf_copy.seed = seed + i
+        backup_conf = copy.deepcopy(conf)
+        backup_conf.seed = seed + i
+
         # Get resulting values
-        ars, nmi = run_once(conf_copy)
+        ars, nmi = run_once(backup_conf)
         ars_values.append(ars)
         nmi_values.append(nmi)
 
@@ -87,13 +145,10 @@ def run_once(conf: Configuration) -> "tuple[float, float]":
     # ---- loading parameters ----
     np.random.seed(conf.seed)
 
-    num_clusters = len(conf.means)
     result_output_path = Path(os.path.join(conf.base_folder, conf.name))
 
-    # Data generation
-    xs, ys = load_GMM(blob_sizes=[conf.n] * num_clusters,
-                      blob_centers=conf.means, blob_variances=conf.stds, seed=conf.seed)
-    data = data_types.Data(xs=xs, ys=ys)
+    # ---- generating data ----
+    data = generate_gmm_data(conf)
 
     # Creating the questionnaire from the data
     questionnaire = generate_questionnaire(
@@ -134,9 +189,10 @@ def run_once(conf: Configuration) -> "tuple[float, float]":
     else:
         raise ValueError("Data has no labels, not implemented yet.")
 
-    # Plotting the hard clustering
-    plotting.plot_hard_predictions(data=data, ys_predicted=ys_predicted,
-                                   path=result_output_path)
+    if conf.dimension == 2:
+        # Plotting the hard clustering
+        plotting.plot_hard_predictions(data=data, ys_predicted=ys_predicted,
+                                       path=result_output_path)
 
     if data.ys is not None:
         return ARS, NMI
