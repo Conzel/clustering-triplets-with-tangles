@@ -46,7 +46,7 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, log
     plt.plot(parameter_values, ars_values, "--^", label="ARS")
     plt.plot(parameter_values, nmi_values, "--o", label="NMI")
     if logx:
-        plt.yscale("log")
+        plt.xscale("log")
     plt.title(f"{name} variation")
     plt.legend()
     plt.savefig(os.path.join(base_folder, f"{name}_variation.png"))
