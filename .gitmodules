@@ -1,4 +1,4 @@
 [submodule "tangles"]
 	path = tangles
-	url = git@github.com:tml-tuebingen/tangles.git
+	url = git@github.com:Conzel/tangles.git
     ignore = untracked
