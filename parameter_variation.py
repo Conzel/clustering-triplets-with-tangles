@@ -56,22 +56,25 @@ if __name__ == "__main__":
     base_config = Configuration.from_yaml(
         yaml.load(open("experiments/06-base-config.yaml")))
     # Varying the agreement parameter
-    agreements = list(range(1, 21, 2))
+    agreements = list(range(1, 21, 1))
     noise = np.arange(0, 1, 0.05)
     density = np.logspace(-3, 0, num=20)
     minimum_cluster_distances = np.arange(0.5, 5, 0.5)
-    stds = np.arange(0.1, 1.5, 0.3)
+    stds = np.arange(0.1, 5.1, 0.5)
     dimensions = np.arange(1, 5, 1)
+    n_components = np.arange(2, 9, 1)
 
     redraw_conf = copy.deepcopy(base_config)
     redraw_conf.redraw_means = True
     parameter_variation(agreements, "agreement", "agreement", redraw_conf)
     parameter_variation(noise, "noise", "noise", redraw_conf)
-    parameter_variation(density, density, "density",
+    parameter_variation(density, "density",
                         "density", redraw_conf, logx=True)
     parameter_variation(minimum_cluster_distances,
                         "min_cluster_dist", "min_cluster_dist", redraw_conf)
     parameter_variation(noise, "noise", "noise", redraw_conf)
-    parameter_variation(stds, "stds", "stds", redraw_conf)
+    parameter_variation(stds, "std", "std", redraw_conf)
     parameter_variation(dimensions,
                         "dimension", "dimension", redraw_conf)
+    parameter_variation(n_components, "n_components",
+                        "n_components", redraw_conf)
