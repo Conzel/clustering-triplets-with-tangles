@@ -92,7 +92,7 @@ def generate_gmm_data(conf: Configuration) -> data_types.Data:
     if conf.redraw_means:
         means = draw_cluster_means(conf.n_components, conf.dimension, conf.min_cluster_dist)
     else:
-        means = conf.means
+        means = np.array(conf.means)
     stds = conf.std * np.ones(means.shape)
     num_clusters = len(means)
     assert num_clusters == conf.n_components
