@@ -7,7 +7,7 @@ means: [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]
 std: 0.5
 n: 50
 agreement: 10
-name: "tangle-algorithm-crashes"
+name: "01-tangle-algorithm-crashes"
 # Use low sampling number to fill out the questionnaire in a reasonable time
 num_distance_function_samples: 25
 density: 1.0
