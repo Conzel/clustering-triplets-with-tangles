@@ -3,14 +3,14 @@
 seed: 314159628
 means: [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]
 std: 0.5
-n: 10
-agreement: 4
+n: 13
+agreement: 5
 name: "06-base-config"
 num_distance_function_samples: null
 density: 1.0
 noise: 0.0
-n_runs: 20
+n_runs: 30
 redraw_means: true
-min_cluster_dist: 3
+min_cluster_dist: 4
 dimension: 2
 n_components: 5
