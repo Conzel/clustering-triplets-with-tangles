@@ -20,17 +20,18 @@ import src.cost_functions as cost_functions
 import src.plotting as plotting
 import sklearn
 import yaml
+import re
 from src.loading import load_GMM
 from functools import partial
-from questionnaire import generate_questionnaire, Questionnaire
-
+from questionnaire import generate_questionnaire, ImputationMethod
 
 class Configuration():
     def __init__(self, n, n_runs, seed, means, std, agreement,
                  name, num_distance_function_samples, noise, density,
                  redraw_means, min_cluster_dist, dimension,
                  n_components,
-                 base_folder="results"):
+                 base_folder="results",
+                 imputation_method="random"):
         self.n = n
         self.seed = seed
         self.means = means
@@ -46,6 +47,7 @@ class Configuration():
         self.min_cluster_dist = min_cluster_dist
         self.dimension = dimension
         self.n_components = n_components
+        self.imputation_method = ImputationMethod(imputation_method)
 
     def from_yaml(yaml_dict):
         return Configuration(**yaml_dict)
@@ -89,8 +91,12 @@ def rescale_points(x, desired_min_dist):
 
 
 def generate_gmm_data(conf: Configuration) -> data_types.Data:
+    """
+    Generates Data according to a gaussian mixture model with the given configuration.
+    """
     if conf.redraw_means:
-        means = draw_cluster_means(conf.n_components, conf.dimension, conf.min_cluster_dist)
+        means = draw_cluster_means(
+            conf.n_components, conf.dimension, conf.min_cluster_dist)
     else:
         means = np.array(conf.means)
     stds = conf.std * np.ones(means.shape)
@@ -152,7 +158,7 @@ def run_once(conf: Configuration) -> "tuple[float, float]":
 
     # Creating the questionnaire from the data
     questionnaire = generate_questionnaire(
-        data, noise=conf.noise, density=conf.density, seed=conf.seed).values
+        data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=conf.imputation_method).values
 
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = data_types.Cuts((questionnaire == 1).T)

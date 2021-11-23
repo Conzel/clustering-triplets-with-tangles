@@ -8,6 +8,9 @@ import numpy as np
 import math
 import src.data_types as data_types
 import random
+import re
+from sklearn.impute import KNNImputer
+from enum import Enum
 from operator import itemgetter
 from tqdm import tqdm
 
@@ -18,10 +21,10 @@ def distance_function(x, y): return np.linalg.norm(x - y)
 def is_triplet(a, b, c, dist=distance_function, noise=0.0):
     """"
     Returns 1 if a is closer to b than c, 0 otherwise.
-    If noise > 0, then the question is randomly answered with probability 1 - noise.
+    If noise > 0, then the questions answer is set to -1 with probability noise.
     """
     if noise > 0 and random.random() < noise:
-        return random.randint(0, 1)
+        return -1
     else:
         return int(dist(a, b) <= dist(a, c))
 
@@ -43,13 +46,15 @@ def generate_k_subsets(values: list, k: int) -> "list[list]":
 
 def generate_question_set(num_datapoints: int, density=1.0):
     max_amount_of_questions = math.comb(num_datapoints, 2)
-    if density > 0.1: # very rough, we could use a better metric here
+    if density > 0.1:  # very rough, we could use a better metric here
         question_set = generate_k_subsets(list(range(num_datapoints)), 2)
         assert len(question_set) == max_amount_of_questions
         # Removing questions from the set of all questions
         if density < 1.0:
-            actual_amount_of_questions = math.floor(max_amount_of_questions * density)
-            idx = random.sample(range(max_amount_of_questions), actual_amount_of_questions)
+            actual_amount_of_questions = math.floor(
+                max_amount_of_questions * density)
+            idx = random.sample(range(max_amount_of_questions),
+                                actual_amount_of_questions)
             question_set = itemgetter(*idx)(question_set)
 
         return question_set
@@ -61,13 +66,92 @@ def generate_question_set(num_datapoints: int, density=1.0):
         num_sampled = 0
         while num_sampled < total_questions:
             b, c = random.randint(
-                0, num_datapoints-1), random.randint(0, num_datapoints-1)
+                0, num_datapoints - 1), random.randint(0, num_datapoints - 1)
             if b > c and (b, c) not in sampled_questions:
                 sampled_questions.add((b, c))
                 num_sampled += 1
             else:
                 continue
         return sampled_questions
+
+
+class ImputationMethod():
+    """
+    Method for imputing missing data on binary data arrays (questionnaires in this case).
+
+    RANDOM: Fills in a random value.
+    NEIGHBOURS: Fills in the value with the mean of the most common n neighbours.
+    MEAN: Fills in the value with the dataset mean.
+    THROWOUT: Throws out column with corrupted value (only possible for very low noise).
+    """
+
+    def __init__(self, method_name: str):
+        """
+        Initiates the imputation method. Additional arguments are
+        given through the constructor and might be required for methods.
+        Neighbours imputation f.e. needs to know how many neighbours to use.
+        """
+        self.method = ImputationMethod._parse_imputation(method_name)
+
+    def _impute_random(data: np.ndarray):
+        """
+        Imputes missing values with a random value.
+        """
+        imputed_data = data.copy()
+        imputed_data[imputed_data == -1] = np.random.randint(0, 2, imputed_data[imputed_data == -1].shape)
+        return imputed_data
+
+    def _impute_knn(data: np.ndarray, k: int):
+        """
+        Imputes missing values with the mean value of the k nearest neighbours. 
+        Coinflip decides on 0.5.
+        """
+        imputer = KNNImputer(n_neighbors=k, missing_values=-1)
+        imputed_data = imputer.fit_transform(data)
+        # removing the 0.5 values with random values
+        imputed_data[imputed_data == 0.5] = np.random.randint(0, 2, imputed_data[imputed_data == 0.5].shape)
+        return imputed_data
+
+    def _impute_mean(data: np.ndarray):
+        """
+        Imputes missing values with the mean value of the column.
+        """
+        raise NotImplementedError
+
+    def _impute_throwout(data: np.ndarray):
+        """
+        Throws out column with corrupted value (only possible for very low noise).
+        """
+        raise NotImplementedError
+
+    def _parse_imputation(imputation_method: str):
+        """
+        Parses the imputation method from a string.
+        """
+        knn_regex = re.search("(\d+)-NN", imputation_method)
+        if imputation_method.lower() == "random":
+            return ImputationMethod._impute_random
+        elif knn_regex is not None:
+            k = knn_regex.group(1)
+            return lambda x: ImputationMethod._impute_knn(x, int(k))
+        elif imputation_method.lower() == "mean":
+            return ImputationMethod._impute_mean
+        elif imputation_method.lower() == "throwout":
+            return ImputationMethod._impute_throwout
+
+    def __call__(self, data: np.ndarray) -> np.ndarray:
+        """
+        Imputes given data with the method used on construction.
+
+        INPUT:
+            data: np.ndarray
+            Binary data (consisting of 0-1 values) in a nxm array to impute. Missing values are marked
+            with a -1.
+        OUTPUT:
+            Imputed data of form nxw with w < n. No more values are allowed to be -1,
+            these have been replaced with an imputation.
+        """
+        return self.method(data)
 
 
 class Questionnaire():
@@ -95,7 +179,7 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbose=True, seed=None) -> Questionnaire:
+def generate_questionnaire(data: data_types.Data, noise=0.0, imputation_method=None, density=1.0, verbose=True, seed=None) -> Questionnaire:
     """
     Generates a questionnaire for the given data.
 
@@ -117,6 +201,8 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbos
     if seed is not None:
         np.random.seed(seed)
         random.seed(seed)
+    if noise > 0 and imputation_method is None:
+        raise ValueError("No imputation method given for noisy data.")
     assert 0 <= noise <= 1
     assert 0 <= density <= 1
 
@@ -141,5 +227,9 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, density=1.0, verbos
             answer = is_triplet(a, b, c, noise=noise)
             answers.append(answer)
         questionnaire[i] = np.array(answers)
+
+    if noise > 0:
+        log("Imputing missing answers in the questionnaire...")
+        imputation_method(questionnaire)
 
     return Questionnaire(questionnaire, list(map(tuple, question_set)))
