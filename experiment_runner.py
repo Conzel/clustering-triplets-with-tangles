@@ -48,7 +48,7 @@ class Configuration():
         self.min_cluster_dist = min_cluster_dist
         self.dimension = dimension
         self.n_components = n_components
-        self.imputation_method = ImputationMethod(imputation_method)
+        self.imputation_method = imputation_method
 
     def from_yaml(yaml_dict):
         return Configuration(**yaml_dict)
@@ -113,7 +113,7 @@ def run_once(conf: Configuration) -> "tuple[float, float]":
 
     # Creating the questionnaire from the data
     questionnaire = generate_questionnaire(
-        data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=conf.imputation_method).values
+        data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(conf.imputation_method)).values
 
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = data_types.Cuts((questionnaire == 1).T)
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     # Running the experiment
     run_experiment(conf)
 
-def parameter_variation(parameter_values, name, attribute_name, base_config, logx=False):
+def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False):
     """
     Runs multiple experiments varying the given parameter. The results depicted in a 
     plot (with x = parameter values, y = nmi/ars). They are also saved in a csv file.
@@ -180,6 +180,7 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, log
     name: name of the parameter (is used to save the folder and to label the plot)
     attribute_name: name of the attribute of the configuration to change
     base_config: Configuration object where we vary the parameter
+    plot: Set to true if plots should be saved
     logx: Determines if the parameter value should have a logarithmic scale in the plot.
     """
     ars_values = []
@@ -207,12 +208,13 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, log
     df.to_csv(os.path.join(base_folder, "metric_results.txt"), index=False)
 
     # Plotting
-    plt.figure()
-    plt.plot(parameter_values, ars_values, "--^", label="ARS")
-    plt.plot(parameter_values, nmi_values, "--o", label="NMI")
-    if logx:
-        plt.xscale("log")
-    plt.title(f"{name} variation")
-    plt.legend()
-    plt.savefig(os.path.join(base_folder, f"{name}_variation.png"))
+    if plot:
+        plt.figure()
+        plt.plot(parameter_values, ars_values, "--^", label="ARS")
+        plt.plot(parameter_values, nmi_values, "--o", label="NMI")
+        if logx:
+            plt.xscale("log")
+        plt.title(f"{name} variation")
+        plt.legend()
+        plt.savefig(os.path.join(base_folder, f"{name}_variation.png"))
     return ars_values, nmi_values
