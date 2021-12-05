@@ -19,6 +19,7 @@ import src.cost_functions as cost_functions
 import src.plotting as plotting
 import sklearn
 import yaml
+import plotly.graph_objects as go
 from functools import partial
 from questionnaire import generate_questionnaire, ImputationMethod
 from data_generation import generate_gmm_data_fixed_means, generate_gmm_data_draw_means
@@ -123,7 +124,7 @@ def run_once(conf: Configuration) -> "tuple[float, float]":
     # Building the tree, contracting and calculating predictions
     tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
                                                    agreement=conf.agreement,
-                                                   verbose=2  # print everything
+                                                   verbose=0  # print everything
                                                    )
 
     contracted = tree_tangles.ContractedTangleTree(tangles_tree)
@@ -209,6 +210,7 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
 
     # Plotting
     if plot:
+        # Plotting with matplotlib 
         plt.figure()
         plt.plot(parameter_values, ars_values, "--^", label="ARS")
         plt.plot(parameter_values, nmi_values, "--o", label="NMI")
@@ -217,4 +219,16 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
         plt.title(f"{name} variation")
         plt.legend()
         plt.savefig(os.path.join(base_folder, f"{name}_variation.png"))
+
+        # alternative with plotly
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=parameter_values, y=ars_values,mode="lines+markers", name="ARS"))
+        fig.add_trace(go.Scatter(x=parameter_values, y=nmi_values,mode="lines+markers", name="NMI"))
+        fig.update_layout(title=f"{name} variation",
+            xaxis_title=f"{name}",
+            yaxis_title="NMI/ARS")
+        if logx:
+            fig.update_xaxes(type="log")
+        fig.write_html(os.path.join(base_folder, f"{name}_variation.html"))
+
     return ars_values, nmi_values
