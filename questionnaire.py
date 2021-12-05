@@ -78,6 +78,8 @@ def generate_question_set(num_datapoints: int, density=1.0):
 class ImputationMethod():
     """
     Method for imputing missing data on binary data arrays (questionnaires in this case).
+    Imputation methods do not change the data, they copy it (although this could be changed in
+    the future if performance demands it.)
 
     RANDOM: Fills in a random value.
     NEIGHBOURS: Fills in the value with the mean of the most common n neighbours.
@@ -98,7 +100,8 @@ class ImputationMethod():
         Imputes missing values with a random value.
         """
         imputed_data = data.copy()
-        imputed_data[imputed_data == -1] = np.random.randint(0, 2, imputed_data[imputed_data == -1].shape)
+        imputed_data[imputed_data == -
+                     1] = np.random.randint(0, 2, imputed_data[imputed_data == -1].shape)
         return imputed_data
 
     def _impute_knn(data: np.ndarray, k: int):
@@ -108,16 +111,25 @@ class ImputationMethod():
         """
         print("Imputing via knn")
         imputer = KNNImputer(n_neighbors=k, missing_values=-1)
-        imputed_data = imputer.fit_transform(data)
+        imputed_data = imputer.fit_transform(data.T).T
         # removing the 0.5 values with random values
-        imputed_data[imputed_data == 0.5] = np.random.randint(0, 2, imputed_data[imputed_data == 0.5].shape)
+        imputed_data[imputed_data == 0.5] = np.random.randint(
+            0, 2, imputed_data[imputed_data == 0.5].shape)
         return np.around(imputed_data)
 
     def _impute_mean(data: np.ndarray):
         """
         Imputes missing values with the mean value of the column.
+
+        According to:
+        https://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
         """
-        raise NotImplementedError
+        imputed_data = data.copy()
+        imputed_data[imputed_data == -1] = np.nan
+        col_mean = np.nanmean(imputed_data, axis=0)
+        inds = np.where(np.isnan(imputed_data))
+        imputed_data[inds] = np.take(col_mean, inds[1])
+        return imputed_data
 
     def _impute_throwout(data: np.ndarray):
         """
@@ -231,6 +243,6 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, imputation_method=N
 
     if noise > 0:
         log("Imputing missing answers in the questionnaire...")
-        imputation_method(questionnaire)
+        questionnaire = imputation_method(questionnaire)
 
     return Questionnaire(questionnaire, list(map(tuple, question_set)))
