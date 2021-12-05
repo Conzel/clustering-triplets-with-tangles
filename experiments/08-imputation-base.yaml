@@ -1,0 +1,17 @@
+# Base configuration for parameter variation
+---
+seed: 314159628
+means: [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]
+std: 0.5
+n: 15
+agreement: 7
+name: "08-imputation-base"
+num_distance_function_samples: null
+density: 1.0
+noise: 0.03
+n_runs: 10
+redraw_means: true
+min_cluster_dist: 5
+dimension: 2
+n_components: 5
+imputation_method: "random"
