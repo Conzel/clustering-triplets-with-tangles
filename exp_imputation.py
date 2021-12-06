@@ -32,13 +32,13 @@ if __name__ == '__main__':
             noise_values, "noise", "noise", imputation_config, plot=False)
         # Plotly
         fig.add_trace(go.Scatter(x=noise_values, y=ars,
-                      mode="lines+markers", name="ARS" + m))
+                      mode="lines+markers", name="ARS " + m))
         fig.add_trace(go.Scatter(x=noise_values, y=nmi,
-                      mode="lines+markers", name="NMI" + m))
+                      mode="lines+markers", name="NMI " + m))
         # Matplotlib
-        plt.plot(noise_values, nmi, "--o", label=("NMI" +
+        plt.plot(noise_values, nmi, "--o", label=("NMI " +
                  m))
-        plt.plot(noise_values, ars, "--^", label=("ARS" + m))
+        plt.plot(noise_values, ars, "--^", label=("ARS " + m))
 
     fig.update_layout(title=f"Comparison of imputation methods",
                       xaxis_title=f"Noise",
