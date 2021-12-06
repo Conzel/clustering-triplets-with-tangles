@@ -16,7 +16,7 @@ if __name__ == '__main__':
     os.makedirs("results/08-imputation-results", exist_ok=True)
 
     noise_values = [0.0, 0.001, 0.005, 0.01, 0.02,
-                    0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+                    0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
     plt.figure()
     fig = go.Figure()
@@ -32,9 +32,9 @@ if __name__ == '__main__':
             noise_values, "noise", "noise", imputation_config, plot=False)
         # Plotly
         fig.add_trace(go.Scatter(x=noise_values, y=ars,
-                      mode="lines+markers", name="ARS + m"))
+                      mode="lines+markers", name="ARS" + m))
         fig.add_trace(go.Scatter(x=noise_values, y=nmi,
-                      mode="lines+markers", name="NMI + m"))
+                      mode="lines+markers", name="NMI" + m))
         # Matplotlib
         plt.plot(noise_values, nmi, "--o", label=("NMI" +
                  m))
