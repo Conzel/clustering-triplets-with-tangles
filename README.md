@@ -1,5 +1,12 @@
 # Master Thesis
 
+## Setup
+Install the requirements file with `pip install -r requirements.txt`. Alternatively, you can use anaconda to create the environment from a `.yaml`file using `conda env create -f environment.yaml` (tested on Ubuntu 20.04), or `conda env create -f environment-mac.yaml` (tested on an M1 Mac on MacOS Monterey).
+
+Experimentally, a Dockerfile is provided. Currently, we only run Experiment 02 and you still have to build the docker container yourself. To do this, run `docker build -t exp02 .`.
+To run, enter `docker run -v "$(pwd)/results":/app/results exp02`. Your results will
+end up in this directory under `results`.
+
 ## Scripts
 The scripts currently in use:
 - data_generation.py: Used to generate and evaluate toy data. Can be used as a stand-alone shell script, invoke with the path to a ".yaml" file that corresponds to the description of an experiment. They can be found in the experiments folder. The results can be found under "results/name_of_experiment". Outputs a .csv file that contains the metric results of the hard clustering (NMI, ARS), as well as an .svg of the hard clustering.
