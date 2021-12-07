@@ -18,6 +18,7 @@ import src.tree_tangles as tree_tangles
 import src.cost_functions as cost_functions
 import src.plotting as plotting
 import sklearn
+from tqdm import tqdm
 import yaml
 import plotly.graph_objects as go
 from functools import partial
@@ -183,8 +184,6 @@ def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
         runner = _run_once_quiet
 
     configs = []
-    # For multiprocessing
-    pool = Pool(workers)
 
     # Generating the configurations with the different seeds
     for i in range(conf.n_runs):
@@ -192,21 +191,27 @@ def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
         backup_conf.seed = seed + i
         configs.append(backup_conf)
 
-    results = pool.map(runner, configs)
+    # For multiprocessing
+    if workers is None or workers > 1:
+        print("Running parallel experiments...")
+        with Pool(workers) as pool:
+            results = list(tqdm(pool.imap(runner, configs), total=len(configs)))
+    else: 
+        results = list(map(runner, configs))
 
     ars_values = [t[0] for t in results]
     nmi_values = [t[1] for t in results]
 
-    results = ExperimentResult(ars_values, nmi_values)
-    results.save_csv(os.path.join(conf.base_folder, conf.name, conf.name + "_metrics.csv"))
-    return results 
+    experiment_result = ExperimentResult(ars_values, nmi_values)
+    experiment_result.save_csv(os.path.join(conf.base_folder, conf.name, conf.name + "_metrics.csv"))
+    return experiment_result 
 
 # These two functions are defined because pool can only pickle top level functions
 def _run_once_verbose(conf: Configuration):
-    _run_once(conf)
+    return _run_once(conf)
 
 def _run_once_quiet(conf:Configuration):
-    _run_once(conf, verbose=False)
+    return _run_once(conf, verbose=False)
 
 def _run_once(conf: Configuration, verbose=True) -> "tuple[float, float]":
     """Runs the experiment once with the given configuration. Ignores
