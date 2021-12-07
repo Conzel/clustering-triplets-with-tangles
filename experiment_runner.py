@@ -31,6 +31,7 @@ from multiprocessing import Pool
 import sklearn.metrics
 plt.style.use('ggplot')
 
+
 class Configuration():
     def __init__(self, n, n_runs, seed, means, std, agreement,
                  name, num_distance_function_samples, noise, density,
@@ -63,18 +64,25 @@ class Configuration():
     def __str__(self) -> str:
         return "Configuration: " + str(self.__dict__)
 
+
+class HardClusteringEvaluation():
+    def __init__(self, y, y_pred) -> None:
+        self.nmi = normalized_mutual_info_score(y, y_pred)
+        self.ars = adjusted_rand_score(y, y_pred)
+
+
 class Baseline():
     def __init__(self, name):
         self.name = name
-        if name == "None" or name is None:
+        if name.lower() == "none" or name is None:
             self.method = Baseline._raise_no_baseline_error
-        if name == "gmm":
+        if name.lower() == "gmm":
             self.method = Baseline._gmm_baseline
 
-    def _raise_no_baseline_error(x, y, n_components):
+    def _raise_no_baseline_error(data: data_types.Data, n_components):
         raise ValueError("No baseline")
 
-    def _gmm_baseline(x, y, n_components, seed=None):
+    def _gmm_baseline(data: data_types.Data, n_components, seed=None):
         """
         Calculates a baseline for the clustering by fitting a gaussian mixture model
         to the data x and inferring labels y'. 
@@ -82,21 +90,21 @@ class Baseline():
         Returns ARS and NMI of the GMM, using the given ground truth labels y to calculate the
         metrics. 
         """
-        gm = GaussianMixture(n_components=n_components, random_state=seed).fit(x)
-        y_pred = gm.predict(x)
-        ars = adjusted_rand_score(y, y_pred)
-        nmi = normalized_mutual_info_score(y, y_pred)
-        return ars, nmi
-        
-    
-    def __call__(self, x, y, n_component) -> "tuple(float, float)":
-        return self.method(x, y, n_component)
+        gm = GaussianMixture(n_components=n_components,
+                             random_state=seed).fit(data.xs)
+        y_pred = gm.predict(data.xs)
+        return y_pred
 
-        
+    def predict(self, data: data_types.Data, n_components) -> np.ndarray:
+        """
+        Uses the chosen baseline to predict the labels of the given data.
+        """
+        return self.method(data, n_components)
+
 
 class ExperimentResult():
     """
-    Result of an experiment run. Properties:
+    Result of an experiment ran multiple times. Properties:
     ars_values: list of the ARS values of every single run
     nmi_values: list of the NMI values of every single run
     ars_mean: mean of the ARS values
@@ -104,17 +112,36 @@ class ExperimentResult():
     ars_std: standard deviation of the ARS values
     nmi_std: standard deviation of the NMI values
     """
-    def __init__(self, ars_values: list, nmi_values: list):
-        self.ars_values = ars_values
-        self.nmi_values = nmi_values
-        assert len(ars_values) == len(nmi_values)
-        ars_np = np.array(ars_values)
-        nmi_np = np.array(nmi_values)
+
+    def __init__(self, run_results: list):
+        # normal results
+        self.ars_values = [t.ars for t in run_results]
+        self.nmi_values = [t.nmi for t in run_results]
+        assert len(self.ars_values) == len(self.nmi_values)
+        ars_np = np.array(self.ars_values)
+        nmi_np = np.array(self.nmi_values)
         self.ars_mean = np.mean(ars_np)
         self.nmi_mean = np.mean(nmi_np)
         self.ars_std = np.std(ars_np)
         self.nmi_std = np.std(nmi_np)
-    
+
+        self._all_results_have_baseline = all([r.has_baseline for r in run_results])
+
+        if self._all_results_have_baseline:
+            # baseline
+            self.ars_values_baseline = [t.ars_baseline for t in run_results]
+            self.nmi_values_baseline = [t.nmi_baseline for t in run_results]
+            assert len(self.ars_values_baseline) == len(self.nmi_values_baseline)
+            ars_np_baseline = np.array(self.ars_values_baseline)
+            nmi_np_baseline = np.array(self.nmi_values_baseline)
+            self.ars_mean_baseline = np.mean(ars_np_baseline)
+            self.nmi_mean_baseline = np.mean(nmi_np_baseline)
+            self.ars_std_baseline = np.std(ars_np_baseline)
+            self.nmi_std_baseline = np.std(nmi_np_baseline)
+
+    def has_baseline(self):
+        return self._all_results_have_baseline
+
     def to_df(self):
         """
         Returns a pandas dataframe of the data (only raw data, no aggregates such as
@@ -123,19 +150,40 @@ class ExperimentResult():
         The resulting dataframe contains the nmi and ars values for every run.
         """
         df = pd.DataFrame({"run": list(range(len(self.ars_values))),
-                        "ars": self.nmi_values, "nmi": self.nmi_values})
+                           "ars": self.nmi_values, "nmi": self.nmi_values,
+                           "ars_baseline": self.ars_values_baseline,
+                           "nmi_baseline": self.nmi_values_baseline})
         return df
 
-    def save_csv(self, filepath): 
+    def save_csv(self, filepath):
         """
         Saves experiment results to a csv file. 
         """
         self.to_df().to_csv(os.path.join(filepath), index=False)
 
+
+class RunResult():
+    """
+    Result of a single run of an experiment. Properties:
+    ars: adjusted rand score
+    nmi: normalized mutual information
+    """
+
+    def __init__(self, run_evaluation: HardClusteringEvaluation, baseline_evaluation: HardClusteringEvaluation = None):
+        self.ars = run_evaluation.ars
+        self.nmi = run_evaluation.nmi
+        self._has_baseline = baseline_evaluation is not None
+        if baseline_evaluation is not None:
+            self.ars_baseline = baseline_evaluation.ars
+            self.nmi_baseline = baseline_evaluation.nmi
+    def has_baseline(self) -> bool:
+        return self._has_baseline
+
 class VariationResults():
     """
     Represents the results of the parameter variation.
     """
+
     def __init__(self, parameter_name: str, parameter_values: list, experiment_results: "list(ExperimentResult)"):
         self.parameter_values = parameter_values
         self.parameter_name = parameter_name
@@ -146,29 +194,56 @@ class VariationResults():
         self.ars_stds = [r.ars_std for r in experiment_results]
         self.nmi_stds = [r.nmi_std for r in experiment_results]
 
+        self._all_results_have_baseline = all([r.has_baseline() for r in experiment_results])
+        if self._all_results_have_baseline:
+            self.nmi_means_baseline = [r.nmi_mean_baseline for r in experiment_results]
+            self.ars_means_baseline = [r.ars_mean_baseline for r in experiment_results]
+            self.ars_stds_baseline = [r.ars_std_baseline for r in experiment_results]
+            self.nmi_stds_baseline = [r.nmi_std_baseline for r in experiment_results]
+
+
+    def has_baseline(self) -> bool:
+        return self._all_results_have_baseline
+
     def plot(self, base_folder, logx=False):
         """
         Plots the results. Results are saved under the given base folder
         """
-        # Plotting with matplotlib 
+        # Plotting with matplotlib
         plt.figure()
         plt.plot(self.parameter_values, self.ars_means, "--^", label="ARS")
         plt.plot(self.parameter_values, self.nmi_means, "--o", label="NMI")
+        if self.has_baseline():
+            plt.plot(self.parameter_values, self.ars_means_baseline, "--^", label="Baseline ARS")
+            plt.plot(self.parameter_values, self.nmi_means_baseline, "--o", label="Baseline NMI")
+        
         if logx:
             plt.xscale("log")
         plt.title(f"{self.parameter_name} variation")
         plt.legend()
-        plt.savefig(os.path.join(base_folder, f"{self.parameter_name}_variation.png"))
+        plt.savefig(os.path.join(
+            base_folder, f"{self.parameter_name}_variation.png"))
 
         # alternative with plotly
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=self.parameter_values, y=self.ars_means,mode="lines+markers", name="ARS"))
-        fig.add_trace(go.Scatter(x=self.parameter_values, y=self.nmi_means,mode="lines+markers", name="NMI"))
+        fig.add_trace(go.Scatter(x=self.parameter_values,
+                      y=self.ars_means, mode="lines+markers", name="ARS"))
+        fig.add_trace(go.Scatter(x=self.parameter_values,
+                      y=self.nmi_means, mode="lines+markers", name="NMI"))
+        fig.add_trace(go.Scatter(x=self.parameter_values,
+                      y=self.ars_means_baseline, mode="lines+markers", name="Baseline ARS"))
+        fig.add_trace(go.Scatter(x=self.parameter_values,
+                      y=self.nmi_means_baseline, mode="lines+markers", name="Baseline NMI"))
         fig.update_layout(title=f"{self.parameter_name} variation",
-            xaxis_title=f"{self.parameter_name}",
-            yaxis_title="NMI/ARS")
+                          xaxis_title=self.parameter_name,
+                          yaxis_title="Mean NMI/ARS")
+        fig.write_image(os.path.join(base_folder, f"{self.parameter_name}_variation.png"))
+        fig.update_layout(title=f"{self.parameter_name} variation",
+                          xaxis_title=f"{self.parameter_name}",
+                          yaxis_title="NMI/ARS")
         if logx:
             fig.update_xaxes(type="log")
+        print("Saving plot to", os.path.join(base_folder, f"{self.parameter_name}_variation.html"))
         fig.write_html(os.path.join(base_folder, f"{self.parameter_name}_variation.html"))
 
 
@@ -181,20 +256,16 @@ class VariationResults():
         """
         # Saving the results
         metric_results = {f"{self.parameter_name}": self.parameter_values,
-                        'nmi': self.nmi_means, 'ars': self.ars_means}
+                          'nmi': self.nmi_means, 'ars': self.ars_means}
         df = pd.DataFrame(data=metric_results)
         return df
 
-    def save_csv(self, filepath): 
+    def save_csv(self, filepath):
         """
         Saves experiment results to a csv file. 
         """
         self.to_df().to_csv(os.path.join(filepath), index=False)
 
-class HardClusteringEvaluation():
-    def __init__(self, y, y_pred) -> None:
-        self.nmi = normalized_mutual_info_score(y, y_pred)
-        self.ars = adjusted_rand_score(y, y_pred)
 
 def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
     """
@@ -234,33 +305,36 @@ def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
     if workers is None or workers > 1:
         print("Running parallel experiments...")
         with Pool(workers) as pool:
-            results = list(tqdm(pool.imap(runner, configs), total=len(configs)))
-    else: 
-        results = list(map(runner, configs))
+            run_results = list(
+                tqdm(pool.imap(runner, configs), total=len(configs)))
+    else:
+        run_results = list(map(runner, configs))
 
-    ars_values = [t[0] for t in results]
-    nmi_values = [t[1] for t in results]
+    experiment_result = ExperimentResult(run_results)
+    experiment_result.save_csv(os.path.join(
+        conf.base_folder, conf.name, conf.name + "_metrics.csv"))
+    return experiment_result
 
-    experiment_result = ExperimentResult(ars_values, nmi_values)
-    experiment_result.save_csv(os.path.join(conf.base_folder, conf.name, conf.name + "_metrics.csv"))
-    return experiment_result 
+# These two functions are defined because pool can only pickle top level functions (not lambdas)
 
-# These two functions are defined because pool can only pickle top level functions
 def _run_once_verbose(conf: Configuration):
     return _run_once(conf)
 
-def _run_once_quiet(conf:Configuration):
+
+def _run_once_quiet(conf: Configuration):
     return _run_once(conf, verbose=False)
+
 
 def _tangles_hard_predict(conf: Configuration, data: data_types.Data, verbose=True):
     """
     Uses the tangles algorithm to produce a hard clustering on the given data.
-    
+
     Returns predicted y labels for the data points.
     """
     # Creating the questionnaire from the data
     questionnaire = generate_questionnaire(
-        data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(conf.imputation_method),
+        data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(
+            conf.imputation_method),
         verbose=verbose).values
 
     # Interpreting the questionnaires as cuts and computing their costs
@@ -272,7 +346,8 @@ def _tangles_hard_predict(conf: Configuration, data: data_types.Data, verbose=Tr
     # Building the tree, contracting and calculating predictions
     tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
                                                    agreement=conf.agreement,
-                                                   verbose=int(verbose) # print nothing
+                                                   # print nothing
+                                                   verbose=int(verbose)
                                                    )
 
     contracted = tree_tangles.ContractedTangleTree(tangles_tree)
@@ -290,23 +365,24 @@ def _tangles_hard_predict(conf: Configuration, data: data_types.Data, verbose=Tr
 
     return ys_predicted
 
+
 def _generate_data(conf: Configuration):
     """
     Generates a synthetic dataset (mixture of gaussians) with the given configuration.
     """
     if conf.redraw_means:
         data = generate_gmm_data_draw_means(
-            n = conf.n, std = conf.std, seed = conf.seed, 
-            dimension = conf.dimension, min_cluster_dist = conf.min_cluster_dist, 
-            components = conf.n_components)
+            n=conf.n, std=conf.std, seed=conf.seed,
+            dimension=conf.dimension, min_cluster_dist=conf.min_cluster_dist,
+            components=conf.n_components)
     else:
         data = generate_gmm_data_fixed_means(
-            n = conf.n, means = np.array(conf.means), std = conf.std, seed = conf.seed)
+            n=conf.n, means=np.array(conf.means), std=conf.std, seed=conf.seed)
 
     return data
-    
 
-def _run_once(conf: Configuration, verbose=True) -> "tuple[float, float]":
+
+def _run_once(conf: Configuration, verbose=True) -> RunResult:
     """Runs the experiment once with the given configuration. Ignores
        n_runs parameter.
 
@@ -331,7 +407,18 @@ def _run_once(conf: Configuration, verbose=True) -> "tuple[float, float]":
         plotting.plot_hard_predictions(data=data, ys_predicted=y_predicted,
                                        path=result_output_path)
 
-    return evaluation.ars, evaluation.nmi
+    # --- Checking if we need to calculate a baseline as well ---
+    baseline_evaluation = None
+    if conf.baseline is not None and conf.baseline.lower() != "none":
+        if verbose:
+            print("Evaluating baseline...")
+        baseline = Baseline(conf.baseline)
+        baseline_prediction = baseline.predict(data, conf.n_components)
+        baseline_evaluation = HardClusteringEvaluation(
+            data.ys, baseline_prediction)
+
+    return RunResult(evaluation, baseline_evaluation)
+
 
 def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False):
     """
@@ -348,7 +435,8 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
     """
     experiment_results = []
     seed = base_config.seed
-    base_folder = os.path.join("results", f"{base_config.name}-{name}_variation")
+    base_folder = os.path.join(
+        "results", f"{base_config.name}-{name}_variation")
 
     for p in parameter_values:
         print(f"Calculating for {name} variation, value: {p}")
@@ -362,12 +450,13 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
         experiment_results.append(run_experiment(conf))
 
     result = VariationResults(parameter_name=name, parameter_values=parameter_values,
-                               experiment_results=experiment_results)
+                              experiment_results=experiment_results)
     result.save_csv(os.path.join(base_folder, "metric_results.txt"))
     if plot:
         result.plot(base_folder=base_folder, logx=logx)
 
     return result
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -376,7 +465,7 @@ if __name__ == "__main__":
     # Loading the configuration
     with open(sys.argv[1], "r") as f:
         conf = Configuration.from_yaml(yaml.safe_load(f))
-    
+
     if len(sys.argv) > 2 and (sys.argv[2] == "-p" or sys.argv[2] == "--parallel"):
         workers = None
     else:
