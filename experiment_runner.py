@@ -18,6 +18,8 @@ import src.tree_tangles as tree_tangles
 import src.cost_functions as cost_functions
 import src.plotting as plotting
 import sklearn
+from sklearn.mixture import GaussianMixture
+from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from tqdm import tqdm
 import yaml
 import plotly.graph_objects as go
@@ -35,7 +37,8 @@ class Configuration():
                  redraw_means, min_cluster_dist, dimension,
                  n_components,
                  base_folder="results",
-                 imputation_method="random"):
+                 imputation_method="random",
+                 baseline="none"):
         self.n = n
         self.seed = seed
         self.means = means
@@ -52,12 +55,44 @@ class Configuration():
         self.dimension = dimension
         self.n_components = n_components
         self.imputation_method = imputation_method
+        self.baseline = baseline
 
     def from_yaml(yaml_dict):
         return Configuration(**yaml_dict)
 
     def __str__(self) -> str:
         return "Configuration: " + str(self.__dict__)
+
+class Baseline():
+    def __init__(self, name):
+        self.name = name
+        if name == "None" or name is None:
+            self.method = Baseline._raise_no_baseline_error
+        if name == "gmm":
+            self.method = Baseline._gmm_baseline
+
+    def _raise_no_baseline_error(x, y, n_components):
+        raise ValueError("No baseline")
+
+    def _gmm_baseline(x, y, n_components, seed=None):
+        """
+        Calculates a baseline for the clustering by fitting a gaussian mixture model
+        to the data x and inferring labels y'. 
+
+        Returns ARS and NMI of the GMM, using the given ground truth labels y to calculate the
+        metrics. 
+        """
+        gm = GaussianMixture(n_components=n_components, random_state=seed).fit(x)
+        y_pred = gm.predict(x)
+        ars = adjusted_rand_score(y, y_pred)
+        nmi = normalized_mutual_info_score(y, y_pred)
+        return ars, nmi
+        
+    
+    def __call__(self, x, y, n_component) -> "tuple(float, float)":
+        return self.method(x, y, n_component)
+
+        
 
 class ExperimentResult():
     """
@@ -156,6 +191,10 @@ class VariationResults():
         """
         self.to_df().to_csv(os.path.join(filepath), index=False)
 
+class HardClusteringEvaluation():
+    def __init__(self, y, y_pred) -> None:
+        self.nmi = normalized_mutual_info_score(y, y_pred)
+        self.ars = adjusted_rand_score(y, y_pred)
 
 def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
     """
@@ -213,29 +252,12 @@ def _run_once_verbose(conf: Configuration):
 def _run_once_quiet(conf:Configuration):
     return _run_once(conf, verbose=False)
 
-def _run_once(conf: Configuration, verbose=True) -> "tuple[float, float]":
-    """Runs the experiment once with the given configuration. Ignores
-       n_runs parameter.
-
-       If verbose is set to true, prints out steps in the process such as data generation etc.
-
-       Returns a tuple (ars, nmi) of the resulting hard clustering.
+def _tangles_hard_predict(conf: Configuration, data: data_types.Data, verbose=True):
     """
-    # ---- loading parameters ----
-    np.random.seed(conf.seed)
-
-    result_output_path = Path(os.path.join(conf.base_folder, conf.name))
-
-    # ---- generating data ----
-    if conf.redraw_means:
-        data = generate_gmm_data_draw_means(
-            n = conf.n, std = conf.std, seed = conf.seed, 
-            dimension = conf.dimension, min_cluster_dist = conf.min_cluster_dist, 
-            components = conf.n_components)
-    else:
-        data = generate_gmm_data_fixed_means(
-            n = conf.n, means = np.array(conf.means), std = conf.std, seed = conf.seed)
-
+    Uses the tangles algorithm to produce a hard clustering on the given data.
+    
+    Returns predicted y labels for the data points.
+    """
     # Creating the questionnaire from the data
     questionnaire = generate_questionnaire(
         data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(conf.imputation_method),
@@ -266,24 +288,50 @@ def _run_once(conf: Configuration, verbose=True) -> "tuple[float, float]":
     ys_predicted, _ = utils.compute_hard_predictions(
         contracted, cuts=bipartitions, verbose=verbose)
 
-    # Creating results folder if it doesn't exist
-    result_output_path.mkdir(parents=True, exist_ok=True)
+    return ys_predicted
+
+def _generate_data(conf: Configuration):
+    """
+    Generates a synthetic dataset (mixture of gaussians) with the given configuration.
+    """
+    if conf.redraw_means:
+        data = generate_gmm_data_draw_means(
+            n = conf.n, std = conf.std, seed = conf.seed, 
+            dimension = conf.dimension, min_cluster_dist = conf.min_cluster_dist, 
+            components = conf.n_components)
+    else:
+        data = generate_gmm_data_fixed_means(
+            n = conf.n, means = np.array(conf.means), std = conf.std, seed = conf.seed)
+
+    return data
+    
+
+def _run_once(conf: Configuration, verbose=True) -> "tuple[float, float]":
+    """Runs the experiment once with the given configuration. Ignores
+       n_runs parameter.
+
+       If verbose is set to true, prints out steps in the process such as data generation etc.
+
+       Returns a tuple (ars, nmi) of the resulting hard clustering.
+    """
+    np.random.seed(conf.seed)
+    data = _generate_data(conf)
+    y_predicted = _tangles_hard_predict(conf, data, verbose=verbose)
 
     # evaluate hard predictions
-    if data.ys is not None:
-        ARS = sklearn.metrics.adjusted_rand_score(data.ys, ys_predicted)
-        NMI = sklearn.metrics.normalized_mutual_info_score(
-            data.ys, ys_predicted)
-    else:
-        raise ValueError("Data has no labels, not implemented yet.")
+    assert data.ys is not None
+    evaluation = HardClusteringEvaluation(data.ys, y_predicted)
 
+    # Writing back results
+    # Creating results folder if it doesn't exist
+    result_output_path = Path(os.path.join(conf.base_folder, conf.name))
+    result_output_path.mkdir(parents=True, exist_ok=True)
     if conf.dimension == 2:
         # Plotting the hard clustering
-        plotting.plot_hard_predictions(data=data, ys_predicted=ys_predicted,
+        plotting.plot_hard_predictions(data=data, ys_predicted=y_predicted,
                                        path=result_output_path)
 
-    if data.ys is not None:
-        return ARS, NMI
+    return evaluation.ars, evaluation.nmi
 
 def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False):
     """
