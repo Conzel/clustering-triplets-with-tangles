@@ -23,6 +23,7 @@ import plotly.graph_objects as go
 from functools import partial
 from questionnaire import generate_questionnaire, ImputationMethod
 from data_generation import generate_gmm_data_fixed_means, generate_gmm_data_draw_means
+from multiprocessing import Pool
 
 import sklearn.metrics
 plt.style.use('ggplot')
@@ -155,7 +156,7 @@ class VariationResults():
         self.to_df().to_csv(os.path.join(filepath), index=False)
 
 
-def run_experiment(conf: Configuration) -> ExperimentResult:
+def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
     """
     Runs an experiment with the given configuration. 
 
@@ -166,29 +167,54 @@ def run_experiment(conf: Configuration) -> ExperimentResult:
     We then create a hard clustering using tangles.
     We plot the clustering and evaluate the clustering quality using NMI and ARS.
 
+    By passing in a workers argument, we can do multiple runs of the experiment in parallel,
+    greatly speeding up the process (on modern machines > 2x).
+    If you want to use multiple processing, we advise passing in an argument of None 
+    (which will use all available cores). Multiprocessing messes 
+    up the console outputs, so you sadly won't see any progress on the single experiments.
+
     Returns a tuple (ARS, NMI) of the resulting hard clustering.
     """
     seed = conf.seed
-    ars_values = []
-    nmi_values = []
 
+    if workers == 1:
+        runner = _run_once_verbose
+    else:
+        runner = _run_once_quiet
+
+    configs = []
+    # For multiprocessing
+    pool = Pool(workers)
+
+    # Generating the configurations with the different seeds
     for i in range(conf.n_runs):
         backup_conf = copy.deepcopy(conf)
         backup_conf.seed = seed + i
+        configs.append(backup_conf)
 
-        # Get resulting values
-        ars, nmi = run_once(backup_conf)
-        ars_values.append(ars)
-        nmi_values.append(nmi)
+    results = pool.map(runner, configs)
+
+    ars_values = [t[0] for t in results]
+    nmi_values = [t[1] for t in results]
 
     results = ExperimentResult(ars_values, nmi_values)
     results.save_csv(os.path.join(conf.base_folder, conf.name, conf.name + "_metrics.csv"))
     return results 
 
+# These two functions are defined because pool can only pickle top level functions
+def _run_once_verbose(conf: Configuration):
+    _run_once(conf)
 
-def run_once(conf: Configuration) -> "tuple[float, float]":
+def _run_once_quiet(conf:Configuration):
+    _run_once(conf, verbose=False)
+
+def _run_once(conf: Configuration, verbose=True) -> "tuple[float, float]":
     """Runs the experiment once with the given configuration. Ignores
        n_runs parameter.
+
+       If verbose is set to true, prints out steps in the process such as data generation etc.
+
+       Returns a tuple (ars, nmi) of the resulting hard clustering.
     """
     # ---- loading parameters ----
     np.random.seed(conf.seed)
@@ -207,21 +233,23 @@ def run_once(conf: Configuration) -> "tuple[float, float]":
 
     # Creating the questionnaire from the data
     questionnaire = generate_questionnaire(
-        data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(conf.imputation_method)).values
+        data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(conf.imputation_method),
+        verbose=verbose).values
 
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = data_types.Cuts((questionnaire == 1).T)
     cuts = utils.compute_cost_and_order_cuts(bipartitions, partial(
-        cost_functions.mean_manhattan_distance, questionnaire, conf.num_distance_function_samples))
+        cost_functions.mean_manhattan_distance, questionnaire, conf.num_distance_function_samples),
+        verbose=verbose)
 
     # Building the tree, contracting and calculating predictions
     tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
                                                    agreement=conf.agreement,
-                                                   verbose=0  # print everything
+                                                   verbose=int(verbose) # print nothing
                                                    )
 
     contracted = tree_tangles.ContractedTangleTree(tangles_tree)
-    contracted.prune(5)
+    contracted.prune(5, verbose=verbose)
 
     contracted.calculate_setP()
 
@@ -231,7 +259,7 @@ def run_once(conf: Configuration) -> "tuple[float, float]":
         node=contracted.root, cuts=bipartitions, weight=weight, verbose=3)
 
     ys_predicted, _ = utils.compute_hard_predictions(
-        contracted, cuts=bipartitions)
+        contracted, cuts=bipartitions, verbose=verbose)
 
     # Creating results folder if it doesn't exist
     result_output_path.mkdir(parents=True, exist_ok=True)
@@ -289,12 +317,17 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
     return result
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print("First argument has to be the name of a YAML configuration. Exiting.")
         exit(1)
     # Loading the configuration
     with open(sys.argv[1], "r") as f:
         conf = Configuration.from_yaml(yaml.safe_load(f))
+    
+    if len(sys.argv) > 2 and (sys.argv[2] == "-p" or sys.argv[2] == "--parallel"):
+        workers = None
+    else:
+        workers = 1
 
     # Running the experiment
-    run_experiment(conf)
+    run_experiment(conf, workers=workers)
