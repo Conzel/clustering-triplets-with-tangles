@@ -16,20 +16,23 @@ if __name__ == '__main__':
     os.makedirs("results/08-imputation-results", exist_ok=True)
 
     noise_values = [0.0, 0.001, 0.005, 0.01, 0.02,
-                    0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+                    0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
     plt.figure()
     fig = go.Figure()
     imputation_methods = ["mean", "random"]
-    for k in [1, 3, 5]:
+    for k in [1, 3, 5, 7]:
         imputation_methods.append(str(k) + "-NN")
 
     for m in imputation_methods:
         imputation_config = deepcopy(base_config)
         imputation_config.imputation_method = m
 
-        ars, nmi = parameter_variation(
+        variation_result = parameter_variation(
             noise_values, "noise", "noise", imputation_config, plot=False)
+        ars = variation_result.ars_means
+        nmi = variation_result.nmi_means
+
         # Plotly
         fig.add_trace(go.Scatter(x=noise_values, y=ars,
                       mode="lines+markers", name="ARS " + m))

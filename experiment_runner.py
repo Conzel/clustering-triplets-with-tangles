@@ -57,8 +57,105 @@ class Configuration():
     def __str__(self) -> str:
         return "Configuration: " + str(self.__dict__)
 
+class ExperimentResult():
+    """
+    Result of an experiment run. Properties:
+    ars_values: list of the ARS values of every single run
+    nmi_values: list of the NMI values of every single run
+    ars_mean: mean of the ARS values
+    nmi_mean: mean of the NMI values
+    ars_std: standard deviation of the ARS values
+    nmi_std: standard deviation of the NMI values
+    """
+    def __init__(self, ars_values: list, nmi_values: list):
+        self.ars_values = ars_values
+        self.nmi_values = nmi_values
+        assert len(ars_values) == len(nmi_values)
+        ars_np = np.array(ars_values)
+        nmi_np = np.array(nmi_values)
+        self.ars_mean = np.mean(ars_np)
+        self.nmi_mean = np.mean(nmi_np)
+        self.ars_std = np.std(ars_np)
+        self.nmi_std = np.std(nmi_np)
+    
+    def to_df(self):
+        """
+        Returns a pandas dataframe of the data (only raw data, no aggregates such as
+        mean, std).
 
-def run_experiment(conf: Configuration) -> "tuple[float, float]":
+        The resulting dataframe contains the nmi and ars values for every run.
+        """
+        df = pd.DataFrame({"run": list(range(len(self.ars_values))),
+                        "ars": self.nmi_values, "nmi": self.nmi_values})
+        return df
+
+    def save_csv(self, filepath): 
+        """
+        Saves experiment results to a csv file. 
+        """
+        self.to_df().to_csv(os.path.join(filepath), index=False)
+
+class VariationResults():
+    """
+    Represents the results of the parameter variation.
+    """
+    def __init__(self, parameter_name: str, parameter_values: list, experiment_results: "list(ExperimentResult)"):
+        self.parameter_values = parameter_values
+        self.parameter_name = parameter_name
+        self._experiment_results = experiment_results
+        # Getting the singular results out of the experiments
+        self.nmi_means = [r.nmi_mean for r in experiment_results]
+        self.ars_means = [r.ars_mean for r in experiment_results]
+        self.ars_stds = [r.ars_std for r in experiment_results]
+        self.nmi_stds = [r.nmi_std for r in experiment_results]
+
+    def plot(self, base_folder, logx=False):
+        """
+        Plots the results. Results are saved under the given base folder
+        """
+        # Plotting with matplotlib 
+        plt.figure()
+        plt.plot(self.parameter_values, self.ars_means, "--^", label="ARS")
+        plt.plot(self.parameter_values, self.nmi_means, "--o", label="NMI")
+        if logx:
+            plt.xscale("log")
+        plt.title(f"{self.parameter_name} variation")
+        plt.legend()
+        plt.savefig(os.path.join(base_folder, f"{self.parameter_name}_variation.png"))
+
+        # alternative with plotly
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=self.parameter_values, y=self.ars_means,mode="lines+markers", name="ARS"))
+        fig.add_trace(go.Scatter(x=self.parameter_values, y=self.nmi_means,mode="lines+markers", name="NMI"))
+        fig.update_layout(title=f"{self.parameter_name} variation",
+            xaxis_title=f"{self.parameter_name}",
+            yaxis_title="NMI/ARS")
+        if logx:
+            fig.update_xaxes(type="log")
+        fig.write_html(os.path.join(base_folder, f"{self.parameter_name}_variation.html"))
+
+
+    def to_df(self):
+        """
+        Returns a pandas dataframe of the data (only raw data, no aggregates such as
+        mean, std).
+
+        The resulting dataframe contains the nmi and ars values for every run.
+        """
+        # Saving the results
+        metric_results = {f"{self.parameter_name}": self.parameter_values,
+                        'nmi': self.nmi_means, 'ars': self.ars_means}
+        df = pd.DataFrame(data=metric_results)
+        return df
+
+    def save_csv(self, filepath): 
+        """
+        Saves experiment results to a csv file. 
+        """
+        self.to_df().to_csv(os.path.join(filepath), index=False)
+
+
+def run_experiment(conf: Configuration) -> ExperimentResult:
     """
     Runs an experiment with the given configuration. 
 
@@ -70,7 +167,6 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
     We plot the clustering and evaluate the clustering quality using NMI and ARS.
 
     Returns a tuple (ARS, NMI) of the resulting hard clustering.
-
     """
     seed = conf.seed
     ars_values = []
@@ -85,12 +181,9 @@ def run_experiment(conf: Configuration) -> "tuple[float, float]":
         ars_values.append(ars)
         nmi_values.append(nmi)
 
-    df = pd.DataFrame({"run": list(range(conf.n_runs)),
-                      "ars": ars_values, "nmi": nmi_values})
-
-    df.to_csv(os.path.join(conf.base_folder,
-              conf.name, conf.name + "_metrics.csv"), index=False)
-    return sum(ars_values) / len(ars_values), sum(nmi_values) / len(nmi_values)
+    results = ExperimentResult(ars_values, nmi_values)
+    results.save_csv(os.path.join(conf.base_folder, conf.name, conf.name + "_metrics.csv"))
+    return results 
 
 
 def run_once(conf: Configuration) -> "tuple[float, float]":
@@ -159,18 +252,6 @@ def run_once(conf: Configuration) -> "tuple[float, float]":
     if data.ys is not None:
         return ARS, NMI
 
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("First argument has to be the name of a YAML configuration. Exiting.")
-        exit(1)
-    # Loading the configuration
-    with open(sys.argv[1], "r") as f:
-        conf = Configuration.from_yaml(yaml.safe_load(f))
-
-    # Running the experiment
-    run_experiment(conf)
-
 def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False):
     """
     Runs multiple experiments varying the given parameter. The results depicted in a 
@@ -184,8 +265,7 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
     plot: Set to true if plots should be saved
     logx: Determines if the parameter value should have a logarithmic scale in the plot.
     """
-    ars_values = []
-    nmi_values = []
+    experiment_results = []
     seed = base_config.seed
     base_folder = os.path.join("results", f"{base_config.name}-{name}_variation")
 
@@ -198,37 +278,23 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
         conf.name = f"{name}-{p:.4f}"
         conf.base_folder = base_folder
 
-        ars, nmi = run_experiment(conf)
-        ars_values.append(ars)
-        nmi_values.append(nmi)
+        experiment_results.append(run_experiment(conf))
 
-    # Saving the results
-    metric_results = {f"{name}": parameter_values,
-                      'nmi': nmi_values, 'ars': ars_values}
-    df = pd.DataFrame(data=metric_results)
-    df.to_csv(os.path.join(base_folder, "metric_results.txt"), index=False)
-
-    # Plotting
+    result = VariationResults(parameter_name=name, parameter_values=parameter_values,
+                               experiment_results=experiment_results)
+    result.save_csv(os.path.join(base_folder, "metric_results.txt"))
     if plot:
-        # Plotting with matplotlib 
-        plt.figure()
-        plt.plot(parameter_values, ars_values, "--^", label="ARS")
-        plt.plot(parameter_values, nmi_values, "--o", label="NMI")
-        if logx:
-            plt.xscale("log")
-        plt.title(f"{name} variation")
-        plt.legend()
-        plt.savefig(os.path.join(base_folder, f"{name}_variation.png"))
+        result.plot(base_folder=base_folder, logx=logx)
 
-        # alternative with plotly
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=parameter_values, y=ars_values,mode="lines+markers", name="ARS"))
-        fig.add_trace(go.Scatter(x=parameter_values, y=nmi_values,mode="lines+markers", name="NMI"))
-        fig.update_layout(title=f"{name} variation",
-            xaxis_title=f"{name}",
-            yaxis_title="NMI/ARS")
-        if logx:
-            fig.update_xaxes(type="log")
-        fig.write_html(os.path.join(base_folder, f"{name}_variation.html"))
+    return result
 
-    return ars_values, nmi_values
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("First argument has to be the name of a YAML configuration. Exiting.")
+        exit(1)
+    # Loading the configuration
+    with open(sys.argv[1], "r") as f:
+        conf = Configuration.from_yaml(yaml.safe_load(f))
+
+    # Running the experiment
+    run_experiment(conf)
