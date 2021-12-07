@@ -420,7 +420,8 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
     return RunResult(evaluation, baseline_evaluation)
 
 
-def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False):
+def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False, 
+                        workers=1):
     """
     Runs multiple experiments varying the given parameter. The results depicted in a 
     plot (with x = parameter values, y = nmi/ars). They are also saved in a csv file.
@@ -447,7 +448,7 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
         conf.name = f"{name}-{p:.4f}"
         conf.base_folder = base_folder
 
-        experiment_results.append(run_experiment(conf))
+        experiment_results.append(run_experiment(conf, workers=workers))
 
     result = VariationResults(parameter_name=name, parameter_values=parameter_values,
                               experiment_results=experiment_results)
