@@ -15,3 +15,4 @@ min_cluster_dist: 5
 dimension: 2
 n_components: 5
 imputation_method: "random"
+baseline: "gmm"
