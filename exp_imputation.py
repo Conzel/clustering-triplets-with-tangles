@@ -43,9 +43,19 @@ if __name__ == '__main__':
                  m))
         plt.plot(noise_values, ars, "--^", label=("ARS " + m))
 
+    # Plotting one baseline, shouldn't matter too much which one we pick
+    fig.add_trace(go.Scatter(x=noise_values, y=variation_result.nmi_means_baseline,
+                  mode="lines+markers", name="NMI baseline"))
+    fig.add_trace(go.Scatter(x=noise_values, y=variation_result.ars_means_baseline,
+                             mode="lines+markers", name="ARS baseline"))
+
     fig.update_layout(title=f"Comparison of imputation methods",
                       xaxis_title=f"Noise",
                       yaxis_title="NMI/ARS")
-    plt.legend()
     fig.write_html("./results/08-imputation-results/imputations.html")
+    plt.plot(noise_values, variation_result.nmi_means_baseline,
+             "--o", label="NMI baseline")
+    plt.plot(noise_values, variation_result.ars_means_baseline,
+             "--^", label="ARS baseline")
+    plt.legend()
     plt.savefig("results/08-imputation-results/imputations.png")
