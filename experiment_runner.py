@@ -125,7 +125,7 @@ class ExperimentResult():
         self.ars_std = np.std(ars_np)
         self.nmi_std = np.std(nmi_np)
 
-        self._all_results_have_baseline = all([r.has_baseline for r in run_results])
+        self._all_results_have_baseline = all([r.has_baseline() for r in run_results])
 
         if self._all_results_have_baseline:
             # baseline
@@ -149,10 +149,14 @@ class ExperimentResult():
 
         The resulting dataframe contains the nmi and ars values for every run.
         """
-        df = pd.DataFrame({"run": list(range(len(self.ars_values))),
-                           "ars": self.nmi_values, "nmi": self.nmi_values,
-                           "ars_baseline": self.ars_values_baseline,
-                           "nmi_baseline": self.nmi_values_baseline})
+        if self.has_baseline():
+            df = pd.DataFrame({"run": list(range(len(self.ars_values))),
+                            "ars": self.nmi_values, "nmi": self.nmi_values,
+                            "ars_baseline": self.ars_values_baseline,
+                            "nmi_baseline": self.nmi_values_baseline})
+        else:
+            df = pd.DataFrame({"run": list(range(len(self.ars_values))),
+                            "ars": self.nmi_values, "nmi": self.nmi_values})
         return df
 
     def save_csv(self, filepath):
@@ -176,6 +180,7 @@ class RunResult():
         if baseline_evaluation is not None:
             self.ars_baseline = baseline_evaluation.ars
             self.nmi_baseline = baseline_evaluation.nmi
+
     def has_baseline(self) -> bool:
         return self._has_baseline
 
