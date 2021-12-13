@@ -111,7 +111,7 @@ class ImputationMethod():
         """
         print("Imputing via knn")
         imputer = KNNImputer(n_neighbors=k, missing_values=-1)
-        imputed_data = imputer.fit_transform(data.T).T
+        imputed_data = imputer.fit_transform(data)
         # removing the 0.5 values with random values
         imputed_data[imputed_data == 0.5] = np.random.randint(
             0, 2, imputed_data[imputed_data == 0.5].shape)
