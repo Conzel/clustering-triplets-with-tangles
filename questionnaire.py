@@ -9,6 +9,7 @@ import math
 import src.data_types as data_types
 import random
 import re
+from sklearn.neighbors import DistanceMetric
 from sklearn.impute import KNNImputer
 from enum import Enum
 from operator import itemgetter
@@ -18,15 +19,21 @@ from tqdm import tqdm
 def distance_function(x, y): return np.linalg.norm(x - y)
 
 
-def is_triplet(a, b, c, dist=distance_function, noise=0.0):
+def is_triplet(a, b, c, distances, noise=0.0):
     """"
     Returns 1 if a is closer to b than c, 0 otherwise.
     If noise > 0, then the questions answer is set to -1 with probability noise.
+
+    distances: ndarray of shape (num_datapoints, num_datapoints),
+        precomputed distances, where distances_ij = distance between point i and j
     """
     if noise > 0 and random.random() < noise:
         return -1
     else:
-        return int(dist(a, b) <= dist(a, c))
+        if distances is not None:
+            return int(distances[a, b] <= distances[a, c])
+        else:
+            return distance_function(a, b) <= distance_function(a, c)
 
 
 def generate_k_subsets(values: list, k: int) -> "list[list]":
@@ -231,13 +238,17 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, imputation_method=None, 
     log("Filling out questionnaire...")
     questionnaire = np.zeros((num_datapoints, len(question_set)))
 
+    metric = DistanceMetric.get_metric("euclidean")
+    # cached distances for all points
+    distances = metric.pairwise(data)
+
     for i in tqdm(range(num_datapoints), disable=not verbose):
-        a = data[i]
+        a = i
         answers = []
         for question in question_set:
-            b = data[question[0]]
-            c = data[question[1]]
-            answer = is_triplet(a, b, c, noise=noise)
+            b = question[0]
+            c = question[1]
+            answer = is_triplet(a, b, c, distances, noise=noise)
             answers.append(answer)
         questionnaire[i] = np.array(answers)
 
