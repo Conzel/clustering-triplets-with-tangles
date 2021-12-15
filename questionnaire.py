@@ -244,12 +244,12 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, imputation_method=None, 
 
     for i in tqdm(range(num_datapoints), disable=not verbose):
         a = i
-        answers = []
-        for question in question_set:
+        answers = np.zeros(len(question_set))
+        for j, question in enumerate(question_set):
             b = question[0]
             c = question[1]
             answer = is_triplet(a, b, c, distances, noise=noise)
-            answers.append(answer)
+            answers[j] = answer
         questionnaire[i] = np.array(answers)
 
     if noise > 0:
