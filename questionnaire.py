@@ -192,13 +192,13 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def generate_questionnaire(data: data_types.Data, noise=0.0, imputation_method=None, density=1.0, verbose=True, seed=None) -> Questionnaire:
+def generate_questionnaire(data: np.ndarray, noise=0.0, imputation_method=None, density=1.0, verbose=True, seed=None) -> Questionnaire:
     """
     Generates a questionnaire for the given data.
 
     Input: 
-    - data: Data
-      xs field contains the data points as rows and their coordinates as columns
+    - data: np.ndarray
+      contains the data points as rows and their coordinates as columns
     - noise: float
       The percentage of noise to add to the questionnaire. 0 means all answers are truthful, 
       1 means all answers are random.
@@ -220,7 +220,7 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, imputation_method=N
     assert 0 <= density <= 1
 
     log = create_log_function(verbose)
-    num_datapoints = data.xs.shape[0]
+    num_datapoints = data.shape[0]
     log("Generating questionnaire...")
 
     log("Generating question set...")
@@ -232,11 +232,11 @@ def generate_questionnaire(data: data_types.Data, noise=0.0, imputation_method=N
     questionnaire = np.zeros((num_datapoints, len(question_set)))
 
     for i in tqdm(range(num_datapoints), disable=not verbose):
-        a = data.xs[i]
+        a = data[i]
         answers = []
         for question in question_set:
-            b = data.xs[question[0]]
-            c = data.xs[question[1]]
+            b = data[question[0]]
+            c = data[question[1]]
             answer = is_triplet(a, b, c, noise=noise)
             answers.append(answer)
         questionnaire[i] = np.array(answers)

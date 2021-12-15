@@ -35,12 +35,12 @@ np.random.seed(conf.seed)
 random.seed(conf.seed)
 
 questionnaire = generate_questionnaire(
-    data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(
+    data.xs, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(
         conf.imputation_method),
     verbose=verbose).values
 
 questionnaire_exact = generate_questionnaire(
-    data, noise=0.0, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(
+    data.xs, noise=0.0, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(
         conf.imputation_method),
     verbose=verbose).values
 

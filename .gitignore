@@ -1,5 +1,6 @@
 figures
 results
+.vscode
 # profiling data
 *.prof
 

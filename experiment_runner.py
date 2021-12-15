@@ -330,27 +330,34 @@ def _run_once_quiet(conf: Configuration):
     return _run_once(conf, verbose=False)
 
 
-def _tangles_hard_predict(conf: Configuration, data: data_types.Data, verbose=True):
+def tangles_hard_predict(questionnaire: np.ndarray, agreement: int, 
+    distance_function_samples = None, verbose=True) -> np.ndarray:
     """
     Uses the tangles algorithm to produce a hard clustering on the given data.
 
-    Returns predicted y labels for the data points.
+    questionnaire: np.ndarray of dimension (n_datapoints, n_questions),
+        where each entry represents a triplet question of the form (a, (b,c))?
+        which is set to true if a is closer to b than to c. 
+        a is the datapoint in the row, (b,c) are associated with a column each.
+    agreement: agreement parameter of the tangles algorithm,
+        this should be less than the smallest cluster size you expect
+    distance_function_samples: int,
+        number of samples to use for the distance function (monte carlo approximation). If set to None, uses all
+        samples. Setting this to something other than None might increase the speed of the algorithm
+        but decreases it's performance.
+
+    Returns predicted y labels for the data points as np.ndarray of dimension (n_datapoints,).
     """
-    # Creating the questionnaire from the data
-    questionnaire = generate_questionnaire(
-        data, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(
-            conf.imputation_method),
-        verbose=verbose).values
 
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = data_types.Cuts((questionnaire == 1).T)
     cuts = utils.compute_cost_and_order_cuts(bipartitions, partial(
-        cost_functions.mean_manhattan_distance, questionnaire, conf.num_distance_function_samples),
+        cost_functions.mean_manhattan_distance, questionnaire, distance_function_samples),
         verbose=verbose)
 
     # Building the tree, contracting and calculating predictions
     tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
-                                                   agreement=conf.agreement,
+                                                   agreement=agreement,
                                                    # print nothing
                                                    verbose=int(verbose)
                                                    )
@@ -397,7 +404,13 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
     """
     np.random.seed(conf.seed)
     data = _generate_data(conf)
-    y_predicted = _tangles_hard_predict(conf, data, verbose=verbose)
+    # Creating the questionnaire from the data
+    questionnaire = generate_questionnaire(
+        data.xs, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(
+            conf.imputation_method),
+        verbose=verbose).values
+    y_predicted = tangles_hard_predict(questionnaire, conf.agreement, 
+                    distance_function_samples=conf.num_distance_function_samples, verbose=verbose)
 
     # evaluate hard predictions
     assert data.ys is not None
