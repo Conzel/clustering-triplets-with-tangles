@@ -17,6 +17,7 @@ import src.utils as utils
 import src.tree_tangles as tree_tangles
 import src.cost_functions as cost_functions
 import src.plotting as plotting
+from src.cost_functions import BipartitionSimilarity
 import sklearn
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
@@ -351,9 +352,8 @@ def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
 
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = data_types.Cuts((questionnaire == 1).T)
-    cuts = utils.compute_cost_and_order_cuts(bipartitions, partial(
-        cost_functions.mean_manhattan_distance, questionnaire, distance_function_samples),
-        verbose=verbose)
+    cost_function = cost_functions.BipartitionSimilarity(bipartitions.values.T)
+    cuts = utils.compute_cost_and_order_cuts(bipartitions, cost_function, verbose=verbose)
 
     # Building the tree, contracting and calculating predictions
     tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
