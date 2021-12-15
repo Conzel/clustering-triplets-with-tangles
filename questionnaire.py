@@ -30,10 +30,7 @@ def is_triplet(a, b, c, distances, noise=0.0):
     if noise > 0 and random.random() < noise:
         return -1
     else:
-        if distances is not None:
-            return int(distances[a, b] <= distances[a, c])
-        else:
-            return distance_function(a, b) <= distance_function(a, c)
+        return int(distances[a, b] <= distances[a, c])
 
 
 def generate_k_subsets(values: list, k: int) -> "list[list]":
