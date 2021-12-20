@@ -1,9 +1,10 @@
 """
 File containing functions and class definitions for working with triplets in questionnaire form. 
 """
-# Allows us to import tangles modules
 import sys
 sys.path.append("./tangles")
+
+# Do not reorder
 import numpy as np
 import math
 import src.data_types as data_types
@@ -15,8 +16,13 @@ from enum import Enum
 from operator import itemgetter
 from tqdm import tqdm
 
+# Allows us to import tangles modules
 
-def distance_function(x, y): return np.linalg.norm(x - y)
+MISSING_VALUE = -1
+
+
+def distance_function(x, y):
+    return np.linalg.norm(x - y)
 
 
 def is_triplet(a, b, c, distances, noise=0.0):
@@ -105,7 +111,7 @@ class ImputationMethod():
         """
         imputed_data = data.copy()
         imputed_data[imputed_data == -
-                     1] = np.random.randint(0, 2, imputed_data[imputed_data == -1].shape)
+                     1] = np.random.randint(0, 2, imputed_data[imputed_data == MISSING_VALUE].shape)
         return imputed_data
 
     def _impute_knn(data: np.ndarray, k: int):
@@ -114,7 +120,7 @@ class ImputationMethod():
         Coinflip decides on 0.5.
         """
         print("Imputing via knn")
-        imputer = KNNImputer(n_neighbors=k, missing_values=-1)
+        imputer = KNNImputer(n_neighbors=k, missing_values=MISSING_VALUE)
         imputed_data = imputer.fit_transform(data)
         # removing the 0.5 values with random values
         imputed_data[imputed_data == 0.5] = np.random.randint(
@@ -129,7 +135,7 @@ class ImputationMethod():
         https://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
         """
         imputed_data = data.copy()
-        imputed_data[imputed_data == -1] = np.nan
+        imputed_data[imputed_data == MISSING_VALUE] = np.nan
         col_mean = np.nanmean(imputed_data, axis=0)
         inds = np.where(np.isnan(imputed_data))
         imputed_data[inds] = np.take(col_mean, inds[1])
@@ -187,6 +193,75 @@ class Questionnaire():
         assert len(labels) == questionnaire.shape[1]
         self.values = questionnaire
         self.labels = labels
+
+    def from_bool_array(triplets, responses):
+        """
+        Generates a questionnaire from triplets and responses 
+        given as bool array. This function is the opposite of 
+        'triplets_to_bool_array'
+        """
+        # Eventually we could have more points but those don't have
+        # any triplet information
+        n_points = triplets.max() + 1
+        values = np.zeros((n_points, math.comb(n_points, 2)))
+        values[values == 0] = MISSING_VALUE
+        labels = [0] * (math.comb(n_points, 2))
+        for i in range(triplets.shape[0]):
+            a, b, c = triplets[i]
+            if b > c:
+                b, c = c, b
+            if b == c:
+                raise ValueError(
+                    "Triplet information on distance of point to itself.")
+            # invariant: c > b
+            val = 1 if responses[i] else 0
+            values[a][Questionnaire.triplet_to_pos(b, c, n_points)] = val
+
+        for b in range(n_points):
+            for c in range(b, n_points):
+                labels[Questionnaire.triplet_to_pos(b, c, n_points)] = (b, c)
+
+        return Questionnaire(values, labels)
+
+    def triplet_to_pos(b, c, n_points):
+        """
+        Returns column position of the triplet information (correspondence
+        of triplet and question).
+        """
+        return int(b * (n_points - 1) + (c - 1) - (b**2 + b) / 2)
+
+    def triplets_to_bool_array(self) -> "tuple(np.ndarray, np.ndarray)":
+        """
+        Transforms triplet value matrix to a list representing the triplets,
+        conforming to the interface in David Künstles cblearn package under
+        'triplet-array'
+
+        https://cblearn.readthedocs.io/en/latest/generated_examples/triplet_formats.html?highlight=matrix
+
+        To Quote:
+
+        In the array format, the constraints are encoded by the index order.
+
+        triplet = triplets_ordered[0]
+        print(f"The triplet {triplet} means, that object {triplet[0]} (1st) should be "
+            f"embedded closer to object {triplet[1]} (2nd) than to object {triplet[0]} (3th).")
+
+        Answer Array:
+        triplets_boolean, answers_boolean = check_query_response(triplets_ordered, result_format='list-boolean')
+        print(f"Is object {triplets_boolean[0, 0]} closer to object {triplets_boolean[0, 1]} "
+            f"than to object {triplets_boolean[0, 2]}? {answers_boolean[0]}.")
+
+        Returns a tuple where the first part is the triplet array, the second part is the answer 
+        array (all as specified above).
+        """
+        triplets = []
+        responses = self.values.flatten()
+        labels_np = np.array(self.labels)
+        num_questions = labels_np.shape[0]
+        for a in range(self.values.shape[0]):
+            a_array = np.repeat(a, num_questions).reshape(-1, 1)
+            triplets.append(np.hstack((a_array, labels_np)))
+        return np.concatenate(triplets), responses
 
 
 def create_log_function(verbose):
