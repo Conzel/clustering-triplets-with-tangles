@@ -204,9 +204,10 @@ class Questionnaire():
 
         Returns a new questionnaire and doesn't change the old one.
         """
-        new_vals, new_labels = Questionnaire._throwout_vals_labels(threshhold, self.values, self.labels)
+        new_vals, new_labels = Questionnaire._throwout_vals_labels(
+            threshhold, self.values, self.labels)
         return Questionnaire(new_vals, new_labels)
-    
+
     def _throwout_vals_labels(threshhold: float, values: np.ndarray, labels: "list[tuple]") -> "tuple[np.ndarray, list[tuple]]":
         """
         Computes new values and labels according to the procedure described in throwout.
@@ -303,7 +304,8 @@ class Questionnaire():
         if imputation_method is None:
             raise ValueError("'None' is not a valid imputation method.")
         imputation_method = ImputationMethod(imputation_method)
-        cleaned_values, cleaned_labels = Questionnaire._throwout_vals_labels(1, self.values, self.labels)
+        cleaned_values, cleaned_labels = Questionnaire._throwout_vals_labels(
+            1, self.values, self.labels)
         return Questionnaire(imputation_method(cleaned_values), cleaned_labels)
 
 
@@ -364,5 +366,5 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
             answer = is_triplet(a, b, c, distances, noise=noise)
             answers[j] = answer
         questionnaire[i] = np.array(answers)
-    
+
     return Questionnaire(questionnaire, list(map(tuple, question_set)))
