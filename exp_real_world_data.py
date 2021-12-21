@@ -38,8 +38,6 @@ chart_true = alt.Chart(tsne_data).mark_point().encode(
 )
 chart_pred = chart_true.encode(
     color="prediction_tangles:N").properties(title="Predicted labels")
-chart_missed = chart_true.encode(
-    color="correct:N").properties(title="Correctly classified")
 
-chart_combined = (chart_true | chart_pred) & chart_missed
+chart_combined = (chart_true | chart_pred).properties(title=f"Clustering comparison, NMI = {normalized_mutual_info_score(wine.target, ys_tangles):.2f}")
 chart_combined.show()
