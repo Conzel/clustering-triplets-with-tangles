@@ -92,7 +92,7 @@ class ImputationMethod():
     the future if performance demands it.)
 
     RANDOM: Fills in a random value.
-    NEIGHBOURS: Fills in the value with the mean of the most common n neighbours.
+    k-NN: Fills in the value with the mean of the most common k neighbours, where k is an int.
     MEAN: Fills in the value with the dataset mean.
     THROWOUT: Throws out column with corrupted value (only possible for very low noise).
     """
@@ -142,12 +142,6 @@ class ImputationMethod():
         imputed_data[inds] = np.take(col_mean, inds[1])
         return imputed_data
 
-    def _impute_throwout(data: np.ndarray):
-        """
-        Throws out column with corrupted value (only possible for very low noise).
-        """
-        raise NotImplementedError
-
     def _parse_imputation(imputation_method: str):
         """
         Parses the imputation method from a string.
@@ -160,8 +154,6 @@ class ImputationMethod():
             return lambda x: ImputationMethod._impute_knn(x, int(k))
         elif imputation_method.lower() == "mean":
             return ImputationMethod._impute_mean
-        elif imputation_method.lower() == "throwout":
-            return ImputationMethod._impute_throwout
 
     def __call__(self, data: np.ndarray) -> np.ndarray:
         """
