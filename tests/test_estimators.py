@@ -1,23 +1,32 @@
 import unittest
 from sklearn.datasets import load_iris
+from data_generation import generate_gmm_data_fixed_means
 from estimators import OrdinalTangles
 from experiment_runner import generate_questionnaire
+import numpy as np
 
 
 class OrdinalTanglesTestCase(unittest.TestCase):
     def setUp(self):
-        iris = load_iris()
-        self.data = iris.data
-        self.labels = iris.target
+        pass
 
-    def test_ordinal_tangles(self):
+    def test_predict_subset_equal(self):
+        iris = load_iris()
         tangles = OrdinalTangles(agreement=5, verbose=False)
-        q = generate_questionnaire(self.data)
+        q = generate_questionnaire(iris.data)
 
         tangles.fit(q.values)
         ys1 = tangles.predict(q.values[:10])
         ys2 = tangles.predict(q.values)
         self.assertTrue((ys1 == ys2[:10]).all())
+
+    def test_estimator_performance(self):
+        synthetic_data = generate_gmm_data_fixed_means(
+            n=15, means=np.array(np.array([[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]])), std=0.5, seed=1)
+        tangles = OrdinalTangles(agreement=5, verbose=False)
+        q = generate_questionnaire(synthetic_data.xs)
+        tangles.fit(q.values)
+        self.assertAlmostEqual(tangles.score(q.values, synthetic_data.ys), 1.0)
 
     def tearDown(self):
         pass
