@@ -94,7 +94,6 @@ class ImputationMethod():
     RANDOM: Fills in a random value.
     k-NN: Fills in the value with the mean of the most common k neighbours, where k is an int.
     MEAN: Fills in the value with the dataset mean.
-    THROWOUT: Throws out column with corrupted value (only possible for very low noise).
     """
 
     def __init__(self, method_name: str):
@@ -105,6 +104,12 @@ class ImputationMethod():
         """
         self.method_name = method_name
         self.method = ImputationMethod._parse_imputation(method_name)
+
+    def __str__(self) -> str:
+        return "ImputationMethod(" + self.method_name + ")"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     def _impute_random(data: np.ndarray):
         """
@@ -186,6 +191,12 @@ class Questionnaire():
         assert len(labels) == questionnaire.shape[1]
         self.values = questionnaire
         self.labels = labels
+
+    def __str__(self) -> str:
+        return "Questionnaire(\n" + str(self.values) + "\n)"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     def throwout(self, threshhold: float):
         """
