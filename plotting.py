@@ -9,8 +9,11 @@ from pathlib import Path
 
 class Plotter():
     def __init__(self, results_folder=None):
-        self.results_folder = Path(results_folder)
-        self.results_folder.mkdir(parents=True, exist_ok=True)
+        if results_folder is None:
+            self.results_folder = None
+        else:
+            self.results_folder = Path(results_folder)
+            self.results_folder.mkdir(parents=True, exist_ok=True)
 
     def scatter(self, data, labels):
         """
