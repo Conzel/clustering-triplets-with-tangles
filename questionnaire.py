@@ -249,7 +249,7 @@ class Questionnaire():
         """
         return int(b * (n_points - 1) + (c - 1) - (b**2 + b) / 2)
 
-    def triplets_to_bool_array(self) -> "tuple(np.ndarray, np.ndarray)":
+    def to_bool_array(self) -> "tuple(np.ndarray, np.ndarray)":
         """
         Transforms triplet value matrix to a list representing the triplets,
         conforming to the interface in David Künstles cblearn package under
@@ -280,6 +280,8 @@ class Questionnaire():
         for a in range(self.values.shape[0]):
             a_array = np.repeat(a, num_questions).reshape(-1, 1)
             triplets.append(np.hstack((a_array, labels_np)))
+        return np.concatenate(triplets), responses == 1
+
     def impute(self, imputation_method: str) -> "Questionnaire":
         """
         Imputes the questionnaire with the given method.
