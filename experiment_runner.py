@@ -404,12 +404,15 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
     """
     np.random.seed(conf.seed)
     data = _generate_data(conf)
+    if conf.noise > 0 and conf.imputation_method is None:
+        raise ValueError("No imputation method given for noisy data.")
     # Creating the questionnaire from the data
     questionnaire = generate_questionnaire(
-        data.xs, noise=conf.noise, density=conf.density, seed=conf.seed, imputation_method=ImputationMethod(
-            conf.imputation_method),
-        verbose=verbose).values
-    y_predicted = tangles_hard_predict(questionnaire, conf.agreement, 
+        data.xs, noise=conf.noise, density=conf.density, seed=conf.seed,
+        verbose=verbose)
+    if conf.imputation_method is not None:
+        questionnaire = questionnaire.impute(conf.imputation_method)
+    y_predicted = tangles_hard_predict(questionnaire.values, conf.agreement, 
                     distance_function_samples=conf.num_distance_function_samples, verbose=verbose)
 
     # evaluate hard predictions

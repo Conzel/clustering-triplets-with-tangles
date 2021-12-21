@@ -103,6 +103,7 @@ class ImputationMethod():
         given through the constructor and might be required for methods.
         Neighbours imputation f.e. needs to know how many neighbours to use.
         """
+        self.method_name = method_name
         self.method = ImputationMethod._parse_imputation(method_name)
 
     def _impute_random(data: np.ndarray):
@@ -194,6 +195,24 @@ class Questionnaire():
         self.values = questionnaire
         self.labels = labels
 
+    def throwout(self, threshhold: float):
+        """
+        Throws out column that has equal or more than threshhold% corrupted values.
+
+        Returns a new questionnaire and doesn't change the old one.
+        """
+        new_vals, new_labels = Questionnaire._throwout_vals_labels(threshhold, self.values, self.labels)
+        return Questionnaire(new_vals, new_labels)
+    
+    def _throwout_vals_labels(threshhold: float, values: np.ndarray, labels: "list[tuple]") -> "tuple[np.ndarray, list[tuple]]":
+        """
+        Computes new values and labels according to the procedure described in throwout.
+        """
+        corrupted_cols = (values == MISSING_VALUE).mean(axis=0) >= threshhold
+        labels = np.array(labels)[~corrupted_cols]
+        labels = [tuple(x) for x in labels]
+        return values[:, ~corrupted_cols], labels
+
     def from_bool_array(triplets, responses):
         """
         Generates a questionnaire from triplets and responses 
@@ -261,7 +280,26 @@ class Questionnaire():
         for a in range(self.values.shape[0]):
             a_array = np.repeat(a, num_questions).reshape(-1, 1)
             triplets.append(np.hstack((a_array, labels_np)))
-        return np.concatenate(triplets), responses
+    def impute(self, imputation_method: str) -> "Questionnaire":
+        """
+        Imputes the questionnaire with the given method.
+        Afterwards, the questionnaire is guaranteed to not have any 
+        rows left with missing values. 
+        This might change the shape of the questionnaire, as completely
+        corrupted columns will be thrown out.
+
+        INPUT:
+            imputation_method: str
+                The method to use for imputation. See ImputationMethod for possible
+                values to use.
+        OUTPUT:
+            Questionnaire with imputed values.
+        """
+        if imputation_method is None:
+            raise ValueError("'None' is not a valid imputation method.")
+        imputation_method = ImputationMethod(imputation_method)
+        cleaned_values, cleaned_labels = Questionnaire._throwout_vals_labels(1, self.values, self.labels)
+        return Questionnaire(imputation_method(cleaned_values), cleaned_labels)
 
 
 def create_log_function(verbose):
@@ -271,7 +309,7 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def generate_questionnaire(data: np.ndarray, noise=0.0, imputation_method=None, density=1.0, verbose=True, seed=None) -> Questionnaire:
+def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None) -> Questionnaire:
     """
     Generates a questionnaire for the given data.
 
@@ -293,8 +331,6 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, imputation_method=None, 
     if seed is not None:
         np.random.seed(seed)
         random.seed(seed)
-    if noise > 0 and imputation_method is None:
-        raise ValueError("No imputation method given for noisy data.")
     assert 0 <= noise <= 1
     assert 0 <= density <= 1
 
@@ -323,9 +359,5 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, imputation_method=None, 
             answer = is_triplet(a, b, c, distances, noise=noise)
             answers[j] = answer
         questionnaire[i] = np.array(answers)
-
-    if noise > 0:
-        log("Imputing missing answers in the questionnaire...")
-        questionnaire = imputation_method(questionnaire)
-
+    
     return Questionnaire(questionnaire, list(map(tuple, question_set)))
