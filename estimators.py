@@ -62,8 +62,10 @@ class OrdinalTangles(BaseEstimator):
         # maybe we can prevent it.
         cost_function = cost_functions.BipartitionSimilarity(
             bipartitions.values.T)
-        cuts = utils.compute_cost_and_order_cuts(
-            bipartitions, cost_function, verbose=self.verbose)
+        # cuts = utils.compute_cost_and_order_cuts(
+        #     bipartitions, cost_function, verbose=self.verbose)
+        cuts = bipartitions
+
         tree_tangles.compute_soft_predictions_children(
             node=self.contracted_tangles_tree_.root, cuts=cuts, weight=self.weight_, verbose=self.verbose)
 

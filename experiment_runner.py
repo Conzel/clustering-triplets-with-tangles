@@ -3,6 +3,8 @@
 import sys
 import os
 from pathlib import Path
+
+from baselines import soe_gmm_baseline, soe_knn_baseline
 sys.path.append("./tangles")
 # Otherwise the tangle tree algorithm may crash
 sys.setrecursionlimit(5000)
@@ -25,7 +27,8 @@ from tqdm import tqdm
 import yaml
 import plotly.graph_objects as go
 from functools import partial
-from questionnaire import generate_questionnaire, ImputationMethod
+from questionnaire import Questionnaire, generate_questionnaire, ImputationMethod
+from baselines import Baseline
 from data_generation import generate_gmm_data_fixed_means, generate_gmm_data_draw_means
 from multiprocessing import Pool
 
@@ -72,37 +75,6 @@ class HardClusteringEvaluation():
         self.ars = adjusted_rand_score(y, y_pred)
 
 
-class Baseline():
-    def __init__(self, name):
-        self.name = name
-        if name.lower() == "none" or name is None:
-            self.method = Baseline._raise_no_baseline_error
-        if name.lower() == "gmm":
-            self.method = Baseline._gmm_baseline
-
-    def _raise_no_baseline_error(data: data_types.Data, n_components):
-        raise ValueError("No baseline")
-
-    def _gmm_baseline(data: data_types.Data, n_components, seed=None):
-        """
-        Calculates a baseline for the clustering by fitting a gaussian mixture model
-        to the data x and inferring labels y'. 
-
-        Returns ARS and NMI of the GMM, using the given ground truth labels y to calculate the
-        metrics. 
-        """
-        gm = GaussianMixture(n_components=n_components,
-                             random_state=seed).fit(data.xs)
-        y_pred = gm.predict(data.xs)
-        return y_pred
-
-    def predict(self, data: data_types.Data, n_components) -> np.ndarray:
-        """
-        Uses the chosen baseline to predict the labels of the given data.
-        """
-        return self.method(data, n_components)
-
-
 class ExperimentResult():
     """
     Result of an experiment ran multiple times. Properties:
@@ -126,13 +98,15 @@ class ExperimentResult():
         self.ars_std = np.std(ars_np)
         self.nmi_std = np.std(nmi_np)
 
-        self._all_results_have_baseline = all([r.has_baseline() for r in run_results])
+        self._all_results_have_baseline = all(
+            [r.has_baseline() for r in run_results])
 
         if self._all_results_have_baseline:
             # baseline
             self.ars_values_baseline = [t.ars_baseline for t in run_results]
             self.nmi_values_baseline = [t.nmi_baseline for t in run_results]
-            assert len(self.ars_values_baseline) == len(self.nmi_values_baseline)
+            assert len(self.ars_values_baseline) == len(
+                self.nmi_values_baseline)
             ars_np_baseline = np.array(self.ars_values_baseline)
             nmi_np_baseline = np.array(self.nmi_values_baseline)
             self.ars_mean_baseline = np.mean(ars_np_baseline)
@@ -152,12 +126,12 @@ class ExperimentResult():
         """
         if self.has_baseline():
             df = pd.DataFrame({"run": list(range(len(self.ars_values))),
-                            "ars": self.nmi_values, "nmi": self.nmi_values,
-                            "ars_baseline": self.ars_values_baseline,
-                            "nmi_baseline": self.nmi_values_baseline})
+                               "ars": self.nmi_values, "nmi": self.nmi_values,
+                               "ars_baseline": self.ars_values_baseline,
+                               "nmi_baseline": self.nmi_values_baseline})
         else:
             df = pd.DataFrame({"run": list(range(len(self.ars_values))),
-                            "ars": self.nmi_values, "nmi": self.nmi_values})
+                               "ars": self.nmi_values, "nmi": self.nmi_values})
         return df
 
     def save_csv(self, filepath):
@@ -185,6 +159,7 @@ class RunResult():
     def has_baseline(self) -> bool:
         return self._has_baseline
 
+
 class VariationResults():
     """
     Represents the results of the parameter variation.
@@ -200,13 +175,17 @@ class VariationResults():
         self.ars_stds = [r.ars_std for r in experiment_results]
         self.nmi_stds = [r.nmi_std for r in experiment_results]
 
-        self._all_results_have_baseline = all([r.has_baseline() for r in experiment_results])
+        self._all_results_have_baseline = all(
+            [r.has_baseline() for r in experiment_results])
         if self._all_results_have_baseline:
-            self.nmi_means_baseline = [r.nmi_mean_baseline for r in experiment_results]
-            self.ars_means_baseline = [r.ars_mean_baseline for r in experiment_results]
-            self.ars_stds_baseline = [r.ars_std_baseline for r in experiment_results]
-            self.nmi_stds_baseline = [r.nmi_std_baseline for r in experiment_results]
-
+            self.nmi_means_baseline = [
+                r.nmi_mean_baseline for r in experiment_results]
+            self.ars_means_baseline = [
+                r.ars_mean_baseline for r in experiment_results]
+            self.ars_stds_baseline = [
+                r.ars_std_baseline for r in experiment_results]
+            self.nmi_stds_baseline = [
+                r.nmi_std_baseline for r in experiment_results]
 
     def has_baseline(self) -> bool:
         return self._all_results_have_baseline
@@ -220,9 +199,11 @@ class VariationResults():
         plt.plot(self.parameter_values, self.ars_means, "--^", label="ARS")
         plt.plot(self.parameter_values, self.nmi_means, "--o", label="NMI")
         if self.has_baseline():
-            plt.plot(self.parameter_values, self.ars_means_baseline, "--^", label="Baseline ARS")
-            plt.plot(self.parameter_values, self.nmi_means_baseline, "--o", label="Baseline NMI")
-        
+            plt.plot(self.parameter_values, self.ars_means_baseline,
+                     "--^", label="Baseline ARS")
+            plt.plot(self.parameter_values, self.nmi_means_baseline,
+                     "--o", label="Baseline NMI")
+
         if logx:
             plt.xscale("log")
         plt.title(f"{self.parameter_name} variation")
@@ -243,15 +224,17 @@ class VariationResults():
         fig.update_layout(title=f"{self.parameter_name} variation",
                           xaxis_title=self.parameter_name,
                           yaxis_title="Mean NMI/ARS")
-        fig.write_image(os.path.join(base_folder, f"{self.parameter_name}_variation.png"))
+        fig.write_image(os.path.join(
+            base_folder, f"{self.parameter_name}_variation.png"))
         fig.update_layout(title=f"{self.parameter_name} variation",
                           xaxis_title=f"{self.parameter_name}",
                           yaxis_title="NMI/ARS")
         if logx:
             fig.update_xaxes(type="log")
-        print("Saving plot to", os.path.join(base_folder, f"{self.parameter_name}_variation.html"))
-        fig.write_html(os.path.join(base_folder, f"{self.parameter_name}_variation.html"))
-
+        print("Saving plot to", os.path.join(
+            base_folder, f"{self.parameter_name}_variation.html"))
+        fig.write_html(os.path.join(
+            base_folder, f"{self.parameter_name}_variation.html"))
 
     def to_df(self):
         """
@@ -323,6 +306,7 @@ def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
 
 # These two functions are defined because pool can only pickle top level functions (not lambdas)
 
+
 def _run_once_verbose(conf: Configuration):
     return _run_once(conf)
 
@@ -331,8 +315,8 @@ def _run_once_quiet(conf: Configuration):
     return _run_once(conf, verbose=False)
 
 
-def tangles_hard_predict(questionnaire: np.ndarray, agreement: int, 
-    distance_function_samples = None, verbose=True) -> np.ndarray:
+def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
+                         distance_function_samples=None, verbose=True) -> np.ndarray:
     """
     Uses the tangles algorithm to produce a hard clustering on the given data.
 
@@ -353,7 +337,8 @@ def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = data_types.Cuts((questionnaire == 1).T)
     cost_function = cost_functions.BipartitionSimilarity(bipartitions.values.T)
-    cuts = utils.compute_cost_and_order_cuts(bipartitions, cost_function, verbose=verbose)
+    cuts = utils.compute_cost_and_order_cuts(
+        bipartitions, cost_function, verbose=verbose)
 
     # Building the tree, contracting and calculating predictions
     tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
@@ -412,8 +397,8 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
         verbose=verbose)
     if conf.imputation_method is not None:
         questionnaire = questionnaire.impute(conf.imputation_method)
-    y_predicted = tangles_hard_predict(questionnaire.values, conf.agreement, 
-                    distance_function_samples=conf.num_distance_function_samples, verbose=verbose)
+    y_predicted = tangles_hard_predict(questionnaire.values, conf.agreement,
+                                       distance_function_samples=conf.num_distance_function_samples, verbose=verbose)
 
     # evaluate hard predictions
     assert data.ys is not None
@@ -434,14 +419,14 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
         if verbose:
             print("Evaluating baseline...")
         baseline = Baseline(conf.baseline)
-        baseline_prediction = baseline.predict(data, conf.n_components)
+        baseline_prediction = baseline.predict(data.xs, questionnaire, conf.n_components)
         baseline_evaluation = HardClusteringEvaluation(
             data.ys, baseline_prediction)
 
     return RunResult(evaluation, baseline_evaluation)
 
 
-def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False, 
+def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False,
                         workers=1):
     """
     Runs multiple experiments varying the given parameter. The results depicted in a 
