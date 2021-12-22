@@ -3,12 +3,13 @@
 Script for testing tangles algorithm performance on real world datasets.
 """
 import sklearn.datasets
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
+
 from baselines import soe_knn_baseline
 from estimators import OrdinalTangles
 from plotting import AltairPlotter
 from questionnaire import generate_questionnaire
-from sklearn.preprocessing import StandardScaler
-from sklearn.manifold import TSNE
 
 # Setting up data and transformers
 wine = sklearn.datasets.load_wine()

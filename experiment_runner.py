@@ -1,28 +1,34 @@
 #!/usr/bin/env python3
 # Allows us to import tangles modules
-import sys
-import os
-from pathlib import Path
-import pandas as pd
 import copy
+import os
+import sys
+from multiprocessing import Pool
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import yaml
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from tqdm import tqdm
-import yaml
-import plotly.graph_objects as go
-from questionnaire import generate_questionnaire
-from baselines import Baseline
-from data_generation import generate_gmm_data_fixed_means, generate_gmm_data_draw_means
-from multiprocessing import Pool
 
-from tangles.data_types import Cuts
-from tangles.utils import compute_cost_and_order_cuts, normalize, compute_hard_predictions
-from tangles.tree_tangles import ContractedTangleTree, compute_soft_predictions_children, tangle_computation
+from baselines import Baseline
+from data_generation import (generate_gmm_data_draw_means,
+                             generate_gmm_data_fixed_means)
+from questionnaire import generate_questionnaire
 from tangles.cost_functions import BipartitionSimilarity
+from tangles.data_types import Cuts
 from tangles.plotting import plot_hard_predictions
+from tangles.tree_tangles import (ContractedTangleTree,
+                                  compute_soft_predictions_children,
+                                  tangle_computation)
+from tangles.utils import (compute_cost_and_order_cuts,
+                           compute_hard_predictions, normalize)
 
 plt.style.use('ggplot')
+
 
 class Configuration():
     def __init__(self, n, n_runs, seed, means, std, agreement,
@@ -330,10 +336,10 @@ def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
 
     # Building the tree, contracting and calculating predictions
     tangles_tree = tangle_computation(cuts=cuts,
-                                                   agreement=agreement,
-                                                   # print nothing
-                                                   verbose=int(verbose)
-                                                   )
+                                      agreement=agreement,
+                                      # print nothing
+                                      verbose=int(verbose)
+                                      )
 
     contracted = ContractedTangleTree(tangles_tree)
     contracted.prune(5, verbose=verbose)
@@ -399,7 +405,7 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
     if conf.dimension == 2:
         # Plotting the hard clustering
         plot_hard_predictions(data=data, ys_predicted=y_predicted,
-                                       path=result_output_path)
+                              path=result_output_path)
 
     # --- Checking if we need to calculate a baseline as well ---
     baseline_evaluation = None

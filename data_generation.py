@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import sklearn
+
 from tangles.data_types import Data
 from tangles.loading import load_GMM
 

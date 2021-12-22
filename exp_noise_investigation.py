@@ -1,21 +1,25 @@
 import os
-from questionnaire import generate_questionnaire
-from experiment_runner import Configuration, _generate_data, ImputationMethod, Baseline
-from tangles.data_types import Cuts, Data
-from tangles.utils import normalize, compute_hard_predictions
-from tangles.tree_tangles import ContractedTangleTree, compute_soft_predictions_children, tangle_computation
-from tangles.cost_functions import mean_manhattan_distance
-from tangles.plotting import labels_to_colors, plot_dataset
 import random
-import yaml
 from copy import deepcopy
-from tqdm import tqdm
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import normalized_mutual_info_score
 from functools import partial
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import numpy as np
+import yaml
+from sklearn.metrics import normalized_mutual_info_score
+from tqdm import tqdm
+
+from experiment_runner import (Baseline, Configuration, ImputationMethod,
+                               _generate_data)
+from questionnaire import generate_questionnaire
+from tangles.cost_functions import mean_manhattan_distance
+from tangles.data_types import Cuts, Data
+from tangles.plotting import labels_to_colors, plot_dataset
+from tangles.tree_tangles import (ContractedTangleTree,
+                                  compute_soft_predictions_children,
+                                  tangle_computation)
+from tangles.utils import compute_hard_predictions, normalize
 
 # --- setup
 with open("experiments/09-noise-investigation.yaml", "r") as f:
@@ -138,8 +142,9 @@ def lighten_color(color, amount=0.5):
     >> lighten_color((.3,.55,.1), 0.5)
     https://stackoverflow.com/questions/37765197/darken-or-lighten-a-color-in-matplotlib
     """
-    import matplotlib.colors as mc
     import colorsys
+
+    import matplotlib.colors as mc
     try:
         c = mc.cnames[color]
     except:

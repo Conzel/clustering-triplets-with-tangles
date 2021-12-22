@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import cProfile
 import pstats
-import yaml
 import sys
-from data_generation import run_experiment, Configuration
+
+import yaml
+
+from data_generation import Configuration, run_experiment
 
 
 def run_profiling_experiment():

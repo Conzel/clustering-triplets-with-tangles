@@ -1,13 +1,14 @@
 """
 File containing functions and class definitions for working with triplets in questionnaire form. 
 """
-import numpy as np
 import math
 import random
 import re
-from sklearn.neighbors import DistanceMetric
-from sklearn.impute import KNNImputer
 from operator import itemgetter
+
+import numpy as np
+from sklearn.impute import KNNImputer
+from sklearn.neighbors import DistanceMetric
 from tqdm import tqdm
 
 # Allows us to import tangles modules

@@ -4,15 +4,17 @@ For more information on the API, refer to
 https://scikit-learn.org/stable/developers/develop.html
 """
 
-from sklearn.utils.validation import check_is_fitted
-
+import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.metrics import normalized_mutual_info_score
-from tangles.data_types import Cuts
+from sklearn.utils.validation import check_is_fitted
+
 from tangles.cost_functions import BipartitionSimilarity
+from tangles.data_types import Cuts
+from tangles.tree_tangles import (ContractedTangleTree,
+                                  compute_soft_predictions_children,
+                                  tangle_computation)
 from tangles.utils import compute_cost_and_order_cuts, compute_hard_predictions
-from tangles.tree_tangles import tangle_computation, ContractedTangleTree, compute_soft_predictions_children
-import numpy as np
 
 
 class OrdinalTangles(BaseEstimator):
