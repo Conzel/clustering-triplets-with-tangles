@@ -3,13 +3,15 @@
 Varies all different sensible parameters of the data generation with a predefined range when run.
 """
 
-import yaml
+from experiment_runner import Configuration, parameter_variation
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
+import yaml
+
 plt.style.use('ggplot')
 
-from experiment_runner import Configuration, parameter_variation
 
 if __name__ == "__main__":
     base_config = Configuration.from_yaml(
@@ -22,7 +24,7 @@ if __name__ == "__main__":
 
     # Varying the agreement parameter
     agreements = list(range(1, 40, 1))
-    noise = np.arange(0, 1, 0.05)
+    noise = np.arange(0.1, 0.4, 0.05)
     density = np.logspace(-3, 0, num=20)
     minimum_cluster_distances = np.arange(0.5, 5, 0.5)
     stds = np.arange(0.1, 5.1, 0.5)
@@ -31,7 +33,7 @@ if __name__ == "__main__":
 
     parameter_variation(agreements, "agreement", "agreement",
                         base_config, workers=workers)
-    parameter_variation(noise, "noise", "noise", base_config)
+    parameter_variation(noise, "noise", "noise", base_config, workers=workers)
     parameter_variation(density, "density",
                         "density", base_config, logx=True, workers=workers)
     parameter_variation(minimum_cluster_distances,

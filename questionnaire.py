@@ -1,18 +1,12 @@
 """
 File containing functions and class definitions for working with triplets in questionnaire form. 
 """
-import sys
-sys.path.append("./tangles")
-
-# Do not reorder
 import numpy as np
 import math
-import src.data_types as data_types
 import random
 import re
 from sklearn.neighbors import DistanceMetric
 from sklearn.impute import KNNImputer
-from enum import Enum
 from operator import itemgetter
 from tqdm import tqdm
 

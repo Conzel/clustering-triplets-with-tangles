@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
-# Allows us to import tangles modules
-import sys
-import os
-from pathlib import Path
-sys.path.append("./tangles")
-# Otherwise the tangle tree algorithm may crash
-sys.setrecursionlimit(5000)
-
-# other imports
 import numpy as np
-import src.data_types as data_types
-import src.utils as utils
 import sklearn
-from src.loading import load_GMM
+from tangles.data_types import Data
+from tangles.loading import load_GMM
 
 
 def draw_cluster_means(num_clusters, dimension, minimum_cluster_distance):
@@ -49,7 +39,7 @@ def rescale_points(x, desired_min_dist):
         return x
 
 
-def generate_gmm_data_fixed_means(n: int, means: np.ndarray, std: float, seed: int) -> data_types.Data:
+def generate_gmm_data_fixed_means(n: int, means: np.ndarray, std: float, seed: int) -> Data:
     return _generate_gmm_data(n, means, std, seed)
 
 
@@ -70,5 +60,5 @@ def _generate_gmm_data(n, means: np.ndarray, std: float, seed: int):
 
     xs, ys = load_GMM(blob_sizes=[n] * num_clusters,
                       blob_centers=means, blob_variances=stds, seed=seed)
-    data = data_types.Data(xs=xs, ys=ys)
+    data = Data(xs=xs, ys=ys)
     return data

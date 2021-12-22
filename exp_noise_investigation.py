@@ -1,25 +1,21 @@
 import os
-from numpy.core.numeric import binary_repr
-from numpy.random import normal
 from questionnaire import generate_questionnaire
 from experiment_runner import Configuration, _generate_data, ImputationMethod, Baseline
-import src.data_types as data_types
-import src.utils as utils
-import src.tree_tangles as tree_tangles
-import src.cost_functions as cost_functions
-import src.plotting as plotting
+from tangles.data_types import Cuts, Data
+from tangles.utils import normalize, compute_hard_predictions
+from tangles.tree_tangles import ContractedTangleTree, compute_soft_predictions_children, tangle_computation
+from tangles.cost_functions import mean_manhattan_distance
+from tangles.plotting import labels_to_colors, plot_dataset
 import random
 import yaml
-import plotly.express as px
 from copy import deepcopy
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.metrics import normalized_mutual_info_score
 from functools import partial
 from pathlib import Path
 
-from tangles.src.utils import compute_cost_and_order_cuts
 
 # --- setup
 with open("experiments/09-noise-investigation.yaml", "r") as f:
@@ -70,31 +66,31 @@ def compute_cost_and_order_cuts2(bipartitions, cost_function, verbose=True):
 
 
 # Interpreting the questionnaires as cuts and computing their costs
-bipartitions = data_types.Cuts((questionnaire == 1).T)
-cost_fn = partial(cost_functions.mean_manhattan_distance,
+bipartitions = Cuts((questionnaire == 1).T)
+cost_fn = partial(mean_manhattan_distance,
                   questionnaire, conf.num_distance_function_samples)
 cuts, idx = compute_cost_and_order_cuts2(bipartitions, cost_fn)
 
-bipartitions_exact = data_types.Cuts((questionnaire_exact == 1).T)
+bipartitions_exact = Cuts((questionnaire_exact == 1).T)
 
 # Building the tree, contracting and calculating predictions
-tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
-                                               agreement=conf.agreement,
-                                               # print nothing
-                                               verbose=int(verbose)
-                                               )
+tangles_tree = tangle_computation(cuts=cuts,
+                                  agreement=conf.agreement,
+                                  # print nothing
+                                  verbose=int(verbose)
+                                  )
 
-contracted = tree_tangles.ContractedTangleTree(tangles_tree)
+contracted = ContractedTangleTree(tangles_tree)
 contracted.prune(5, verbose=verbose)
 
 contracted.calculate_setP()
 
 # soft predictions
-weight = np.exp(-utils.normalize(cuts.costs))
-tree_tangles.compute_soft_predictions_children(
+weight = np.exp(-normalize(cuts.costs))
+compute_soft_predictions_children(
     node=contracted.root, cuts=cuts, weight=weight, verbose=3)
 
-ys_predicted, _ = utils.compute_hard_predictions(
+ys_predicted, _ = compute_hard_predictions(
     contracted, cuts=cuts, verbose=verbose)
 
 baseline = Baseline("gmm")
@@ -108,17 +104,17 @@ cmap_predictions = plt.cm.get_cmap('cool')
 if data.ys is not None:
     fig, (ax_true, ax_predicted) = plt.subplots(
         nrows=1, ncols=2, figsize=(10, 5))
-    colors_true = plotting.labels_to_colors(data.ys, cmap=cmap_groundtruth)
+    colors_true = labels_to_colors(data.ys, cmap=cmap_groundtruth)
     ax_true.set_title("Ground truth clusters")
-    _ = plotting.plot_dataset(
+    _ = plot_dataset(
         data, colors_true, ax=ax_true, add_colorbar=False)
 else:
     fig, ax_predicted = plt.subplots(nrows=1, ncols=1, figsize=(10, 50))
 
-colors_predicted = plotting.labels_to_colors(
+colors_predicted = labels_to_colors(
     ys_predicted, cmap=cmap_predictions)
-_ = plotting.plot_dataset(data, colors_predicted,
-                          ax=ax_predicted, add_colorbar=False)
+_ = plot_dataset(data, colors_predicted,
+                 ax=ax_predicted, add_colorbar=False)
 ax_predicted.set_title("Predicted clusters")
 
 plt.tight_layout()
@@ -152,7 +148,7 @@ def lighten_color(color, amount=0.5):
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
 
-def plot_cut(data: data_types.Data, bipartition: np.ndarray, correct_labels=None) -> None:
+def plot_cut(data: Data, bipartition: np.ndarray, correct_labels=None) -> None:
     """
     bipartition: np.ndarray
     List of truth values, true if the corresponding datapoint is in the

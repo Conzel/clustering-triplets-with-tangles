@@ -1,12 +1,9 @@
 from sklearn.cluster import KMeans
 from sklearn.pipeline import Pipeline
-from sklearn.mixture import GaussianMixture
-
 import numpy as np
-
 from questionnaire import Questionnaire
-
 from cblearn.embedding import SOE
+from sklearn.mixture import GaussianMixture
 
 
 class Baseline():

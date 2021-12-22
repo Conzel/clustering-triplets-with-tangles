@@ -3,38 +3,26 @@
 import sys
 import os
 from pathlib import Path
-
-from baselines import soe_gmm_baseline, soe_knn_baseline
-sys.path.append("./tangles")
-# Otherwise the tangle tree algorithm may crash
-sys.setrecursionlimit(5000)
-
-# other imports
 import pandas as pd
 import copy
 import matplotlib.pyplot as plt
 import numpy as np
-import src.data_types as data_types
-import src.utils as utils
-import src.tree_tangles as tree_tangles
-import src.cost_functions as cost_functions
-import src.plotting as plotting
-from src.cost_functions import BipartitionSimilarity
-import sklearn
-from sklearn.mixture import GaussianMixture
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from tqdm import tqdm
 import yaml
 import plotly.graph_objects as go
-from functools import partial
-from questionnaire import Questionnaire, generate_questionnaire, ImputationMethod
+from questionnaire import generate_questionnaire
 from baselines import Baseline
 from data_generation import generate_gmm_data_fixed_means, generate_gmm_data_draw_means
 from multiprocessing import Pool
 
-import sklearn.metrics
-plt.style.use('ggplot')
+from tangles.data_types import Cuts
+from tangles.utils import compute_cost_and_order_cuts, normalize, compute_hard_predictions
+from tangles.tree_tangles import ContractedTangleTree, compute_soft_predictions_children, tangle_computation
+from tangles.cost_functions import BipartitionSimilarity
+from tangles.plotting import plot_hard_predictions
 
+plt.style.use('ggplot')
 
 class Configuration():
     def __init__(self, n, n_runs, seed, means, std, agreement,
@@ -335,29 +323,29 @@ def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
     """
 
     # Interpreting the questionnaires as cuts and computing their costs
-    bipartitions = data_types.Cuts((questionnaire == 1).T)
-    cost_function = cost_functions.BipartitionSimilarity(bipartitions.values.T)
-    cuts = utils.compute_cost_and_order_cuts(
+    bipartitions = Cuts((questionnaire == 1).T)
+    cost_function = BipartitionSimilarity(bipartitions.values.T)
+    cuts = compute_cost_and_order_cuts(
         bipartitions, cost_function, verbose=verbose)
 
     # Building the tree, contracting and calculating predictions
-    tangles_tree = tree_tangles.tangle_computation(cuts=cuts,
+    tangles_tree = tangle_computation(cuts=cuts,
                                                    agreement=agreement,
                                                    # print nothing
                                                    verbose=int(verbose)
                                                    )
 
-    contracted = tree_tangles.ContractedTangleTree(tangles_tree)
+    contracted = ContractedTangleTree(tangles_tree)
     contracted.prune(5, verbose=verbose)
 
     contracted.calculate_setP()
 
     # soft predictions
-    weight = np.exp(-utils.normalize(cuts.costs))
-    tree_tangles.compute_soft_predictions_children(
+    weight = np.exp(-normalize(cuts.costs))
+    compute_soft_predictions_children(
         node=contracted.root, cuts=bipartitions, weight=weight, verbose=3)
 
-    ys_predicted, _ = utils.compute_hard_predictions(
+    ys_predicted, _ = compute_hard_predictions(
         contracted, cuts=bipartitions, verbose=verbose)
 
     return ys_predicted
@@ -410,7 +398,7 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
     result_output_path.mkdir(parents=True, exist_ok=True)
     if conf.dimension == 2:
         # Plotting the hard clustering
-        plotting.plot_hard_predictions(data=data, ys_predicted=y_predicted,
+        plot_hard_predictions(data=data, ys_predicted=y_predicted,
                                        path=result_output_path)
 
     # --- Checking if we need to calculate a baseline as well ---
@@ -419,7 +407,8 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
         if verbose:
             print("Evaluating baseline...")
         baseline = Baseline(conf.baseline)
-        baseline_prediction = baseline.predict(data.xs, questionnaire, conf.n_components)
+        baseline_prediction = baseline.predict(
+            data.xs, questionnaire, conf.n_components)
         baseline_evaluation = HardClusteringEvaluation(
             data.ys, baseline_prediction)
 

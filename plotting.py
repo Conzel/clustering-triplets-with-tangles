@@ -1,10 +1,8 @@
-from enum import unique
+from pathlib import Path
+
 import altair as alt
 import pandas as pd
-import numpy as np
-import itertools
 from sklearn.metrics import normalized_mutual_info_score
-from pathlib import Path
 
 
 class Plotter():
