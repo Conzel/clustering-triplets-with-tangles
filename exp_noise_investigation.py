@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+"""
+Investigates how noise and agreement parameter in the tangles algorithm 
+correlate and how well the tangles performance is under this case.
+"""
 import os
 import random
 from copy import deepcopy

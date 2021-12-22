@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Experiment on imputation methods.
+Experiment comparing different imputation methods (knn, random, mean).
 """
 import os
 import sys
