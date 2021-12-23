@@ -14,7 +14,7 @@ from tangles.data_types import Cuts
 from tangles.tree_tangles import (ContractedTangleTree,
                                   compute_soft_predictions_children,
                                   tangle_computation)
-from tangles.utils import compute_cost_and_order_cuts, compute_hard_predictions
+from tangles.utils import compute_cost_and_order_cuts, compute_hard_predictions, normalize
 
 
 class OrdinalTangles(BaseEstimator):
@@ -44,7 +44,7 @@ class OrdinalTangles(BaseEstimator):
         contracted.calculate_setP()
 
         # soft predictions
-        weight = np.exp(-utils.normalize(cuts.costs))
+        weight = np.exp(-normalize(cuts.costs))
 
         self.weight_ = weight
         self.contracted_tangles_tree_ = contracted
