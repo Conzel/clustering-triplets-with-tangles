@@ -44,7 +44,7 @@ def generate_gmm_data_fixed_means(n: int, means: np.ndarray, std: float, seed: i
     return _generate_gmm_data(n, means, std, seed)
 
 
-def generate_gmm_data_draw_means(n: int, std: float, seed: int, components: int, dimension: int, min_cluster_dist: float) -> data_types.Data:
+def generate_gmm_data_draw_means(n: int, std: float, seed: int, components: int, dimension: int, min_cluster_dist: float) -> Data:
     """
     Generates Data according to a gaussian mixture model with the parameters.
 
