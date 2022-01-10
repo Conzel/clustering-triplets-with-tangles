@@ -211,10 +211,11 @@ class VariationResults():
                       y=self.ars_means, mode="lines+markers", name="ARS"))
         fig.add_trace(go.Scatter(x=self.parameter_values,
                       y=self.nmi_means, mode="lines+markers", name="NMI"))
-        fig.add_trace(go.Scatter(x=self.parameter_values,
-                      y=self.ars_means_baseline, mode="lines+markers", name="Baseline ARS"))
-        fig.add_trace(go.Scatter(x=self.parameter_values,
-                      y=self.nmi_means_baseline, mode="lines+markers", name="Baseline NMI"))
+        if self.has_baseline():
+            fig.add_trace(go.Scatter(x=self.parameter_values,
+                        y=self.ars_means_baseline, mode="lines+markers", name="Baseline ARS"))
+            fig.add_trace(go.Scatter(x=self.parameter_values,
+                        y=self.nmi_means_baseline, mode="lines+markers", name="Baseline NMI"))
         fig.update_layout(title=f"{self.parameter_name} variation",
                           xaxis_title=self.parameter_name,
                           yaxis_title="Mean NMI/ARS")
@@ -422,7 +423,7 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
 
 
 def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False,
-                        workers=1):
+                        workers=1) -> VariationResults:
     """
     Runs multiple experiments varying the given parameter. The results depicted in a 
     plot (with x = parameter values, y = nmi/ars). They are also saved in a csv file.
