@@ -67,6 +67,8 @@ class HardClusteringEvaluation():
     def __init__(self, y, y_pred) -> None:
         self.nmi = normalized_mutual_info_score(y, y_pred)
         self.ars = adjusted_rand_score(y, y_pred)
+        self.n_clusters = np.unique(y_pred).size
+        self.goal_clusters = np.unique(y).size
 
 
 class ExperimentResult():
@@ -84,6 +86,7 @@ class ExperimentResult():
         # normal results
         self.ars_values = [t.ars for t in run_results]
         self.nmi_values = [t.nmi for t in run_results]
+        self.n_clusters = [t.n_clusters for t in run_results]
         assert len(self.ars_values) == len(self.nmi_values)
         ars_np = np.array(self.ars_values)
         nmi_np = np.array(self.nmi_values)
@@ -145,6 +148,7 @@ class RunResult():
     def __init__(self, run_evaluation: HardClusteringEvaluation, baseline_evaluation: HardClusteringEvaluation = None):
         self.ars = run_evaluation.ars
         self.nmi = run_evaluation.nmi
+        self.n_clusters = run_evaluation.n_clusters
         self._has_baseline = baseline_evaluation is not None
         if baseline_evaluation is not None:
             self.ars_baseline = baseline_evaluation.ars
@@ -166,6 +170,7 @@ class VariationResults():
         # Getting the singular results out of the experiments
         self.nmi_means = [r.nmi_mean for r in experiment_results]
         self.ars_means = [r.ars_mean for r in experiment_results]
+        self.n_clusters = [r.n_clusters for r in experiment_results]
         self.ars_stds = [r.ars_std for r in experiment_results]
         self.nmi_stds = [r.nmi_std for r in experiment_results]
 
@@ -213,9 +218,9 @@ class VariationResults():
                       y=self.nmi_means, mode="lines+markers", name="NMI"))
         if self.has_baseline():
             fig.add_trace(go.Scatter(x=self.parameter_values,
-                        y=self.ars_means_baseline, mode="lines+markers", name="Baseline ARS"))
+                                     y=self.ars_means_baseline, mode="lines+markers", name="Baseline ARS"))
             fig.add_trace(go.Scatter(x=self.parameter_values,
-                        y=self.nmi_means_baseline, mode="lines+markers", name="Baseline NMI"))
+                                     y=self.nmi_means_baseline, mode="lines+markers", name="Baseline NMI"))
         fig.update_layout(title=f"{self.parameter_name} variation",
                           xaxis_title=self.parameter_name,
                           yaxis_title="Mean NMI/ARS")
@@ -240,7 +245,7 @@ class VariationResults():
         """
         # Saving the results
         metric_results = {f"{self.parameter_name}": self.parameter_values,
-                          'nmi': self.nmi_means, 'ars': self.ars_means}
+                          'nmi': self.nmi_means, 'ars': self.ars_means, 'n_clusters': self.n_clusters}
         df = pd.DataFrame(data=metric_results)
         return df
 
