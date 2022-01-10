@@ -1,0 +1,17 @@
+# Base configuration for parameter variation
+---
+seed: 314159628
+means: [[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]]
+std: 0.5
+n: 13
+agreement: 3
+name: "10-noise-agreement"
+num_distance_function_samples: null
+density: 1.0
+noise: 0.0
+n_runs: 15
+redraw_means: true
+min_cluster_dist: 4
+dimension: 2
+n_components: 5
+baseline: "soe-knn"
