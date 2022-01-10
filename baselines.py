@@ -41,7 +41,8 @@ class Baseline():
 
         Returns predicted labels as ndarray.
         """
-        baseline = soe_gmm_baseline(n_components)
+        data_dimension = xs.shape[1]
+        baseline = soe_gmm_baseline(data_dimension, n_components)
         return baseline.fit_predict(*questionnaire.to_bool_array())
 
     def _soe_knn_baseline(xs: np.ndarray, questionnaire: Questionnaire, n_components: int, seed=None):
@@ -51,7 +52,8 @@ class Baseline():
 
         Returns predicted labels as ndarray.
         """
-        baseline = soe_knn_baseline(n_components)
+        data_dimension = xs.shape[1]
+        baseline = soe_knn_baseline(data_dimension, n_components)
         return baseline.fit_predict(*questionnaire.to_bool_array())
 
     def predict(self, xs: np.ndarray, questionnaire: Questionnaire, n_components: int) -> np.ndarray:
@@ -61,7 +63,7 @@ class Baseline():
         return self.method(xs, questionnaire, n_components)
 
 
-def soe_gmm_baseline(clusters: int) -> Pipeline:
+def soe_gmm_baseline(data_dimension: int, clusters: int) -> Pipeline:
     """
     Baseline that is gained by first learning a SOE embedding and then
     using the embedding to learn a GMM.
@@ -73,16 +75,16 @@ def soe_gmm_baseline(clusters: int) -> Pipeline:
 
     https://cblearn.readthedocs.io/en/latest/references/generated/cblearn.embedding.SOE.html?highlight=soe
     """
-    pipe = Pipeline([("soe", SOE(n_components=clusters)),
+    pipe = Pipeline([("soe", SOE(n_components=data_dimension)),
                     ("gmm", GaussianMixture(n_components=clusters))])
     return pipe
 
 
-def soe_knn_baseline(clusters: int) -> Pipeline:
+def soe_knn_baseline(data_dimension: int, clusters: int) -> Pipeline:
     """
     Similar to the soe_gmm baseline but we are using a generic KNN to 
     fit.
     """
-    pipe = Pipeline([("soe", SOE(n_components=clusters)),
+    pipe = Pipeline([("soe", SOE(n_components=data_dimension)),
                      ("knn", KMeans(n_clusters=clusters))])
     return pipe
