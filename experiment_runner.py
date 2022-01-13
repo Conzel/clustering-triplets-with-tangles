@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Allows us to import tangles modules
 import copy
+import datetime
 import os
 import sys
 from multiprocessing import Pool
@@ -11,12 +12,14 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import yaml
+
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from tqdm import tqdm
 
 from baselines import Baseline
 from data_generation import (generate_gmm_data_draw_means,
                              generate_gmm_data_fixed_means)
+from plotting import AltairPlotter
 from questionnaire import generate_questionnaire
 from tangles.cost_functions import BipartitionSimilarity
 from tangles.data_types import Cuts
@@ -71,192 +74,61 @@ class HardClusteringEvaluation():
         self.goal_clusters = np.unique(y).size
 
 
-class ExperimentResult():
-    """
-    Result of an experiment ran multiple times. Properties:
-    ars_values: list of the ARS values of every single run
-    nmi_values: list of the NMI values of every single run
-    ars_mean: mean of the ARS values
-    nmi_mean: mean of the NMI values
-    ars_std: standard deviation of the ARS values
-    nmi_std: standard deviation of the NMI values
-    """
-
-    def __init__(self, run_results: list):
-        # normal results
-        self.ars_values = [t.ars for t in run_results]
-        self.nmi_values = [t.nmi for t in run_results]
-        self.n_clusters = [t.n_clusters for t in run_results]
-        assert len(self.ars_values) == len(self.nmi_values)
-        ars_np = np.array(self.ars_values)
-        nmi_np = np.array(self.nmi_values)
-        self.ars_mean = np.mean(ars_np)
-        self.nmi_mean = np.mean(nmi_np)
-        self.ars_std = np.std(ars_np)
-        self.nmi_std = np.std(nmi_np)
-
-        self._all_results_have_baseline = all(
-            [r.has_baseline() for r in run_results])
-
-        if self._all_results_have_baseline:
-            # baseline
-            self.ars_values_baseline = [t.ars_baseline for t in run_results]
-            self.nmi_values_baseline = [t.nmi_baseline for t in run_results]
-            assert len(self.ars_values_baseline) == len(
-                self.nmi_values_baseline)
-            ars_np_baseline = np.array(self.ars_values_baseline)
-            nmi_np_baseline = np.array(self.nmi_values_baseline)
-            self.ars_mean_baseline = np.mean(ars_np_baseline)
-            self.nmi_mean_baseline = np.mean(nmi_np_baseline)
-            self.ars_std_baseline = np.std(ars_np_baseline)
-            self.nmi_std_baseline = np.std(nmi_np_baseline)
-
-    def has_baseline(self):
-        return self._all_results_have_baseline
-
-    def to_df(self):
-        """
-        Returns a pandas dataframe of the data (only raw data, no aggregates such as
-        mean, std).
-
-        The resulting dataframe contains the nmi and ars values for every run.
-        """
-        if self.has_baseline():
-            df = pd.DataFrame({"run": list(range(len(self.ars_values))),
-                               "ars": self.nmi_values, "nmi": self.nmi_values,
-                               "ars_baseline": self.ars_values_baseline,
-                               "nmi_baseline": self.nmi_values_baseline})
-        else:
-            df = pd.DataFrame({"run": list(range(len(self.ars_values))),
-                               "ars": self.nmi_values, "nmi": self.nmi_values})
-        return df
-
-    def save_csv(self, filepath):
-        """
-        Saves experiment results to a csv file. 
-        """
-        self.to_df().to_csv(os.path.join(filepath), index=False)
-
-
 class RunResult():
     """
-    Result of a single run of an experiment. Properties:
-    ars: adjusted rand score
-    nmi: normalized mutual information
+    A run result represents the results of a single run of the experiment.
+    It is uniquely identified by the current time, results of the run, and configuration
+    parameters that were used to generate the data.
+
+    It contains the following fields:
+        run_no, time_stamp, name, nmi, ars, no_clusters_found, agreement, min_cluster_dist, 
+        std, n_components, dimension, noise, density, imputation, baseline
+
+    The run result can directly be used as a row in a pandas dataframe.
+
+    kind: str, 
+        The kind of evaluation this contains. This can be 'baseline', or 'normal'.
     """
 
-    def __init__(self, run_evaluation: HardClusteringEvaluation, baseline_evaluation: HardClusteringEvaluation = None):
-        self.ars = run_evaluation.ars
-        self.nmi = run_evaluation.nmi
-        self.n_clusters = run_evaluation.n_clusters
-        self._has_baseline = baseline_evaluation is not None
-        if baseline_evaluation is not None:
-            self.ars_baseline = baseline_evaluation.ars
-            self.nmi_baseline = baseline_evaluation.nmi
+    def __init__(self, number: int, kind: str, config: Configuration, evaluation: HardClusteringEvaluation) -> None:
+        self.run_no = int(number)
+        self.agreement = config.agreement
+        self.kind = kind
+        self.nmi = evaluation.nmi
+        self.ars = evaluation.ars
+        self.no_found_clusters = evaluation.n_clusters
+        self.n_components = config.n_components
+        self.dimension = config.dimension
+        self.noise = config.noise
+        self.density = config.density
+        self.imputation = config.imputation_method
+        self.time_stamp = str(datetime.datetime.now())
+        self.name = config.name
+        self.min_cluster_dist = config.min_cluster_dist
+        self.std = config.std
 
-    def has_baseline(self) -> bool:
-        return self._has_baseline
-
-
-class VariationResults():
-    """
-    Represents the results of the parameter variation.
-    """
-
-    def __init__(self, parameter_name: str, parameter_values: list, experiment_results: "list(ExperimentResult)"):
-        self.parameter_values = parameter_values
-        self.parameter_name = parameter_name
-        self._experiment_results = experiment_results
-        # Getting the singular results out of the experiments
-        self.nmi_means = [r.nmi_mean for r in experiment_results]
-        self.ars_means = [r.ars_mean for r in experiment_results]
-        self.n_clusters = [r.n_clusters for r in experiment_results]
-        self.ars_stds = [r.ars_std for r in experiment_results]
-        self.nmi_stds = [r.nmi_std for r in experiment_results]
-
-        self._all_results_have_baseline = all(
-            [r.has_baseline() for r in experiment_results])
-        if self._all_results_have_baseline:
-            self.nmi_means_baseline = [
-                r.nmi_mean_baseline for r in experiment_results]
-            self.ars_means_baseline = [
-                r.ars_mean_baseline for r in experiment_results]
-            self.ars_stds_baseline = [
-                r.ars_std_baseline for r in experiment_results]
-            self.nmi_stds_baseline = [
-                r.nmi_std_baseline for r in experiment_results]
-
-    def has_baseline(self) -> bool:
-        return self._all_results_have_baseline
-
-    def plot(self, base_folder, logx=False):
+    def attributes() -> list:
         """
-        Plots the results. Results are saved under the given base folder
+        Returns list of the attributes that characterize the experiments. 
+        Results are not included.
         """
-        # Plotting with matplotlib
-        plt.figure()
-        plt.plot(self.parameter_values, self.ars_means, "--^", label="ARS")
-        plt.plot(self.parameter_values, self.nmi_means, "--o", label="NMI")
-        if self.has_baseline():
-            plt.plot(self.parameter_values, self.ars_means_baseline,
-                     "--^", label="Baseline ARS")
-            plt.plot(self.parameter_values, self.nmi_means_baseline,
-                     "--o", label="Baseline NMI")
+        return ['agreement', 'kind', 'n_components', 'dimension', 'noise', 'density', 'imputation', 'min_cluster_dist', 'std']
 
-        if logx:
-            plt.xscale("log")
-        plt.title(f"{self.parameter_name} variation")
-        plt.legend()
-        plt.savefig(os.path.join(
-            base_folder, f"{self.parameter_name}_variation.png"))
-
-        # alternative with plotly
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=self.parameter_values,
-                      y=self.ars_means, mode="lines+markers", name="ARS"))
-        fig.add_trace(go.Scatter(x=self.parameter_values,
-                      y=self.nmi_means, mode="lines+markers", name="NMI"))
-        if self.has_baseline():
-            fig.add_trace(go.Scatter(x=self.parameter_values,
-                                     y=self.ars_means_baseline, mode="lines+markers", name="Baseline ARS"))
-            fig.add_trace(go.Scatter(x=self.parameter_values,
-                                     y=self.nmi_means_baseline, mode="lines+markers", name="Baseline NMI"))
-        fig.update_layout(title=f"{self.parameter_name} variation",
-                          xaxis_title=self.parameter_name,
-                          yaxis_title="Mean NMI/ARS")
-        fig.write_image(os.path.join(
-            base_folder, f"{self.parameter_name}_variation.png"))
-        fig.update_layout(title=f"{self.parameter_name} variation",
-                          xaxis_title=f"{self.parameter_name}",
-                          yaxis_title="NMI/ARS")
-        if logx:
-            fig.update_xaxes(type="log")
-        print("Saving plot to", os.path.join(
-            base_folder, f"{self.parameter_name}_variation.html"))
-        fig.write_html(os.path.join(
-            base_folder, f"{self.parameter_name}_variation.html"))
-
-    def to_df(self):
+    def to_row(self) -> dict:
         """
-        Returns a pandas dataframe of the data (only raw data, no aggregates such as
-        mean, std).
-
-        The resulting dataframe contains the nmi and ars values for every run.
+        Returns a dictionary of itself that can be used as a row in a pandas dataframe.
         """
-        # Saving the results
-        metric_results = {f"{self.parameter_name}": self.parameter_values,
-                          'nmi': self.nmi_means, 'ars': self.ars_means, 'n_clusters': self.n_clusters}
-        df = pd.DataFrame(data=metric_results)
-        return df
+        return vars(self)
 
-    def save_csv(self, filepath):
+    def append_to_df(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Saves experiment results to a csv file. 
+        Adds this run result to a dataframe.
+        ! Returns a new df and doesn't change the old one.
         """
-        self.to_df().to_csv(os.path.join(filepath), index=False)
+        return df.append(self.to_row(), ignore_index=True)
 
 
-def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
+def run_experiment(conf: Configuration, workers=1) -> pd.DataFrame:
     """
     Runs an experiment with the given configuration. 
 
@@ -273,7 +145,7 @@ def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
     (which will use all available cores). Multiprocessing messes 
     up the console outputs, so you sadly won't see any progress on the single experiments.
 
-    Returns a tuple (ARS, NMI) of the resulting hard clustering.
+    Returns a dataframe with the results of the runs.
     """
     seed = conf.seed
 
@@ -290,29 +162,35 @@ def run_experiment(conf: Configuration, workers=1) -> ExperimentResult:
         backup_conf.seed = seed + i
         configs.append(backup_conf)
 
+    # We need to pack the arguments to pass to the run function
+    # as tuples, as imap doesn't like multiple arguments.
+    args_to_runner = enumerate(configs)
+
     # For multiprocessing
     if workers is None or workers > 1:
         print("Running parallel experiments...")
         with Pool(workers) as pool:
             run_results = list(
-                tqdm(pool.imap(runner, configs), total=len(configs)))
+                tqdm(pool.imap(runner, args_to_runner), total=len(configs)))
     else:
         run_results = list(map(runner, configs))
 
-    experiment_result = ExperimentResult(run_results)
-    experiment_result.save_csv(os.path.join(
+    df = pd.concat(run_results)
+    df.to_csv(os.path.join(
         conf.base_folder, conf.name, conf.name + "_metrics.csv"))
-    return experiment_result
+    return df
 
 # These two functions are defined because pool can only pickle top level functions (not lambdas)
 
 
-def _run_once_verbose(conf: Configuration):
-    return _run_once(conf)
+def _run_once_verbose(conf_run_no_tuple: "tuple[Configuration, int]") -> "RunResult":
+    run_no, conf = conf_run_no_tuple
+    return _run_once(conf, run_no)
 
 
-def _run_once_quiet(conf: Configuration):
-    return _run_once(conf, verbose=False)
+def _run_once_quiet(conf_run_no_tuple: "tuple[Configuration, int]") -> "RunResult":
+    run_no, conf = conf_run_no_tuple
+    return _run_once(conf, run_no, verbose=False)
 
 
 def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
@@ -379,13 +257,13 @@ def _generate_data(conf: Configuration):
     return data
 
 
-def _run_once(conf: Configuration, verbose=True) -> RunResult:
+def _run_once(conf: Configuration, run_no: int, verbose=True) -> pd.DataFrame:
     """Runs the experiment once with the given configuration. Ignores
        n_runs parameter.
 
        If verbose is set to true, prints out steps in the process such as data generation etc.
 
-       Returns a tuple (ars, nmi) of the resulting hard clustering.
+       Returns a dataframe that contains the information as specified in RunResult.
     """
     np.random.seed(conf.seed)
     data = _generate_data(conf)
@@ -403,6 +281,10 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
     # evaluate hard predictions
     assert data.ys is not None
     evaluation = HardClusteringEvaluation(data.ys, y_predicted)
+
+    # save to df
+    df = pd.DataFrame()
+    df = RunResult(run_no, "normal", conf, evaluation).append_to_df(df)
 
     # Writing back results
     # Creating results folder if it doesn't exist
@@ -423,12 +305,14 @@ def _run_once(conf: Configuration, verbose=True) -> RunResult:
             data.xs, questionnaire, conf.n_components)
         baseline_evaluation = HardClusteringEvaluation(
             data.ys, baseline_prediction)
+        df = RunResult(run_no, "baseline", conf,
+                       baseline_evaluation).append_to_df(df)
 
-    return RunResult(evaluation, baseline_evaluation)
+    return df
 
 
 def parameter_variation(parameter_values, name, attribute_name, base_config, plot=True, logx=False,
-                        workers=1) -> VariationResults:
+                        workers=1) -> pd.DataFrame:
     """
     Runs multiple experiments varying the given parameter. The results depicted in a 
     plot (with x = parameter values, y = nmi/ars). They are also saved in a csv file.
@@ -440,8 +324,11 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
     base_config: Configuration object where we vary the parameter
     plot: Set to true if plots should be saved
     logx: Determines if the parameter value should have a logarithmic scale in the plot.
+
+    Returns a pandas Dataframe containing the results, with rows containing
+    the information specified in RunResult.
     """
-    experiment_results = []
+    df = pd.DataFrame()
     seed = base_config.seed
     base_folder = os.path.join(
         "results", f"{base_config.name}-{name}_variation")
@@ -455,15 +342,15 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
         conf.name = f"{name}-{p:.4f}"
         conf.base_folder = base_folder
 
-        experiment_results.append(run_experiment(conf, workers=workers))
+        df = df.append(run_experiment(conf, workers=workers))
 
-    result = VariationResults(parameter_name=name, parameter_values=parameter_values,
-                              experiment_results=experiment_results)
-    result.save_csv(os.path.join(base_folder, "metric_results.txt"))
+    df.to_csv(os.path.join(base_folder, f"{name}_variation_results.csv"))
     if plot:
-        result.plot(base_folder=base_folder, logx=logx)
+        plotter = AltairPlotter(base_folder)
+        plotter.parameter_variation(df, attribute_name, name)
+        plotter.save(f"{name}_variation_results.html")
 
-    return result
+    return df
 
 
 if __name__ == "__main__":
@@ -480,4 +367,5 @@ if __name__ == "__main__":
         workers = 1
 
     # Running the experiment
-    run_experiment(conf, workers=workers)
+    run_experiment(conf, workers=workers).reset_index(
+        drop=True).to_csv("test.csv")

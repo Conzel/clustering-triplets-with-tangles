@@ -13,9 +13,9 @@ class Plotter():
             self.results_folder = Path(results_folder)
             self.results_folder.mkdir(parents=True, exist_ok=True)
 
-    def scatter(self, data, labels):
+    def scatter(self, data):
         """
-        Plots the data points.
+        Plots the data points. Data is a numpy array with columns x, y.
         """
         raise NotImplementedError("Not implemented for this plotter.")
 
@@ -56,6 +56,34 @@ class AltairPlotter(Plotter):
             self.last_chart = chart
             return chart
         return wrapper
+
+    @_altair_plotting_function
+    def parameter_variation(self, df, attribute_name, name):
+        """
+        Plots the values of ars and nmi over a range of the given attribute.
+        Also plots baseline if applicable
+        """
+        df = df.sort_values(by=[attribute_name]).groupby(
+            [attribute_name, "kind"]).mean().reset_index()
+        nmi = alt.Chart(df).mark_line(
+            point={
+                "filled": False,
+                "fill": "white"
+            }).encode(
+            x=attribute_name,
+            y="nmi",
+            color="kind:N"
+        ).interactive()
+        ars = alt.Chart(df).mark_line(
+            point={
+                "filled": False,
+                "fill": "white"
+            }).encode(
+                x=attribute_name,
+                y="ars",
+                color="kind:N"
+        ).interactive()
+        return nmi | ars
 
     @_altair_plotting_function
     def scatter(self, data):
