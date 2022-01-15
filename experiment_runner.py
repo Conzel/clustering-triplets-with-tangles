@@ -173,7 +173,7 @@ def run_experiment(conf: Configuration, workers=1) -> pd.DataFrame:
             run_results = list(
                 tqdm(pool.imap(runner, args_to_runner), total=len(configs)))
     else:
-        run_results = list(map(runner, configs))
+        run_results = list(map(runner, args_to_runner))
 
     df = pd.concat(run_results)
     df.to_csv(os.path.join(
@@ -367,5 +367,4 @@ if __name__ == "__main__":
         workers = 1
 
     # Running the experiment
-    run_experiment(conf, workers=workers).reset_index(
-        drop=True).to_csv("test.csv")
+    run_experiment(conf, workers=workers)
