@@ -1,9 +1,5 @@
-use std::{
-    borrow::{Borrow, Cow},
-    collections::HashSet,
-    ops::{BitAnd, Not},
-    thread::current,
-};
+use std::borrow::Cow;
+use std::ops::Not;
 
 use bitvec::vec::BitVec;
 
@@ -160,23 +156,6 @@ impl<'a> TanglesTreeNode<'a> {
     }
 }
 
-struct TanglesAncestorsIterator<'a> {
-    inner: &'a TanglesTree<'a>,
-    current: Option<UTreeSize>,
-}
-
-impl Iterator for TanglesAncestorsIterator<'_> {
-    type Item = UTreeSize;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        if let Some(current) = current {
-            self.current = self.inner.nodes[current as usize].parent;
-        }
-        return current;
-    }
-}
-
 impl<'a> TanglesTree<'a> {
     fn new(cuts: Vec<CutValue>, agreement: u16) -> TanglesTree<'a> {
         let root_node = TanglesTreeNode::new(None, 0, None, Cow::Owned(Vec::new()));
@@ -194,15 +173,6 @@ impl<'a> TanglesTree<'a> {
         } else {
             // This shouldn't happen, as trees at least contain the root node
             panic!("TanglesTree is empty");
-        }
-    }
-
-    /// Returns an iterator from the current node up to all it's
-    /// ancestors.
-    fn ancestors(&self, at: UTreeSize) -> TanglesAncestorsIterator {
-        TanglesAncestorsIterator {
-            inner: self,
-            current: Some(at),
         }
     }
 
@@ -240,7 +210,7 @@ impl<'a> TanglesTree<'a> {
         return &self.nodes[at as usize];
     }
 
-    fn num_nodes(&self) -> UTreeSize {
+    pub fn num_nodes(&self) -> UTreeSize {
         return self.nodes.len() as UTreeSize;
     }
 
@@ -370,9 +340,8 @@ fn new_core<'b>(pool: &CutPool, core: &Core, cut: Cut) -> Cow<'b, Core> {
 /// Algorithm 1 in the paper of Klepper et al.
 /// We assume that the set of cuts is already sorted by the cut cost
 pub fn tangle_search_tree<'a>(cuts: Vec<CutValue>, agreement: u16) -> TanglesTree<'a> {
-    let num_cuts = cuts.len();
     let mut tree = TanglesTree::new(cuts, agreement);
-    let i = 0;
+    let num_cuts = tree.pool.len();
 
     let mut nodes_on_layer_i = vec![tree.get_root_idx()];
     let mut current_cut_id: u16 = 0;
@@ -474,14 +443,10 @@ mod tests {
             TanglesTreeNode::new(Some(0), 1, Some(cut_1), Cow::Borrowed(&core_1));
         first_inserted_node.right = Some(2);
         let mut second_inserted_node =
-            TanglesTreeNode::new(Some(1), 2, Some(cut_2_inv), Cow::Borrowed(&core_2_inv));
+            TanglesTreeNode::new(Some(1), 2, Some(cut_2_inv), Cow::Borrowed(&core_1));
         second_inserted_node.right = Some(3);
-        let last_inserted_node = TanglesTreeNode::new(
-            Some(2),
-            3,
-            Some(cut_3_inv),
-            Cow::Borrowed(&core_2_inv_3_inv),
-        );
+        let last_inserted_node =
+            TanglesTreeNode::new(Some(2), 3, Some(cut_3_inv), Cow::Borrowed(&core_1));
         assert_eq!(tree.get_node_at(1), &first_inserted_node);
         assert_eq!(tree.get_node_at(2), &second_inserted_node);
         assert_eq!(tree.get_node_at(3), &last_inserted_node);
@@ -580,16 +545,17 @@ mod tests {
         let core_2 = vec![cut_2];
         let core_3 = vec![cut_3];
         let core_1_3 = vec![cut_1, cut_3];
+        let core_3_2 = vec![cut_3, cut_2];
         let core_3_1 = vec![cut_3, cut_1];
         let core_2_3_4 = vec![cut_2, cut_3, cut_4];
 
         assert_eq!(new_core(&pool, &core_1, cut_1).into_owned(), core_1);
-        assert_eq!(new_core(&pool, &core_1, cut_2).into_owned(), core_1);
+        assert_eq!(new_core(&pool, &core_1, cut_2).into_owned(), core_2);
         assert_eq!(new_core(&pool, &core_2, cut_2).into_owned(), core_2);
-        assert_eq!(new_core(&pool, &core_2, cut_1).into_owned(), core_1);
+        assert_eq!(new_core(&pool, &core_2, cut_1).into_owned(), core_2);
         assert_eq!(new_core(&pool, &core_1, cut_3).into_owned(), core_1_3);
-        assert_eq!(new_core(&pool, &core_1_3, cut_2).into_owned(), core_1_3);
-        assert_eq!(new_core(&pool, &core_2_3_4, cut_1).into_owned(), core_3_1);
+        assert_eq!(new_core(&pool, &core_1_3, cut_2).into_owned(), core_3_2);
+        assert_eq!(new_core(&pool, &core_2_3_4, cut_1).into_owned(), core_2_3_4);
 
         let cut_1_inv = Cut(0, CutOrientation::Inverted);
         let cut_2_inv = Cut(1, CutOrientation::Inverted);
@@ -600,6 +566,7 @@ mod tests {
         let core_2_inv = vec![cut_2_inv];
         let core_3_inv = vec![cut_3_inv];
         let core_1_3_inv = vec![cut_1_inv, cut_3_inv];
+        let core_3_2_inv = vec![cut_3_inv, cut_2_inv];
         let core_3_1_inv = vec![cut_3_inv, cut_1_inv];
         let core_2_3_4_inv = vec![cut_2_inv, cut_3_inv, cut_4_inv];
 
@@ -609,7 +576,7 @@ mod tests {
         );
         assert_eq!(
             new_core(&pool, &core_1_inv, cut_2_inv).into_owned(),
-            core_2_inv
+            core_1_inv
         );
         assert_eq!(
             new_core(&pool, &core_2_inv, cut_2_inv).into_owned(),
@@ -617,7 +584,7 @@ mod tests {
         );
         assert_eq!(
             new_core(&pool, &core_2_inv, cut_1_inv).into_owned(),
-            core_2_inv
+            core_1_inv
         );
         assert_eq!(
             new_core(&pool, &core_1_inv, cut_3_inv).into_owned(),

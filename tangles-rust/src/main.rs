@@ -3,7 +3,7 @@ use bitvec::prelude::Lsb0;
 
 use crate::tangles::tangle_search_tree;
 
-mod tangles;
+pub mod tangles;
 
 fn main() {
     // Assume 6 points that are clustered, such that
