@@ -3,6 +3,7 @@ use bitvec::prelude::Lsb0;
 
 use crate::tangles::tangle_search_tree;
 
+mod cuts;
 pub mod tangles;
 
 fn main() {
