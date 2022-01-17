@@ -426,7 +426,6 @@ mod tests {
         let mut tree = TanglesTree::new(pool.clone(), 3);
         let cut_1 = Cut(0, CutOrientation::Normal);
         let cut_2_inv = Cut(1, CutOrientation::Inverted);
-        let cut_3 = Cut(2, CutOrientation::Inverted);
         let cut_3_inv = Cut(2, CutOrientation::Inverted);
 
         // It should be allowed to insert all these nodes, as they are still consistent
@@ -436,8 +435,6 @@ mod tests {
         let mut tree_after_second = tree.clone();
         tree.insert_node_if_consistent(&2, 2, CutOrientation::Inverted);
         let core_1 = vec![cut_1];
-        let core_2_inv = vec![cut_2_inv];
-        let core_2_inv_3_inv = vec![cut_2_inv, cut_3_inv];
 
         let mut first_inserted_node =
             TanglesTreeNode::new(Some(0), 1, Some(cut_1), Cow::Borrowed(&core_1));
@@ -464,19 +461,6 @@ mod tests {
     fn test_root_is_zero() {
         let tree = TanglesTree::new(sample_cut_pool(), 3);
         assert_eq!(tree.get_root_idx(), 0);
-    }
-
-    #[test]
-    fn test_tangle_search_tree() {
-        // Assume 9 points that are clustered, such that
-        // points 1-3 are in a cluster, 4-6 in another one,
-        // points 7-9 in a third one.
-        // Expected tangles:
-        // c1,  -c2, -c3 (Cluster 1)
-        // -c1,  c2, -c3 (Cluster 2)
-        // -c1, -c2,  c3 (Cluster 1)
-        let cuts = sample_cut_pool();
-        let tree = tangle_search_tree(cuts, 2);
     }
 
     #[test]
@@ -543,10 +527,8 @@ mod tests {
 
         let core_1 = vec![cut_1];
         let core_2 = vec![cut_2];
-        let core_3 = vec![cut_3];
         let core_1_3 = vec![cut_1, cut_3];
         let core_3_2 = vec![cut_3, cut_2];
-        let core_3_1 = vec![cut_3, cut_1];
         let core_2_3_4 = vec![cut_2, cut_3, cut_4];
 
         assert_eq!(new_core(&pool, &core_1, cut_1).into_owned(), core_1);
@@ -560,15 +542,10 @@ mod tests {
         let cut_1_inv = Cut(0, CutOrientation::Inverted);
         let cut_2_inv = Cut(1, CutOrientation::Inverted);
         let cut_3_inv = Cut(2, CutOrientation::Inverted);
-        let cut_4_inv = Cut(3, CutOrientation::Inverted);
 
         let core_1_inv = vec![cut_1_inv];
         let core_2_inv = vec![cut_2_inv];
-        let core_3_inv = vec![cut_3_inv];
         let core_1_3_inv = vec![cut_1_inv, cut_3_inv];
-        let core_3_2_inv = vec![cut_3_inv, cut_2_inv];
-        let core_3_1_inv = vec![cut_3_inv, cut_1_inv];
-        let core_2_3_4_inv = vec![cut_2_inv, cut_3_inv, cut_4_inv];
 
         assert_eq!(
             new_core(&pool, &core_1_inv, cut_1_inv).into_owned(),
