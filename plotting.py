@@ -58,7 +58,7 @@ class AltairPlotter(Plotter):
         return wrapper
 
     @_altair_plotting_function
-    def parameter_variation(self, df, attribute_name, name):
+    def parameter_variation(self, df, attribute_name):
         """
         Plots the values of ars and nmi over a range of the given attribute.
         Also plots baseline if applicable
