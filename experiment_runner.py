@@ -226,7 +226,7 @@ def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
                                       )
 
     contracted = ContractedTangleTree(tangles_tree)
-    contracted.prune(5, verbose=verbose)
+    contracted.prune(2, verbose=verbose)
 
     contracted.calculate_setP()
 
@@ -347,7 +347,7 @@ def parameter_variation(parameter_values, name, attribute_name, base_config, plo
     df.to_csv(os.path.join(base_folder, f"{name}_variation_results.csv"))
     if plot:
         plotter = AltairPlotter(base_folder)
-        plotter.parameter_variation(df, attribute_name, name)
+        plotter.parameter_variation(df, attribute_name)
         plotter.save(f"{name}_variation_results.html")
 
     return df
