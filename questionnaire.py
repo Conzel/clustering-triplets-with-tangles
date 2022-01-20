@@ -311,7 +311,7 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None) -> Questionnaire:
+def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, imputation_method=None) -> Questionnaire:
     """
     Generates a questionnaire for the given data.
 
@@ -328,6 +328,7 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
     - seed: int
 
     --------------------------------------------------------------------------------------------
+    Output: Questionnaire
 
     """
     if seed is not None:
@@ -361,5 +362,9 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
             answer = is_triplet(a, b, c, distances, noise=noise)
             answers[j] = answer
         questionnaire[i] = np.array(answers)
+    
+    questionnaire = Questionnaire(questionnaire, list(map(tuple, question_set)))
+    if imputation_method is not None:
+        questionnaire = questionnaire.impute(imputation_method=imputation_method)
 
-    return Questionnaire(questionnaire, list(map(tuple, question_set)))
+    return questionnaire
