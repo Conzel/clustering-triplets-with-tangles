@@ -24,6 +24,9 @@ class OrdinalTangles(BaseEstimator):
 
     def fit(self, X, y=None):
         # Interpreting the questionnaires as cuts and computing their costs
+        if not np.all(np.logical_or(X == 0, X == 1)):
+            raise ValueError(
+                "X contains illegal values. X must only contain values equal to 0 or 1. You might have forgotten to impute missing values?")
         bipartitions = Cuts((X == 1).T)
         cost_function = BipartitionSimilarity(
             bipartitions.values.T)
@@ -39,7 +42,7 @@ class OrdinalTangles(BaseEstimator):
                                           )
 
         contracted = ContractedTangleTree(tangles_tree)
-        contracted.prune(5, verbose=self.verbose)
+        # contracted.prune(1, verbose=self.verbose)
 
         contracted.calculate_setP()
 
