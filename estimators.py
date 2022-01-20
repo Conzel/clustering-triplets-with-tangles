@@ -16,10 +16,24 @@ from tangles.tree_tangles import (ContractedTangleTree,
                                   tangle_computation)
 from tangles.utils import compute_cost_and_order_cuts, compute_hard_predictions, normalize
 
+# TODO: The fit-predict pipeline currently doesn't work when the predict method is called
+# with a different set of bipartitions than the fit method. This is due to the weights saved
+# relying on the order of the cuts.
+# This should be fixed, but I still have to look into how we can cleanly separate fit and
+# predict step in Tangles.
+
 
 class OrdinalTangles(BaseEstimator):
-    def __init__(self, agreement=5, verbose=False):
+    def __init__(self, agreement=5, verbose=0):
+        """
+        Initializes a tangles clustering algorithm for triplet data.
+
+        verbose: Set to 0 for no console output, 
+                 1 for status updates, 2 for debugging
+                 and 3 for inspection (producing plots of cuts etc.)
+        """
         self.agreement = agreement
+        self.verbose_level = verbose > 0
         self.verbose = verbose
 
     def fit(self, X, y=None):
@@ -42,7 +56,7 @@ class OrdinalTangles(BaseEstimator):
                                           )
 
         contracted = ContractedTangleTree(tangles_tree)
-        # contracted.prune(1, verbose=self.verbose)
+        contracted.prune(1, verbose=self.verbose)
 
         contracted.calculate_setP()
 
@@ -58,16 +72,13 @@ class OrdinalTangles(BaseEstimator):
         check_is_fitted(self, ["weight_", "contracted_tangles_tree_"])
         bipartitions = Cuts((X == 1).T)
 
-        # Here we have to reorder the cuts... this is pricey,
-        # maybe we can prevent it.
         cost_function = BipartitionSimilarity(
             bipartitions.values.T)
-        # cuts = utils.compute_cost_and_order_cuts(
-        #     bipartitions, cost_function, verbose=self.verbose)
-        cuts = bipartitions
+        _ = compute_cost_and_order_cuts(
+            bipartitions, cost_function, verbose=self.verbose)
 
         compute_soft_predictions_children(
-            node=self.contracted_tangles_tree_.root, cuts=cuts, weight=self.weight_, verbose=self.verbose)
+            node=self.contracted_tangles_tree_.root, cuts=bipartitions, weight=self.weight_, verbose=self.verbose)
 
         ys_predicted, _ = compute_hard_predictions(
             self.contracted_tangles_tree_, cuts=bipartitions, verbose=self.verbose)
