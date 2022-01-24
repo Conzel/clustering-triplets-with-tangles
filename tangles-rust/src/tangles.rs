@@ -88,6 +88,49 @@ impl<'a> TanglesTreeNode<'a> {
             core,
         }
     }
+
+    fn is_splitting_node(&self) -> bool {
+        self.left.is_some() && self.right.is_some()
+    }
+
+    fn is_leaf_node(&self) -> bool {
+        self.left.is_none() && self.right.is_none()
+    }
+
+    /// Returns the side that the child node indicated by child_id
+    /// is on (or returns None);
+    fn which_child(&self, child_id: UTreeSize) -> Option<Side> {
+        if let Some(id) = self.left {
+            if id == child_id {
+                return Some(Side::Left);
+            }
+        }
+        if let Some(id) = self.right {
+            if id == child_id {
+                return Some(Side::Right);
+            }
+        }
+        return None;
+    }
+}
+
+struct TanglesTreeAncestorIter<'a> {
+    current: Option<UTreeSize>,
+    tree: &'a TanglesTree<'a>,
+}
+
+impl<'a> Iterator for TanglesTreeAncestorIter<'a> {
+    type Item = &'a TanglesTreeNode<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current;
+        current.map(|id| {
+            let node = self.tree.get_node_at(id);
+            let parent = node.parent;
+            self.current = parent;
+            node
+        })
+    }
 }
 
 impl<'a> TanglesTree<'a> {
@@ -107,6 +150,87 @@ impl<'a> TanglesTree<'a> {
         } else {
             // This shouldn't happen, as trees at least contain the root node
             panic!("TanglesTree is empty");
+        }
+    }
+
+    fn contract_tree(&self) {
+        todo!()
+    }
+
+    fn ancestors_iter(&self, id: UTreeSize) -> TanglesTreeAncestorIter<'_> {
+        assert!(id >= 0 && id < self.nodes.len() as UTreeSize);
+        TanglesTreeAncestorIter {
+            current: Some(id),
+            tree: self,
+        }
+    }
+
+    /// Removes all paths of length less than min_path_length (from leaf
+    /// to the closest splitting node / root).
+    /// See Klepper et al. Algorithm 5, also p. 28, II.2
+    ///
+    /// We do a lazy variation of pruning, where we only remove the
+    /// connections of the node, but not the nodes itself from the vector
+    /// (as this would require changing all other indices). This causes the tree
+    /// to not shrink in size from pruning (this might be the cause of a memory leak).
+    /// In the future, we might want to provide a cleanup function, that removes
+    /// unconnected nodes.
+    fn prune(&mut self, min_path_length: UTreeSize) {
+        let mut paths_to_parent = vec![0; self.num_nodes() as usize];
+
+        let mut nodes_to_visit = vec![self.get_root_idx()];
+        // stores necessary changes to the tree and does them in bulk
+        // (this pleases the borrow checker)
+        let mut to_remove: Vec<(UTreeSize, Side)> = Vec::new();
+
+        while !nodes_to_visit.is_empty() {
+            let current_node_idx = nodes_to_visit.pop().unwrap();
+            let current_node = self.get_node_at(current_node_idx);
+            // adding children if possible
+            current_node.left.map(|idx| nodes_to_visit.push(idx));
+            current_node.right.map(|idx| nodes_to_visit.push(idx));
+
+            if current_node.is_splitting_node() || current_node_idx == 0 {
+                // Splitting nodes reset index.
+                paths_to_parent[current_node_idx as usize] = 0;
+            } else {
+                // Height increase as we go down the tree
+                let parent_idx = current_node.parent.unwrap();
+                paths_to_parent[current_node_idx as usize] =
+                    paths_to_parent[parent_idx as usize] + 1;
+            }
+            // Leaf + path too short. prune
+            if current_node.is_leaf_node()
+                && paths_to_parent[current_node_idx as usize] <= min_path_length
+            {
+                for ancestor in self.ancestors_iter(current_node_idx) {
+                    if let Some(side) = ancestor.which_child(current_node_idx) {
+                        to_remove.push((ancestor.id, side));
+                    }
+                    if ancestor.is_splitting_node() || ancestor.id == 0 {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Cleanup: Removing the child nodes
+        for (idx, side) in to_remove {
+            self.remove_child_at(idx, side);
+        }
+    }
+
+    /// Removes the child at the index from the tree.
+    /// ! This does a lazy removal, not freeing the memory of the node.
+    fn remove_child_at(&mut self, at: UTreeSize, side: Side) {
+        let node = &mut self.nodes[at as usize];
+        match side {
+            Side::Left => {
+                node.left = None;
+            }
+            Side::Right => {
+                node.right = None;
+            }
         }
     }
 
@@ -294,6 +418,22 @@ mod tests {
     }
 
     #[test]
+    fn test_ancestors_iterator() {
+        let cuts = sample_cut_pool();
+        let tree = tangle_search_tree(cuts, 3);
+        let mut ancestors_iter = tree.ancestors_iter(5);
+
+        let node = ancestors_iter.next();
+        assert_eq!(node.unwrap().id, 5);
+        let node = ancestors_iter.next();
+        assert_eq!(node.unwrap().id, 2);
+        let node = ancestors_iter.next();
+        assert_eq!(node.unwrap().id, 0);
+        let node = ancestors_iter.next();
+        assert_eq!(node, None);
+    }
+
+    #[test]
     fn test_tangle_tree_insert_left() {
         let pool = sample_cut_pool();
         let mut tree = TanglesTree::new(pool.clone(), 3);
@@ -406,6 +546,70 @@ mod tests {
         let core_2 = vec![cut_1, cut_2_inv];
         assert!(is_consistent(cut_3_inv, &core_2, &pool, 3));
         assert!(!is_consistent(cut_3, &core_2, &pool, 3));
+    }
+
+    #[test]
+    fn test_prune() {
+        let pool = sample_cut_pool();
+        let mut tree = TanglesTree::new(pool.clone(), 3);
+        let core = vec![];
+        tree.insert_node(
+            0,
+            Side::Left,
+            Cut(0, CutOrientation::Normal),
+            Cow::Borrowed(&core),
+        );
+        tree.insert_node(
+            0,
+            Side::Right,
+            Cut(0, CutOrientation::Inverted),
+            Cow::Borrowed(&core),
+        );
+        tree.insert_node(
+            1,
+            Side::Left,
+            Cut(0, CutOrientation::Normal),
+            Cow::Borrowed(&core),
+        );
+        tree.insert_node(
+            1,
+            Side::Right,
+            Cut(0, CutOrientation::Inverted),
+            Cow::Borrowed(&core),
+        );
+        tree.insert_node(
+            3,
+            Side::Left,
+            Cut(0, CutOrientation::Normal),
+            Cow::Borrowed(&core),
+        );
+        // Tree so far:
+        //       0
+        //     1   2
+        //    3 4
+        //   5
+        tree.prune(1);
+        // After prune:
+        //       0
+        //     1
+        //    3
+        //   5
+        assert_eq!(tree.get_node_at(0).right, None);
+        assert_eq!(tree.get_node_at(0).left, Some(1));
+        assert_eq!(tree.get_node_at(1).left, Some(3));
+        assert_eq!(tree.get_node_at(1).right, None);
+        assert_eq!(tree.get_node_at(3).left, Some(5));
+        tree.prune(5);
+        // After prune:
+        //       0
+        //     1
+        //    3
+        //
+        assert_eq!(tree.get_node_at(0).left, Some(1));
+        assert_eq!(tree.get_node_at(1).left, Some(3));
+        assert_eq!(tree.get_node_at(1).right, None);
+        assert_eq!(tree.get_node_at(3).left, None);
+        assert_eq!(tree.get_node_at(3).right, None);
     }
 
     #[test]
