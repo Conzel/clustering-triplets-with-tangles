@@ -11,8 +11,6 @@ from sklearn.impute import KNNImputer
 from sklearn.neighbors import DistanceMetric
 from tqdm import tqdm
 
-# Allows us to import tangles modules
-
 MISSING_VALUE = -1
 
 
@@ -20,16 +18,26 @@ def distance_function(x, y):
     return np.linalg.norm(x - y)
 
 
-def is_triplet(a, b, c, distances, noise=0.0):
+def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float=None, flip_noise=False):
     """"
     Returns 1 if a is closer to b than c, 0 otherwise.
     If noise > 0, then the questions answer is set to -1 with probability noise.
 
     distances: ndarray of shape (num_datapoints, num_datapoints),
         precomputed distances, where distances_ij = distance between point i and j
+    soft: If soft is given, the answer is set randomly if a is further away from b
+        and c than soft
+    flip_noise: if set to True, the answer is flipped with probability noise instead of set to 0
+                (this is equivalent to calling this functionwith flip_noise = False and noise' = 2*noise, 
+                but makes it easier to reproduce the results in the Tangles paper)
     """
+    if soft_threshhold is not None and distances[a, b] > soft_threshhold and distances[a, c] > soft_threshhold:
+        return MISSING_VALUE
     if noise > 0 and random.random() < noise:
-        return -1
+        if flip_noise:
+            return int(distances[a, b] > distances[a, c])
+        else:
+            return MISSING_VALUE
     else:
         return int(distances[a, b] <= distances[a, c])
 
@@ -311,7 +319,7 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, imputation_method=None) -> Questionnaire:
+def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method=None, flip_noise=False) -> Questionnaire:
     """
     Generates a questionnaire for the given data.
 
@@ -326,6 +334,7 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
       0.0 means we don't know any of them. This amounts to the number of columns that will be contained 
       in the questionnaire.
     - seed: int
+    For soft and flip_noise, see "is_triplet".
 
     --------------------------------------------------------------------------------------------
     Output: Questionnaire
@@ -359,12 +368,14 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
         for j, question in enumerate(question_set):
             b = question[0]
             c = question[1]
-            answer = is_triplet(a, b, c, distances, noise=noise)
+            answer = is_triplet(a, b, c, distances, noise=noise, soft_threshhold=soft_threshhold, flip_noise=flip_noise)
             answers[j] = answer
         questionnaire[i] = np.array(answers)
-    
-    questionnaire = Questionnaire(questionnaire, list(map(tuple, question_set)))
+
+    questionnaire = Questionnaire(
+        questionnaire, list(map(tuple, question_set)))
     if imputation_method is not None:
-        questionnaire = questionnaire.impute(imputation_method=imputation_method)
+        questionnaire = questionnaire.impute(
+            imputation_method=imputation_method)
 
     return questionnaire
