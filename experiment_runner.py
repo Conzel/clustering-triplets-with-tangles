@@ -20,7 +20,7 @@ from baselines import Baseline
 from data_generation import (generate_gmm_data_draw_means,
                              generate_gmm_data_fixed_means)
 from plotting import AltairPlotter
-from questionnaire import generate_questionnaire
+from questionnaire import Questionnaire
 from tangles.cost_functions import BipartitionSimilarity
 from tangles.data_types import Cuts
 from tangles.plotting import plot_hard_predictions
@@ -270,7 +270,7 @@ def _run_once(conf: Configuration, run_no: int, verbose=True) -> pd.DataFrame:
     if conf.noise > 0 and conf.imputation_method is None:
         raise ValueError("No imputation method given for noisy data.")
     # Creating the questionnaire from the data
-    questionnaire = generate_questionnaire(
+    questionnaire = Questionnaire.from_euclidean(
         data.xs, noise=conf.noise, density=conf.density, seed=conf.seed,
         verbose=verbose)
     if conf.imputation_method is not None:

@@ -4,6 +4,7 @@ File containing functions and class definitions for working with triplets in que
 import math
 import random
 import re
+import networkx as nx
 from operator import itemgetter
 
 import numpy as np
@@ -18,7 +19,7 @@ def distance_function(x, y):
     return np.linalg.norm(x - y)
 
 
-def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float=None, flip_noise=False):
+def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, flip_noise=False):
     """"
     Returns 1 if a is closer to b than c, 0 otherwise.
     If noise > 0, then the questions answer is set to -1 with probability noise.
@@ -201,6 +202,28 @@ class Questionnaire():
     def __repr__(self) -> str:
         return self.__str__()
 
+    def from_euclidean(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method=None, flip_noise=False):
+        """
+        Generates a questionnaire from euclidean data. 
+        data is a nxm ndarray with n points and m features. 
+
+        For information on the other arguments, see "_generate_questionnaire".
+        """
+        metric = DistanceMetric.get_metric("euclidean")
+        # cached distances for all points
+        distances = metric.pairwise(data)
+        return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)
+
+    def from_graph(data: nx.graph, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method=None, flip_noise=False):
+        """
+        Generates a questionnaire from a graph. 
+        data is any nx graph.
+
+        For information on the other arguments, see "_generate_questionnaire".
+        """
+        distances = nx.floyd_warshall_numpy(data)
+        return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)
+
     def throwout(self, threshhold: float):
         """
         Throws out column that has equal or more than threshhold% corrupted values.
@@ -319,13 +342,15 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method=None, flip_noise=False) -> Questionnaire:
+def _generate_questionnaire(distances: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method=None, flip_noise=False) -> Questionnaire:
     """
-    Generates a questionnaire for the given data.
+    Generates a questionnaire for the given data. This is agnostic of the data source, 
+    as any distance matrix can be passed (which can arise from euclidean data, a graph or anything else).
 
     Input: 
-    - data: np.ndarray
-      contains the data points as rows and their coordinates as columns
+    - distances: np.ndarray
+      Distance matrix of size data_points x data_points. distances[i, j] is the distance
+      from point i to point j.
     - noise: float
       The percentage of noise to add to the questionnaire. 0 means all answers are truthful, 
       1 means all answers are random.
@@ -338,7 +363,6 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
 
     --------------------------------------------------------------------------------------------
     Output: Questionnaire
-
     """
     if seed is not None:
         np.random.seed(seed)
@@ -347,7 +371,7 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
     assert 0 <= density <= 1
 
     log = create_log_function(verbose)
-    num_datapoints = data.shape[0]
+    num_datapoints = distances.shape[0]
     log("Generating questionnaire...")
 
     log("Generating question set...")
@@ -358,9 +382,6 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
     log("Filling out questionnaire...")
     questionnaire = np.zeros((num_datapoints, len(question_set)))
 
-    metric = DistanceMetric.get_metric("euclidean")
-    # cached distances for all points
-    distances = metric.pairwise(data)
 
     for i in tqdm(range(num_datapoints), disable=not verbose):
         a = i
@@ -368,7 +389,8 @@ def generate_questionnaire(data: np.ndarray, noise=0.0, density=1.0, verbose=Tru
         for j, question in enumerate(question_set):
             b = question[0]
             c = question[1]
-            answer = is_triplet(a, b, c, distances, noise=noise, soft_threshhold=soft_threshhold, flip_noise=flip_noise)
+            answer = is_triplet(a, b, c, distances, noise=noise,
+                                soft_threshhold=soft_threshhold, flip_noise=flip_noise)
             answers[j] = answer
         questionnaire[i] = np.array(answers)
 

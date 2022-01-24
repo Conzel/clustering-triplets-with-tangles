@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
+"""
+Module for generating synthetic data. Current possible data sets are:
+- Gaussian Mixture Model
+- Stochastic Block Model
+"""
 import numpy as np
 import sklearn
+import networkx as nx
 
 from tangles.data_types import Data
 from tangles.loading import load_GMM
@@ -38,6 +44,24 @@ def rescale_points(x, desired_min_dist):
         return x / current_min_dist * desired_min_dist
     else:
         return x
+
+
+def generate_smb_data(n: int, k: int, p: float, q: float) -> "tuple(nx.Graph, np.ndarray)":
+    """
+    Very simple SMB, all k blocks have the same size n, 
+    an edge goes from i to j with probability p if i == j,
+    and with probability q if i != j.
+
+    Output: 
+
+    """
+    assert p > 0 and p < 1
+    sizes = [n] * k
+    labels = []
+    for i in range(k):
+        labels.extend([i] * n)
+    probabilities = [[p if i == j else q for i in range(k)] for j in range(k)]
+    return nx.stochastic_block_model(sizes, probabilities), np.array(labels)
 
 
 def generate_gmm_data_fixed_means(n: int, means: np.ndarray, std: float, seed: int) -> Data:

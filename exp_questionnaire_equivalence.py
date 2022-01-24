@@ -12,7 +12,7 @@ import pandas as pd
 import altair as alt
 from data_generation import generate_gmm_data_fixed_means
 from estimators import OrdinalTangles
-from questionnaire import Questionnaire, generate_questionnaire
+from questionnaire import Questionnaire 
 from sklearn.metrics import normalized_mutual_info_score
 
 # base_config = Configuration.from_yaml(
@@ -105,7 +105,7 @@ def noise_mindset_plot(datafunc, density, filter_useless_questions=False, n_runs
         data_dict[noise] = []
         for _ in range(n_runs):
             data = datafunc()
-            triplets_no_std = generate_questionnaire(
+            triplets_no_std = Questionnaire.from_euclidean(
                 data.xs, noise=noise, density=density, imputation_method="random", soft_threshhold=soft, flip_noise=True)
             if filter_useless_questions:
                 triplets_no_std = get_useful_cuts(triplets_no_std, 3)

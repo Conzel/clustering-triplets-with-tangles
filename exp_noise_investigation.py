@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from experiment_runner import Configuration, _generate_data
 from baselines import Baseline
-from questionnaire import generate_questionnaire, ImputationMethod
+from questionnaire import Questionnaire, ImputationMethod
 from tangles.data_types import Cuts, Data
 from tangles.plotting import labels_to_colors, plot_dataset
 from tangles.tree_tangles import (ContractedTangleTree,
@@ -43,19 +43,19 @@ for a in range(3, 13):
     random.seed(conf.seed)
 
     imputation = ImputationMethod(conf.imputation_method)
-    questionnaire = generate_questionnaire(
+    questionnaire = Questionnaire.from_euclidean(
         data.xs, noise=conf.noise, density=conf.density, seed=conf.seed,
         verbose=verbose)
     imputed_questionnaire_values = imputation(questionnaire.values)
 
-    questionnaire_exact = generate_questionnaire(
-        data.xs, noise=0.0, density=conf.density, seed=conf.seed, 
+    questionnaire_exact = Questionnaire.from_euclidean(
+        data.xs, noise=0.0, density=conf.density, seed=conf.seed,
         verbose=verbose).values
 
-
-    # Modified to also return the sorting index. This is needed so we can 
-    # sort the exact cuts as well and match the exact cuts 
+    # Modified to also return the sorting index. This is needed so we can
+    # sort the exact cuts as well and match the exact cuts
     # together with the noisy ones.
+
     def compute_cost_and_order_cuts_return_idx(bipartitions, cost_function, verbose=True):
         if verbose:
             print("Computing costs of cuts...")
@@ -79,7 +79,6 @@ for a in range(3, 13):
 
         return bipartitions, idx
 
-
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = Cuts((imputed_questionnaire_values == 1).T)
     cost_fn = BipartitionSimilarity(bipartitions.values.T)
@@ -89,10 +88,10 @@ for a in range(3, 13):
 
     # Building the tree, contracting and calculating predictions
     tangles_tree = tangle_computation(cuts=cuts,
-                                    agreement=conf.agreement,
-                                    # print nothing
-                                    verbose=int(verbose)
-                                    )
+                                      agreement=conf.agreement,
+                                      # print nothing
+                                      verbose=int(verbose)
+                                      )
 
     contracted = ContractedTangleTree(tangles_tree)
     contracted.prune(5, verbose=verbose)
@@ -128,7 +127,7 @@ for a in range(3, 13):
     colors_predicted = labels_to_colors(
         ys_predicted, cmap=cmap_predictions)
     _ = plot_dataset(data, colors_predicted,
-                    ax=ax_predicted, add_colorbar=False)
+                     ax=ax_predicted, add_colorbar=False)
     ax_predicted.set_title("Predicted clusters")
 
     plt.tight_layout()
@@ -158,9 +157,9 @@ for a in range(3, 13):
         # cheapest cut
         if correct_labels is None:
             plt.plot(data.xs[:, 0][bipartition], data.xs[:, 1]
-                    [bipartition], '.', markersize=12, color=c1)
+                     [bipartition], '.', markersize=12, color=c1)
             plt.plot(data.xs[:, 0][np.logical_not(bipartition)], data.xs[:, 1]
-                    [np.logical_not(bipartition)], '.', markersize=12, color=c2)
+                     [np.logical_not(bipartition)], '.', markersize=12, color=c2)
         else:
             mask_both_true = np.logical_and(bipartition, correct_labels)
             mask_both_false = np.logical_and(np.logical_not(
@@ -170,20 +169,18 @@ for a in range(3, 13):
             mask_true_correct_label_false = np.logical_and(
                 bipartition, np.logical_not(correct_labels))
             masks = [mask_both_true, mask_both_false,
-                    mask_true_correct_label_false, mask_false_correct_label_true]
+                     mask_true_correct_label_false, mask_false_correct_label_true]
             colors = [c1, c2, c3, c4]
             labels = ["both true", "both false",
-                    "true correct label false", "false correct label true", ]
+                      "true correct label false", "false correct label true", ]
             for mask, c, l in zip(masks, colors, labels):
                 plt.plot(data.xs[:, 0][mask], data.xs[:, 1][mask], '.', color=c,
-                        markersize=12, label=l)
+                         markersize=12, label=l)
             plt.legend()
         plt.set_cmap("tab10")
 
-
     def estimate_noise(noisy_cut, exact_cut):
         return 1 - (noisy_cut == exact_cut).sum() / noisy_cut.shape[0]
-
 
     def num_suffix(i):
         if i == 0:
@@ -192,7 +189,6 @@ for a in range(3, 13):
             return ["st", "nd", "rd"][i - 1]
         else:
             return "th"
-
 
     i = 0
     j = 0
