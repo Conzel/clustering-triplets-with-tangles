@@ -1,6 +1,7 @@
-use crate::cuts::{is_consistent, is_subset};
+use crate::cuts::{is_consistent, is_subset, CutId};
 use crate::cuts::{Core, Cut, CutOrientation, CutPool, CutValue};
 use std::borrow::Cow;
+use std::collections::{HashMap, VecDeque};
 /// Maximum number of elements in the Tangles tree
 type UTreeSize = u16;
 
@@ -114,6 +115,8 @@ impl<'a> TanglesTreeNode<'a> {
     }
 }
 
+/// An iterator that traverses up from the current node (inclusive)
+/// to the root node (inclusive).
 struct TanglesTreeAncestorIter<'a> {
     current: Option<UTreeSize>,
     tree: &'a TanglesTree<'a>,
@@ -130,6 +133,39 @@ impl<'a> Iterator for TanglesTreeAncestorIter<'a> {
             self.current = parent;
             node
         })
+    }
+}
+
+/// An iterator that traverses level wise from the subtree at the node it was initialized with.
+struct TanglesLevelOrderIter<'a> {
+    current: VecDeque<UTreeSize>,
+    tree: &'a TanglesTree<'a>,
+}
+
+impl<'a> TanglesLevelOrderIter<'a> {
+    fn new(at: UTreeSize, tree: &'a TanglesTree<'a>) -> TanglesLevelOrderIter<'a> {
+        let mut current = VecDeque::new();
+        current.push_back(at);
+        TanglesLevelOrderIter { current, tree }
+    }
+}
+
+impl<'a> Iterator for TanglesLevelOrderIter<'a> {
+    type Item = &'a TanglesTreeNode<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current.is_empty() {
+            return None;
+        }
+        let next_idx = self.current.pop_front().unwrap();
+        let next_node = self.tree.get_node_at(next_idx);
+        if let Some(left_id) = next_node.left {
+            self.current.push_back(left_id);
+        }
+        if let Some(right_id) = next_node.right {
+            self.current.push_back(right_id);
+        }
+        return Some(next_node);
     }
 }
 
@@ -158,11 +194,15 @@ impl<'a> TanglesTree<'a> {
     }
 
     fn ancestors_iter(&self, id: UTreeSize) -> TanglesTreeAncestorIter<'_> {
-        assert!(id >= 0 && id < self.nodes.len() as UTreeSize);
+        assert!(id < self.nodes.len() as UTreeSize);
         TanglesTreeAncestorIter {
             current: Some(id),
             tree: self,
         }
+    }
+
+    fn level_wise_iter(&self, id: UTreeSize) -> TanglesLevelOrderIter<'_> {
+        TanglesLevelOrderIter::new(id, self)
     }
 
     /// Removes all paths of length less than min_path_length (from leaf
@@ -178,33 +218,26 @@ impl<'a> TanglesTree<'a> {
     fn prune(&mut self, min_path_length: UTreeSize) {
         let mut paths_to_parent = vec![0; self.num_nodes() as usize];
 
-        let mut nodes_to_visit = vec![self.get_root_idx()];
         // stores necessary changes to the tree and does them in bulk
         // (this pleases the borrow checker)
         let mut to_remove: Vec<(UTreeSize, Side)> = Vec::new();
 
-        while !nodes_to_visit.is_empty() {
-            let current_node_idx = nodes_to_visit.pop().unwrap();
-            let current_node = self.get_node_at(current_node_idx);
-            // adding children if possible
-            current_node.left.map(|idx| nodes_to_visit.push(idx));
-            current_node.right.map(|idx| nodes_to_visit.push(idx));
-
-            if current_node.is_splitting_node() || current_node_idx == 0 {
+        for current_node in self.level_wise_iter(self.get_root_idx()) {
+            if current_node.is_splitting_node() || current_node.id == 0 {
                 // Splitting nodes reset index.
-                paths_to_parent[current_node_idx as usize] = 0;
+                paths_to_parent[current_node.id as usize] = 0;
             } else {
                 // Height increase as we go down the tree
                 let parent_idx = current_node.parent.unwrap();
-                paths_to_parent[current_node_idx as usize] =
+                paths_to_parent[current_node.id as usize] =
                     paths_to_parent[parent_idx as usize] + 1;
             }
             // Leaf + path too short. prune
             if current_node.is_leaf_node()
-                && paths_to_parent[current_node_idx as usize] <= min_path_length
+                && paths_to_parent[current_node.id as usize] <= min_path_length
             {
-                for ancestor in self.ancestors_iter(current_node_idx) {
-                    if let Some(side) = ancestor.which_child(current_node_idx) {
+                for ancestor in self.ancestors_iter(current_node.id) {
+                    if let Some(side) = ancestor.which_child(current_node.id) {
                         to_remove.push((ancestor.id, side));
                     }
                     if ancestor.is_splitting_node() || ancestor.id == 0 {
@@ -270,6 +303,83 @@ impl<'a> TanglesTree<'a> {
 
     pub fn num_nodes(&self) -> UTreeSize {
         return self.nodes.len() as UTreeSize;
+    }
+
+    /// Contraction algorithm as described in Klepper et al. Algorithm 5, p. 29,
+    /// "Contracting the tree."
+    fn contract(&mut self) {
+        todo!()
+    }
+
+    // Closely following the definition given in Klepper et al. p.29, eq. 8
+    fn distinguishing_cuts(&self, at: UTreeSize) -> Vec<CutId> {
+        assert!(self.get_node_at(at).is_splitting_node());
+        let mut cuts = Vec::new();
+        // A cut is distinguishing when:
+        // - it is always oriented in the left and right subtree to the same direction
+        // - it is oriented in the left and right subtree in a different fashion
+        // This definition is a bit different than in eq. 8, but I believe
+        // it to be equivalent, easier to implement and less convoluted.
+        //
+        // Thus, we want to build cut maps in the following way, per subtree:
+        // - For each cut, save it's first appearance in the map under the id
+        // - For later appearances, we check if the cut has been consistently
+        //   oriented (orientation is the same as the saved one)
+        //
+        // In the end, compare for each cut in both subtrees if orientations differ
+        let node = self.get_node_at(at);
+        let left_map = self.consistently_oriented_cuts(node.left.unwrap());
+        let right_map = self.consistently_oriented_cuts(node.right.unwrap());
+        for (key, left_cut) in left_map {
+            if let Some(right_cut) = right_map.get(&key) {
+                if left_cut.is_some()
+                    && right_cut.is_some()
+                    && left_cut.unwrap().1 != right_cut.unwrap().1
+                {
+                    cuts.push(key);
+                }
+            }
+        }
+        return cuts;
+    }
+
+    /// Returns all cuts that are always oriented in the same direction in the
+    /// subtree with root at.
+    /// Cuts that have been found, but are not consistently oriented (e.g. normal
+    /// once and inverted the other time) are set to none in the returned map.
+    fn consistently_oriented_cuts(&self, at: UTreeSize) -> HashMap<CutId, Option<Cut>> {
+        let mut map: HashMap<CutId, Option<Cut>> = HashMap::new();
+        for node in self.level_wise_iter(at) {
+            if let Some(cut) = node.value {
+                let new_map_val = match map.get(&cut.0) {
+                    // We have seen this cut already and check if it is consistent
+                    Some(Some(saved_cut)) => {
+                        if saved_cut.1 == cut.1 {
+                            Some(cut)
+                        } else {
+                            None
+                        }
+                    }
+                    // This cut has been seen already and is inconsistent
+                    Some(None) => None,
+                    // This cut has not been seen before
+                    None => Some(cut),
+                };
+                map.insert(cut.0, new_map_val);
+            }
+        }
+        return map;
+    }
+
+    /// Returns a set of all the cuts in this tangle
+    fn collect_cuts(&self, at: UTreeSize) -> Vec<Cut> {
+        let mut cuts = Vec::new();
+        for node in self.ancestors_iter(at) {
+            if let Some(cut) = node.value {
+                cuts.push(cut);
+            }
+        }
+        cuts
     }
 
     fn insert_node_if_consistent(
@@ -402,6 +512,8 @@ pub fn tangle_search_tree<'a>(cuts: Vec<CutValue>, agreement: u16) -> TanglesTre
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use bitvec::bits;
     use bitvec::prelude::{BitVec, Lsb0};
 
@@ -415,6 +527,50 @@ mod tests {
         let cut_3 = bits![0, 0, 0, 0, 0, 0, 1, 1, 1];
         let cuts = vec![cut_1.into(), cut_2.into(), cut_3.into()];
         return cuts;
+    }
+
+    /// Returns a dummy tree (core is empty and cuts have no meaning).
+    /// For tests on tree structure.
+    /// Tree so far:
+    ///       0
+    ///     1   2
+    ///    3 4
+    ///   5
+    fn sample_tree() -> TanglesTree<'static> {
+        let pool = sample_cut_pool();
+        let mut tree = TanglesTree::new(pool.clone(), 3);
+        let core = vec![];
+        tree.insert_node(
+            0,
+            Side::Left,
+            Cut(0, CutOrientation::Normal),
+            Cow::Owned(core.clone()),
+        );
+        tree.insert_node(
+            0,
+            Side::Right,
+            Cut(0, CutOrientation::Inverted),
+            Cow::Owned(core.clone()),
+        );
+        tree.insert_node(
+            1,
+            Side::Left,
+            Cut(1, CutOrientation::Normal),
+            Cow::Owned(core.clone()),
+        );
+        tree.insert_node(
+            1,
+            Side::Right,
+            Cut(1, CutOrientation::Inverted),
+            Cow::Owned(core.clone()),
+        );
+        tree.insert_node(
+            3,
+            Side::Left,
+            Cut(2, CutOrientation::Normal),
+            Cow::Owned(core.clone()),
+        );
+        return tree;
     }
 
     #[test]
@@ -551,43 +707,7 @@ mod tests {
     #[test]
     fn test_prune() {
         let pool = sample_cut_pool();
-        let mut tree = TanglesTree::new(pool.clone(), 3);
-        let core = vec![];
-        tree.insert_node(
-            0,
-            Side::Left,
-            Cut(0, CutOrientation::Normal),
-            Cow::Borrowed(&core),
-        );
-        tree.insert_node(
-            0,
-            Side::Right,
-            Cut(0, CutOrientation::Inverted),
-            Cow::Borrowed(&core),
-        );
-        tree.insert_node(
-            1,
-            Side::Left,
-            Cut(0, CutOrientation::Normal),
-            Cow::Borrowed(&core),
-        );
-        tree.insert_node(
-            1,
-            Side::Right,
-            Cut(0, CutOrientation::Inverted),
-            Cow::Borrowed(&core),
-        );
-        tree.insert_node(
-            3,
-            Side::Left,
-            Cut(0, CutOrientation::Normal),
-            Cow::Borrowed(&core),
-        );
-        // Tree so far:
-        //       0
-        //     1   2
-        //    3 4
-        //   5
+        let mut tree = sample_tree();
         tree.prune(1);
         // After prune:
         //       0
@@ -613,6 +733,30 @@ mod tests {
     }
 
     #[test]
+    fn test_distinguishing_cuts() {
+        let mut tree = sample_tree();
+        let cuts = tree.distinguishing_cuts(0);
+        assert_eq!(cuts, vec![0]);
+        let cuts = tree.distinguishing_cuts(1);
+        assert_eq!(cuts, vec![1]);
+        tree.insert_node(
+            2,
+            Side::Right,
+            Cut(1, CutOrientation::Inverted),
+            Cow::Owned(vec![]),
+        );
+        tree.insert_node(
+            6,
+            Side::Right,
+            Cut(2, CutOrientation::Inverted),
+            Cow::Owned(vec![]),
+        );
+        let mut cuts = tree.distinguishing_cuts(0);
+        cuts.sort();
+        assert_eq!(cuts, vec![0, 2]);
+    }
+
+    #[test]
     fn test_new_cores() {
         let cut_value_1 = bits![1, 1, 1, 1, 0, 0, 0, 0, 0].into();
         let cut_value_2 = bits![1, 1, 1, 0, 0, 0, 0, 0, 0].into();
@@ -621,7 +765,6 @@ mod tests {
 
         let cuts = vec![cut_value_1, cut_value_2, cut_value_3, cut_value_4];
         let pool = CutPool::new(cuts);
-
         let cut_1 = Cut(0, CutOrientation::Normal);
         let cut_2 = Cut(1, CutOrientation::Normal);
         let cut_3 = Cut(2, CutOrientation::Normal);
