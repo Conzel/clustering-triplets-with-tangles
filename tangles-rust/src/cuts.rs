@@ -43,6 +43,11 @@ impl CutPool {
         }
     }
 
+    pub fn is_in(&self, cut: Cut, v: u16) -> bool {
+        let cut_value = self.cut_value(cut);
+        cut_value[v as usize]
+    }
+
     pub fn cut_value(&self, cut: Cut) -> &CutValue {
         match cut.1 {
             CutOrientation::Normal => &self.normal[cut.0 as usize],

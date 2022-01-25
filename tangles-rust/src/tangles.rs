@@ -10,6 +10,183 @@ enum Side {
     Right,
 }
 
+#[derive(Clone)]
+pub struct ContractedTanglesTree {
+    nodes: Vec<ContractedTanglesNode>,
+    next_free_idx: UTreeSize,
+    costs: Vec<f64>,
+    pool: CutPool,
+}
+
+#[derive(Clone)]
+pub struct ContractedTanglesNode {
+    pub distinguishing_cuts: Vec<Cut>,
+    pub id: UTreeSize,
+    pub parent: Option<UTreeSize>,
+    pub left: Option<UTreeSize>,
+    pub right: Option<UTreeSize>,
+    pub cost_normalizer: f64,
+}
+
+impl ContractedTanglesNode {
+    pub fn new(
+        distinguishing_cuts: Vec<Cut>,
+        id: UTreeSize,
+        parent: Option<UTreeSize>,
+        costs: &Vec<f64>,
+    ) -> ContractedTanglesNode {
+        let cost_normalizer = distinguishing_cuts
+            .iter()
+            .map(|cut| costs[cut.0 as usize].clone())
+            .sum();
+        ContractedTanglesNode {
+            distinguishing_cuts,
+            id,
+            parent,
+            left: None,
+            right: None,
+            cost_normalizer,
+        }
+    }
+}
+
+impl std::fmt::Debug for ContractedTanglesNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let left_child = match self.left {
+            Some(id) => format!("{}", id),
+            None => "-".to_string(),
+        };
+        let right_child = match self.right {
+            Some(id) => format!("{}", id),
+            None => "-".to_string(),
+        };
+        let par = match self.parent {
+            Some(id) => format!("{}", id),
+            None => "-".to_string(),
+        };
+        write!(
+            f,
+            "TanglesTreeNode {{ children: ({},{}), parent: {}, id: {:?}, value: {:?}}}",
+            left_child, right_child, par, self.id, self.distinguishing_cuts
+        )
+    }
+}
+
+impl ContractedTanglesTree {
+    /// Initializes a new tangles tree. Costs are a vector of costs for each CutId
+    /// in the pool of all_cuts.
+    /// For the distinguishing cuts, it holds, that this _always_ describes the orientation
+    /// in the right subtree.
+    pub fn new(
+        costs: Vec<f64>,
+        root_distinguishing_cuts: Vec<Cut>,
+        pool: CutPool,
+    ) -> ContractedTanglesTree {
+        assert!(costs.len() == pool.len());
+        let node = ContractedTanglesNode::new(root_distinguishing_cuts, 0, None, &costs);
+        ContractedTanglesTree {
+            nodes: vec![node],
+            next_free_idx: 1,
+            costs,
+            pool,
+        }
+    }
+
+    /// If we want to add, we always have to give two children,
+    /// as a contracted tree only contains leaves and splitting nodes.
+    ///
+    /// For the distinguishing cuts, it holds, that this _always_ describes the orientation
+    /// in the right subtree.
+    fn insert_children(
+        &mut self,
+        at: UTreeSize,
+        left_distinguishing_cuts: Vec<Cut>,
+        right_distinguishing_cuts: Vec<Cut>,
+    ) {
+        self.insert_node(at, left_distinguishing_cuts, Side::Left);
+        self.insert_node(at, right_distinguishing_cuts, Side::Right);
+    }
+
+    fn insert_node(&mut self, at: UTreeSize, distinguishing_cuts: Vec<Cut>, side: Side) {
+        let node = ContractedTanglesNode::new(
+            distinguishing_cuts,
+            self.next_free_idx,
+            Some(at),
+            &self.costs,
+        );
+        match side {
+            Side::Left => {
+                self.nodes[at as usize].left = Some(node.id);
+            }
+            Side::Right => {
+                self.nodes[at as usize].right = Some(node.id);
+            }
+        }
+        self.nodes.push(node);
+        self.next_free_idx += 1;
+    }
+
+    /// v refers to an element q in the bipartitions described by the cuts.
+    /// If c is a cut value, v is the index of q at position
+    /// c[v].
+    /// Returns a vector of probabilities that sums to one, where
+    /// q belongs to the i-th tangle with probability vec[i].
+    pub fn probabilities(&self, v: u16) -> Vec<f64> {
+        self.probabilities_recursive(0, v, 1.0)
+    }
+
+    fn probabilities_recursive(&self, at: UTreeSize, v: u16, p: f64) -> Vec<f64> {
+        if self.is_leaf(at) {
+            vec![p]
+        } else {
+            let node = &self.nodes[at as usize];
+            let (left_split_probability, right_split_probability) =
+                self.splitting_probabilities(at, v).unwrap();
+            let mut left_probabilities =
+                self.probabilities_recursive(node.left.unwrap(), v, p * left_split_probability);
+            let mut right_probabilities =
+                self.probabilities_recursive(node.right.unwrap(), v, p * right_split_probability);
+            left_probabilities.append(&mut right_probabilities);
+            left_probabilities
+        }
+    }
+
+    pub fn is_leaf(&self, at: UTreeSize) -> bool {
+        self.nodes[at as usize].left.is_none() && self.nodes[at as usize].right.is_none()
+    }
+
+    /// Returns the probability that the object q referenced by v
+    /// takes the left resp. right branch of the tree at position at.
+    pub fn splitting_probabilities(&self, at: UTreeSize, v: u16) -> Option<(f64, f64)> {
+        if self.is_leaf(at) {
+            return None;
+        }
+        let node = &self.nodes[at as usize];
+        let right_probability = node
+            .distinguishing_cuts
+            .iter()
+            .filter(|c| self.pool.is_in(**c, v))
+            .map(|c| self.costs[c.0 as usize])
+            .sum::<f64>()
+            / node.cost_normalizer;
+        return Some((1.0 - right_probability, right_probability));
+    }
+}
+
+impl std::fmt::Debug for ContractedTanglesTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ContractedTree {{ nodes: [")?;
+        for (i, node) in self.nodes.iter().enumerate() {
+            write!(f, "\n")?;
+            write!(f, "{}. {:?}", node.id, node)?;
+            if i != self.nodes.len() - 1 {
+                write!(f, ",")?;
+            }
+        }
+        write!(f, "], next_free_idx: {:?}}}", self.next_free_idx)
+    }
+}
+
 // Arena based implementation of trees
 #[derive(Clone, PartialEq)]
 pub struct TanglesTree<'a> {
@@ -189,8 +366,45 @@ impl<'a> TanglesTree<'a> {
         }
     }
 
-    fn contract_tree(&self) {
-        todo!()
+    /// Returns the index of the closest splitting node
+    /// in the subtree at the given index, or None if there are None.
+    fn find_next_splitting_node(&self, at: UTreeSize) -> Option<UTreeSize> {
+        for node in self.level_wise_iter(at) {
+            if node.is_splitting_node() {
+                return Some(node.id);
+            }
+        }
+        return None;
+    }
+
+    /// Searches for the distinguishing cuts of the next splitter node.
+    /// Returns empty vec if no splitter nodes are in the subtree.
+    fn next_distinguishing_cuts(&self, at: UTreeSize) -> Vec<Cut> {
+        if let Some(splitter) = self.find_next_splitting_node(at) {
+            self.distinguishing_cuts(splitter)
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Contracts the tree as described in Algorithm 5.
+    /// One might wish to call prune beforehand to remove
+    /// noisy node paths.
+    fn contract_tree(&self, costs: Vec<f64>) -> ContractedTanglesTree {
+        let mut contracted_tree =
+            ContractedTanglesTree::new(costs, self.distinguishing_cuts(0), self.pool.clone());
+        for node in self.level_wise_iter(0) {
+            if node.is_splitting_node() {
+                let left_distinguishing_cuts = self.next_distinguishing_cuts(node.left.unwrap());
+                let right_distinguishing_cuts = self.next_distinguishing_cuts(node.right.unwrap());
+                contracted_tree.insert_children(
+                    node.id,
+                    left_distinguishing_cuts,
+                    right_distinguishing_cuts,
+                );
+            }
+        }
+        return contracted_tree;
     }
 
     fn ancestors_iter(&self, id: UTreeSize) -> TanglesTreeAncestorIter<'_> {
@@ -311,8 +525,13 @@ impl<'a> TanglesTree<'a> {
         todo!()
     }
 
-    // Closely following the definition given in Klepper et al. p.29, eq. 8
-    fn distinguishing_cuts(&self, at: UTreeSize) -> Vec<CutId> {
+    /// Closely following the definition given in Klepper et al. p.29, eq. 8
+    fn distinguishing_cuts(&self, at: UTreeSize) -> Vec<Cut> {
+        // We could probably be a bit more efficient by using the procedure
+        // described in the pseudo-code (propagating information up by the leaves).
+        if self.get_node_at(at).is_leaf_node() {
+            return vec![];
+        }
         assert!(self.get_node_at(at).is_splitting_node());
         let mut cuts = Vec::new();
         // A cut is distinguishing when:
@@ -327,6 +546,7 @@ impl<'a> TanglesTree<'a> {
         //   oriented (orientation is the same as the saved one)
         //
         // In the end, compare for each cut in both subtrees if orientations differ
+        // We always push back the orientation of the cut in the right subtree.
         let node = self.get_node_at(at);
         let left_map = self.consistently_oriented_cuts(node.left.unwrap());
         let right_map = self.consistently_oriented_cuts(node.right.unwrap());
@@ -336,7 +556,7 @@ impl<'a> TanglesTree<'a> {
                     && right_cut.is_some()
                     && left_cut.unwrap().1 != right_cut.unwrap().1
                 {
-                    cuts.push(key);
+                    cuts.push(right_cut.unwrap());
                 }
             }
         }
@@ -574,6 +794,49 @@ mod tests {
     }
 
     #[test]
+    fn test_contracted_tree_transformation() {
+        let tree = sample_tree();
+        let costs = vec![1.0, 3.0, 6.0];
+        let contracted_tree = tree.contract_tree(costs);
+        assert_eq!(contracted_tree.probabilities(0), vec![0.0, 1.0, 0.0]);
+        assert_eq!(contracted_tree.probabilities(7), vec![0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn test_contracted_tree() {
+        let pool = sample_cut_pool();
+        let cut_0 = Cut(0, CutOrientation::Normal);
+        let cut_1 = Cut(1, CutOrientation::Normal);
+        let cut_2 = Cut(2, CutOrientation::Normal);
+        let cut_0_inv = Cut(0, CutOrientation::Inverted);
+        let cut_1_inv = Cut(1, CutOrientation::Inverted);
+        let cut_2_inv = Cut(2, CutOrientation::Inverted);
+        let costs = vec![1.0, 3.0, 6.0];
+        let mut tree =
+            ContractedTanglesTree::new(costs, vec![cut_0, cut_1_inv, cut_2], CutPool::new(pool));
+        assert_eq!(tree.nodes[0].cost_normalizer, 10.0);
+        // reminder:
+        // distinguishing cuts are always implicitly distinguishing the orientation
+        // in the right subtree
+        // let cut_0     = bits![1, 1, 1, 0, 0, 0, 0, 0, 0];
+        // let cut_1_inv = bits![1, 1, 1, 0, 0, 0, 1, 1, 1];
+        // let cut_2     = bits![0, 0, 0, 0, 0, 0, 1, 1, 1];
+        tree.insert_children(0, vec![cut_0], vec![cut_0, cut_1_inv, cut_2]);
+        // right_probability: (1.0 + 3.0 / 10.0) = 0.4
+        assert_eq!(tree.probabilities(0), vec![0.6, 0.4]);
+        assert_eq!(tree.probabilities(7), vec![0.09999999999999998, 0.9]);
+        tree.insert_children(1, vec![], vec![]);
+        // 0.0, 0.6, 0.4
+        assert_eq!(tree.probabilities(0), vec![0.0, 0.6, 0.4]);
+        assert_eq!(tree.probabilities(7), vec![0.09999999999999998, 0., 0.9]);
+        tree.insert_children(2, vec![], vec![]);
+        assert_eq!(
+            tree.probabilities(0),
+            vec![0.0, 0.6, 0.24, 0.16000000000000003]
+        );
+    }
+
+    #[test]
     fn test_ancestors_iterator() {
         let cuts = sample_cut_pool();
         let tree = tangle_search_tree(cuts, 3);
@@ -706,7 +969,6 @@ mod tests {
 
     #[test]
     fn test_prune() {
-        let pool = sample_cut_pool();
         let mut tree = sample_tree();
         tree.prune(1);
         // After prune:
@@ -736,9 +998,9 @@ mod tests {
     fn test_distinguishing_cuts() {
         let mut tree = sample_tree();
         let cuts = tree.distinguishing_cuts(0);
-        assert_eq!(cuts, vec![0]);
+        assert_eq!(cuts, vec![Cut(0, CutOrientation::Inverted)]);
         let cuts = tree.distinguishing_cuts(1);
-        assert_eq!(cuts, vec![1]);
+        assert_eq!(cuts, vec![Cut(1, CutOrientation::Inverted)]);
         tree.insert_node(
             2,
             Side::Right,
@@ -752,8 +1014,14 @@ mod tests {
             Cow::Owned(vec![]),
         );
         let mut cuts = tree.distinguishing_cuts(0);
-        cuts.sort();
-        assert_eq!(cuts, vec![0, 2]);
+        cuts.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(
+            cuts,
+            vec![
+                Cut(0, CutOrientation::Inverted),
+                Cut(2, CutOrientation::Inverted)
+            ]
+        );
     }
 
     #[test]
