@@ -107,13 +107,19 @@ impl ContractedTanglesTree {
         self.insert_node(at, right_distinguishing_cuts, Side::Right);
     }
 
-    fn insert_node(&mut self, at: UTreeSize, distinguishing_cuts: Vec<Cut>, side: Side) {
+    fn insert_node(
+        &mut self,
+        at: UTreeSize,
+        distinguishing_cuts: Vec<Cut>,
+        side: Side,
+    ) -> UTreeSize {
         let node = ContractedTanglesNode::new(
             distinguishing_cuts,
             self.next_free_idx,
             Some(at),
             &self.costs,
         );
+        let node_id = node.id;
         match side {
             Side::Left => {
                 self.nodes[at as usize].left = Some(node.id);
@@ -124,6 +130,7 @@ impl ContractedTanglesTree {
         }
         self.nodes.push(node);
         self.next_free_idx += 1;
+        node_id
     }
 
     /// v refers to an element q in the bipartitions described by the cuts.
@@ -139,6 +146,7 @@ impl ContractedTanglesTree {
         if self.is_leaf(at) {
             vec![p]
         } else {
+            // Must be a splitter node
             let node = &self.nodes[at as usize];
             let (left_split_probability, right_split_probability) =
                 self.splitting_probabilities(at, v).unwrap();
@@ -390,18 +398,46 @@ impl<'a> TanglesTree<'a> {
     /// Contracts the tree as described in Algorithm 5.
     /// One might wish to call prune beforehand to remove
     /// noisy node paths.
-    fn contract_tree(&self, costs: Vec<f64>) -> ContractedTanglesTree {
+    pub fn contract_tree(&self, costs: Vec<f64>) -> ContractedTanglesTree {
         let mut contracted_tree =
             ContractedTanglesTree::new(costs, self.distinguishing_cuts(0), self.pool.clone());
-        for node in self.level_wise_iter(0) {
-            if node.is_splitting_node() {
-                let left_distinguishing_cuts = self.next_distinguishing_cuts(node.left.unwrap());
-                let right_distinguishing_cuts = self.next_distinguishing_cuts(node.right.unwrap());
-                contracted_tree.insert_children(
-                    node.id,
-                    left_distinguishing_cuts,
-                    right_distinguishing_cuts,
+        // Every entry consists of
+        //  (current_index,
+        //   side of the parent subtree this node belongs to,
+        //   index of the last parent node)
+        let root_node = self.get_node_at(0);
+        if root_node.is_leaf_node() {
+            return contracted_tree;
+        }
+        let mut nodes_stack = vec![
+            (root_node.left.unwrap(), Side::Left, 0),
+            (root_node.right.unwrap(), Side::Right, 0),
+        ];
+
+        while nodes_stack.len() > 0 {
+            let (current_node_idx, parent_side, last_parent) = nodes_stack.pop().unwrap();
+            let current_node = self.get_node_at(current_node_idx);
+
+            if current_node.is_splitting_node() {
+                let new_node_id = contracted_tree.insert_node(
+                    last_parent,
+                    self.distinguishing_cuts(current_node.id),
+                    parent_side,
                 );
+                nodes_stack.push((current_node.left.unwrap(), Side::Left, new_node_id));
+                nodes_stack.push((current_node.right.unwrap(), Side::Right, new_node_id));
+            } else if current_node.is_leaf_node() {
+                contracted_tree.insert_node(
+                    last_parent,
+                    self.distinguishing_cuts(current_node.id),
+                    parent_side,
+                );
+            } else {
+                if let Some(left_id) = current_node.left {
+                    nodes_stack.push((left_id, parent_side, last_parent));
+                } else if let Some(right_id) = current_node.right {
+                    nodes_stack.push((right_id, parent_side, last_parent));
+                }
             }
         }
         return contracted_tree;
@@ -429,7 +465,7 @@ impl<'a> TanglesTree<'a> {
     /// to not shrink in size from pruning (this might be the cause of a memory leak).
     /// In the future, we might want to provide a cleanup function, that removes
     /// unconnected nodes.
-    fn prune(&mut self, min_path_length: UTreeSize) {
+    pub fn prune(&mut self, min_path_length: UTreeSize) {
         let mut paths_to_parent = vec![0; self.num_nodes() as usize];
 
         // stores necessary changes to the tree and does them in bulk
@@ -798,6 +834,7 @@ mod tests {
         let tree = sample_tree();
         let costs = vec![1.0, 3.0, 6.0];
         let contracted_tree = tree.contract_tree(costs);
+        println!("{:?}", contracted_tree);
         assert_eq!(contracted_tree.probabilities(0), vec![0.0, 1.0, 0.0]);
         assert_eq!(contracted_tree.probabilities(7), vec![0.0, 0.0, 1.0]);
     }

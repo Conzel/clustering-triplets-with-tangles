@@ -7,6 +7,7 @@ import sys
 from multiprocessing import Pool
 from pathlib import Path
 
+import importlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -194,7 +195,8 @@ def _run_once_quiet(conf_run_no_tuple: "tuple[Configuration, int]") -> "RunResul
 
 
 def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
-                         distance_function_samples=None, verbose=True) -> np.ndarray:
+                         distance_function_samples=None, verbose=True,
+                         disable_rust_backend=True) -> np.ndarray:
     """
     Uses the tangles algorithm to produce a hard clustering on the given data.
 
@@ -211,19 +213,47 @@ def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
 
     Returns predicted y labels for the data points as np.ndarray of dimension (n_datapoints,).
     """
-
     # Interpreting the questionnaires as cuts and computing their costs
     bipartitions = Cuts((questionnaire == 1).T)
     cost_function = BipartitionSimilarity(bipartitions.values.T)
     cuts = compute_cost_and_order_cuts(
         bipartitions, cost_function, verbose=verbose)
 
+    if disable_rust_backend or importlib.util.find_spec("tangles_rust") is None:
+        if verbose:
+            print("Using Python backend for tangles.")
+        return _tangles_hard_predict_py(
+            cuts, bipartitions, agreement, distance_function_samples, verbose)
+    else:
+        if verbose:
+            print("Using Rust backend for tangles.")
+        return _tangles_hard_predict_rs(cuts, agreement, verbose)
+
+
+def _tangles_hard_predict_rs(cuts: Cuts, agreement: int, verbose=True):
+    """
+    See tangles_hard_predict. Rust implementation, which should be significantly faster.
+    """
+    import tangles_rust
+    tree = tangles_rust.TanglesTree(cuts.values, cuts.costs, agreement, 1)
+    num_objects = cuts.values.shape[1]
+    preds = np.zeros(num_objects, dtype=np.int)
+    for i in range(num_objects):
+        preds[np.argmax(tree.probabilities(i))]
+    return preds
+
+
+def _tangles_hard_predict_py(cuts: Cuts, bipartitions: Cuts, agreement: int,
+                             distance_function_samples=None, verbose=True):
+    """
+    See tangles_hard_predict. Pure Python implementation.
+    """
     # Building the tree, contracting and calculating predictions
     tangles_tree = tangle_computation(cuts=cuts,
-                                      agreement=agreement,
-                                      # print nothing
-                                      verbose=int(verbose)
-                                      )
+                                        agreement=agreement,
+                                        # print nothing
+                                        verbose=int(verbose)
+                                        )
 
     contracted = ContractedTangleTree(tangles_tree)
     contracted.prune(2, verbose=verbose)
@@ -232,6 +262,7 @@ def tangles_hard_predict(questionnaire: np.ndarray, agreement: int,
 
     # soft predictions
     weight = np.exp(-normalize(cuts.costs))
+
     compute_soft_predictions_children(
         node=contracted.root, cuts=bipartitions, weight=weight, verbose=3)
 

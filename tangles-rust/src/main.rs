@@ -3,8 +3,10 @@ use bitvec::prelude::Lsb0;
 
 use crate::tangles::tangle_search_tree;
 
-mod cuts;
+pub mod cuts;
 pub mod tangles;
+
+// TODO: Embed into a python structure
 
 fn main() {
     // Assume 6 points that are clustered, such that
