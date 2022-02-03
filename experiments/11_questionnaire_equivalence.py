@@ -35,6 +35,16 @@ seed = 1
 
 class MindsetResult():
     def __init__(self, df_avg, data_dict, preds, chart, preds_baseline, embedding):
+        """
+        Result of a run of the noise_mindset_plot function.
+
+        df_avg: pandas Dataframe with nmi, ars and info of baseline (if applicable).
+        data_dict: dict with lists of the data generated, keyed by noise 
+        preds: analog, with predictions by tangles
+        chart: Bar plot similar to Klepper et al. Call .show() on it to visualize
+        preds_baseline: analog, with predictions by baseline (if applicable)
+        embedding: analog, with embedding by kmeans (if applicable)
+        """
         self.df_avg = df_avg
         self.data_dict = data_dict
         self.preds = preds
