@@ -3,6 +3,7 @@ from cblearn.embedding import SOE
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import silhouette_score
 
 from questionnaire import Questionnaire
 
@@ -16,13 +17,16 @@ class Baseline():
             self.method = Baseline._gmm_baseline
         if name.lower() == "soe-gmm":
             self.method = Baseline._soe_gmm_baseline
-        if name.lower() == "soe-knn":
-            self.method = Baseline._soe_knn_baseline
+        if name.lower() == "soe-kmeans":
+            self.method = Baseline._soe_kmeans_baseline
+        if name.lower() == "soe-kmeans-silhouette":
+            self.method = Baseline._soe_kmeans_silhouette_baseline
+        self._embedding = None
 
-    def _raise_no_baseline_error(data, questionnaire, n_components):
+    def _raise_no_baseline_error(self, data, questionnaire, n_components):
         raise ValueError("No baseline")
 
-    def _gmm_baseline(xs: np.ndarray, questionnaire: Questionnaire, n_components: int, seed=None):
+    def _gmm_baseline(self, xs: np.ndarray, questionnaire: Questionnaire, n_components: int, seed=None):
         """
         Calculates a baseline for the clustering by fitting a gaussian mixture model
         to the data x and inferring labels y'. 
@@ -34,7 +38,39 @@ class Baseline():
         y_pred = gm.predict(xs)
         return y_pred
 
-    def _soe_gmm_baseline(xs: np.ndarray, questionnaire: Questionnaire, n_components: int, seed=None):
+    def _soe_kmeans_silhouette_baseline(self, xs: np.ndarray, questionnaire: Questionnaire, seed: int = None, k_max: int = 20) -> np.ndarray:
+        """
+        Similar to soe_kmeans, but we are using the silhouette beforehand to best 
+        determine the k for k-means.
+
+        When using, keep in mind that k_max of 20 might not be necessarily desirable
+
+        We use the Silhouette method of finding an optimal k as a starter,
+        since it's pretty easy. Different methods of finding optimal k might be gleaned
+        from von Luxburg: https://arxiv.org/abs/1007.1075
+
+        Blog article where the silhouette method is described:
+        https://medium.com/analytics-vidhya/how-to-determine-the-optimal-k-for-k-means-708505d204eb
+        """
+        data_dimension = xs.shape[1]
+        soe = SOE(n_components=data_dimension, random_state=seed)
+        embedding = soe.fit_transform(*questionnaire.to_bool_array())
+
+        sil = []
+        ks = list(range(2, k_max + 1))
+
+        # dissimilarity would not be defined for a single cluster, thus, minimum number of clusters should be 2
+        for k in ks:
+            kmeans = KMeans(n_clusters=k).fit(embedding)
+            labels = kmeans.labels_
+            sil.append(silhouette_score(embedding, labels, metric='euclidean'))
+
+        optimal_k = ks[np.argmax(sil)]
+        optimal_kmeans = KMeans(n_clusters=optimal_k)
+        self._embedding = embedding
+        return optimal_kmeans.fit_predict(embedding)
+
+    def _soe_gmm_baseline(self, xs: np.ndarray, questionnaire: Questionnaire, n_components: int, seed: int = None) -> np.ndarray:
         """
         Calculates a baseline for the clustering by fitting a SOE embedding to the data x and
         inferring labels via a GMM (with n_components clusters). 
@@ -45,7 +81,7 @@ class Baseline():
         baseline = soe_gmm_baseline(data_dimension, n_components)
         return baseline.fit_predict(*questionnaire.to_bool_array())
 
-    def _soe_knn_baseline(xs: np.ndarray, questionnaire: Questionnaire, n_components: int, seed=None):
+    def _soe_kmeans_baseline(self, xs: np.ndarray, questionnaire: Questionnaire, n_components: int, seed: int = None) -> np.ndarray:
         """
         Calculates a baseline for the clustering by fitting a SOE embedding to the data x and
         inferring labels via k-NN (where k = n_components).
@@ -53,14 +89,17 @@ class Baseline():
         Returns predicted labels as ndarray.
         """
         data_dimension = xs.shape[1]
-        baseline = soe_knn_baseline(data_dimension, n_components)
-        return baseline.fit_predict(*questionnaire.to_bool_array())
+        soe = SOE(n_components=data_dimension, random_state=seed)
+        embedding = soe.fit_transform(*questionnaire.to_bool_array())
+        kmeans = KMeans(n_clusters=n_components)
+        self._embedding = embedding
+        return kmeans.fit_predict(embedding)
 
     def predict(self, xs: np.ndarray, questionnaire: Questionnaire, n_components: int) -> np.ndarray:
         """
         Uses the chosen baseline to predict the labels of the given data.
         """
-        return self.method(xs, questionnaire, n_components)
+        return self.method(self, xs, questionnaire, n_components)
 
 
 def soe_gmm_baseline(data_dimension: int, clusters: int) -> Pipeline:
@@ -80,7 +119,7 @@ def soe_gmm_baseline(data_dimension: int, clusters: int) -> Pipeline:
     return pipe
 
 
-def soe_knn_baseline(data_dimension: int, clusters: int) -> Pipeline:
+def soe_kmeans_baseline(data_dimension: int, clusters: int) -> Pipeline:
     """
     Similar to the soe_gmm baseline but we are using a generic KNN to 
     fit.
