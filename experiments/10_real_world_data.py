@@ -6,7 +6,7 @@ import sklearn.datasets
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 
-from baselines import soe_knn_baseline
+from baselines import soe_kmeans_baseline
 from estimators import OrdinalTangles
 from plotting import AltairPlotter
 from questionnaire import Questionnaire
@@ -15,7 +15,7 @@ from questionnaire import Questionnaire
 wine = sklearn.datasets.load_wine()
 standardized_data = StandardScaler().fit_transform(wine.data)
 tangles = OrdinalTangles(agreement=7, verbose=False)
-baseline = soe_knn_baseline(clusters=3)
+baseline = soe_kmeans_baseline(clusters=3)
 
 questionnaire = Questionnaire.from_euclidean(standardized_data)
 ys_baseline = baseline.fit_predict(*questionnaire.to_bool_array())

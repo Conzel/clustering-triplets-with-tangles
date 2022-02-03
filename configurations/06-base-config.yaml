@@ -14,4 +14,4 @@ redraw_means: true
 min_cluster_dist: 4
 dimension: 2
 n_components: 5
-baseline: "soe-knn"
+baseline: "soe-kmeans"
