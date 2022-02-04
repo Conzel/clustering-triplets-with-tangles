@@ -1,6 +1,7 @@
 """
 File containing functions and class definitions for working with triplets in questionnaire form. 
 """
+from __future__ import annotations
 import math
 import random
 import re
@@ -11,6 +12,8 @@ import numpy as np
 from sklearn.impute import KNNImputer
 from sklearn.neighbors import DistanceMetric
 from tqdm import tqdm
+
+from data_generation import clean_bipartitions
 
 MISSING_VALUE = -1
 
@@ -202,7 +205,7 @@ class Questionnaire():
     def __repr__(self) -> str:
         return self.__str__()
 
-    def from_euclidean(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method=None, flip_noise=False):
+    def from_euclidean(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
         """
         Generates a questionnaire from euclidean data. 
         data is a nxm ndarray with n points and m features. 
@@ -214,7 +217,7 @@ class Questionnaire():
         distances = metric.pairwise(data)
         return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)
 
-    def from_graph(data: nx.graph, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method=None, flip_noise=False):
+    def from_graph(data: nx.graph, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False):
         """
         Generates a questionnaire from a graph. 
         data is any nx graph.
@@ -279,11 +282,45 @@ class Questionnaire():
         """
         return int(b * (n_points - 1) + (c - 1) - (b**2 + b) / 2)
 
-    def to_bool_array(self) -> "tuple(np.ndarray, np.ndarray)":
+    def from_bipartitions(xs: np.ndarray) -> Questionnaire:
+        """
+        Takes in an ndarray that comes from a any dataset that produces bipartitions
+        (such as the mindset case, refer to Klepper et al. p.14). 
+        Cleans the data (removing degenerate columns) and returns a questionnaire.
+
+        To inquiry about how we can interpret a mindset setup as a triplet
+        setting, see experiments/15_mindset_datasets.ipynb.
+        """
+        xs = clean_bipartitions(xs)
+        columns = xs.shape[1]
+        labels = []
+        for i in range(columns):
+            col = xs[:, i]
+            if col.dtype == "bool":
+                possible_bs = np.where(col)[0]
+                possible_cs = np.where(col)[0]
+            elif col.dtype == "int":
+                possible_bs = np.where(col == 1)[0]
+                possible_cs = np.where(col == 0)[0]
+            else:
+                raise ValueError("Mindset data must be boolean or integer.")
+            while True:
+                b, c = np.random.choice(
+                    possible_bs), np.random.choice(possible_cs)
+                if (b, c) not in labels:
+                    labels.append((b, c))
+                    break
+
+        return Questionnaire(xs, labels)
+
+    def to_bool_array(self) -> tuple(np.ndarray, np.ndarray):
         """
         Transforms triplet value matrix to a list representing the triplets,
         conforming to the interface in David Künstles cblearn package under
         'triplet-array'
+
+        Entries in the questionnaire that are missing (have value MISSING_VALUE)
+        are left out of the array.
 
         https://cblearn.readthedocs.io/en/latest/generated_examples/triplet_formats.html?highlight=matrix
 
@@ -293,7 +330,7 @@ class Questionnaire():
 
         triplet = triplets_ordered[0]
         print(f"The triplet {triplet} means, that object {triplet[0]} (1st) should be "
-            f"embedded closer to object {triplet[1]} (2nd) than to object {triplet[0]} (3th).")
+            f"embedded closer to object {triplet[1]} (2nd) than to object {triplet[2]} (3th).")
 
         Answer Array:
         triplets_boolean, answers_boolean = check_query_response(triplets_ordered, result_format='list-boolean')
@@ -310,9 +347,28 @@ class Questionnaire():
         for a in range(self.values.shape[0]):
             a_array = np.repeat(a, num_questions).reshape(-1, 1)
             triplets.append(np.hstack((a_array, labels_np)))
-        return np.concatenate(triplets), responses == 1
+        triplet_array = np.concatenate(triplets)
+        valid_mask = ~(responses == MISSING_VALUE)
+        return triplet_array[valid_mask, :], responses[valid_mask] == 1
 
-    def impute(self, imputation_method: str) -> "Questionnaire":
+    def subset(self, n, seed=None) -> Questionnaire:
+        """
+        Returns a questionnaire that only has n randomly drawn triplets left,
+        the rest is set to missing_value.
+
+        We draw triplets with replacement, so we might end up with 
+        a few less samples than there are actually present.
+        """
+        np.random.seed(seed)
+        idx_rows = np.random.choice(self.values.shape[0], n, replace=True)
+        idx_cols = np.random.choice(self.values.shape[1], n, replace=True)
+        mask = np.ones_like(self.values)
+        mask[idx_rows, idx_cols] = 0
+        values = self.values.copy()
+        values[mask == 1] = MISSING_VALUE
+        return Questionnaire(values, self.labels)
+
+    def impute(self, imputation_method: str) -> Questionnaire:
         """
         Imputes the questionnaire with the given method.
         Afterwards, the questionnaire is guaranteed to not have any 
@@ -342,7 +398,8 @@ def create_log_function(verbose):
         return lambda _: None
 
 
-def _generate_questionnaire(distances: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method=None, flip_noise=False) -> Questionnaire:
+def _generate_questionnaire(distances: np.ndarray, noise: float = 0.0, density: float = 1.0, verbose: bool = True,
+                            seed: int = None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
     """
     Generates a questionnaire for the given data. This is agnostic of the data source, 
     as any distance matrix can be passed (which can arise from euclidean data, a graph or anything else).
@@ -381,7 +438,6 @@ def _generate_questionnaire(distances: np.ndarray, noise=0.0, density=1.0, verbo
     # The questionnaire contains all answers for all questions.
     log("Filling out questionnaire...")
     questionnaire = np.zeros((num_datapoints, len(question_set)))
-
 
     for i in tqdm(range(num_datapoints), disable=not verbose):
         a = i
