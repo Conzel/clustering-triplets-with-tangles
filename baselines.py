@@ -43,31 +43,13 @@ class Baseline():
         Similar to soe_kmeans, but we are using the silhouette beforehand to best 
         determine the k for k-means.
 
-        When using, keep in mind that k_max of 20 might not be necessarily desirable
-
-        We use the Silhouette method of finding an optimal k as a starter,
-        since it's pretty easy. Different methods of finding optimal k might be gleaned
-        from von Luxburg: https://arxiv.org/abs/1007.1075
-
-        Blog article where the silhouette method is described:
-        https://medium.com/analytics-vidhya/how-to-determine-the-optimal-k-for-k-means-708505d204eb
+        Refer to 'find_k_silhouette' for more info on the silhouette method.
         """
         data_dimension = xs.shape[1]
         soe = SOE(n_components=data_dimension, random_state=seed)
         embedding = soe.fit_transform(*questionnaire.to_bool_array())
-
-        sil = []
-        ks = list(range(2, k_max + 1))
-
-        # dissimilarity would not be defined for a single cluster, thus, minimum number of clusters should be 2
-        for k in ks:
-            kmeans = KMeans(n_clusters=k).fit(embedding)
-            labels = kmeans.labels_
-            sil.append(silhouette_score(embedding, labels, metric='euclidean'))
-
-        optimal_k = ks[np.argmax(sil)]
-        optimal_kmeans = KMeans(n_clusters=optimal_k)
         self._embedding = embedding
+        optimal_kmeans = KMeans(find_k_silhouette(embedding, k_max))
         return optimal_kmeans.fit_predict(embedding)
 
     def _soe_gmm_baseline(self, xs: np.ndarray, questionnaire: Questionnaire, n_components: int, seed: int = None) -> np.ndarray:
@@ -100,6 +82,30 @@ class Baseline():
         Uses the chosen baseline to predict the labels of the given data.
         """
         return self.method(self, xs, questionnaire, n_components)
+
+
+def find_k_silhouette(xs: np.ndarray, k_max: int = 20) -> int:
+    """
+        When using, keep in mind that k_max of 20 might not be necessarily desirable
+
+        We use the Silhouette method of finding an optimal k as a starter,
+        since it's pretty easy. Different methods of finding optimal k might be gleaned
+        from von Luxburg: https://arxiv.org/abs/1007.1075
+
+        Blog article where the silhouette method is described:
+        https://medium.com/analytics-vidhya/how-to-determine-the-optimal-k-for-k-means-708505d204eb
+    """
+    sil = []
+    ks = list(range(2, k_max + 1))
+
+    # dissimilarity would not be defined for a single cluster, thus, minimum number of clusters should be 2
+    for k in ks:
+        kmeans = KMeans(n_clusters=k).fit(xs)
+        labels = kmeans.labels_
+        sil.append(silhouette_score(xs, labels, metric='euclidean'))
+
+    optimal_k = ks[np.argmax(sil)]
+    return optimal_k
 
 
 def soe_gmm_baseline(data_dimension: int, clusters: int) -> Pipeline:
