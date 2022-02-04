@@ -53,7 +53,6 @@ def generate_smb_data(n: int, k: int, p: float, q: float) -> "tuple(nx.Graph, np
     and with probability q if i != j.
 
     Output: 
-
     """
     assert p > 0 and p < 1
     sizes = [n] * k
@@ -62,6 +61,18 @@ def generate_smb_data(n: int, k: int, p: float, q: float) -> "tuple(nx.Graph, np
         labels.extend([i] * n)
     probabilities = [[p if i == j else q for i in range(k)] for j in range(k)]
     return nx.stochastic_block_model(sizes, probabilities), np.array(labels)
+
+
+def clean_bipartitions(xs: np.ndarray) -> np.ndarray:
+    """
+    Takes in bipartitions (n_datapoints, n_cuts) and
+    returns another set of bipartitions with degenerate cuts removed
+    (all 0 or all 1).
+    """
+    non_zero = np.logical_not(np.all(xs == 0, axis=0))
+    non_one = np.logical_not(np.all(xs == 1, axis=0))
+    res = xs[:, np.logical_and(non_zero, non_one)]
+    return res
 
 
 def generate_gmm_data_fixed_means(n: int, means: np.ndarray, std: float, seed: int) -> Data:
