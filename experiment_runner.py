@@ -267,7 +267,7 @@ def _tangles_hard_predict_py(cuts: Cuts, bipartitions: Cuts, agreement: int,
         node=contracted.root, cuts=bipartitions, weight=weight, verbose=3)
 
     ys_predicted, _ = compute_hard_predictions(
-        contracted, cuts=bipartitions, verbose=verbose)
+        contracted, verbose=verbose)
 
     return ys_predicted
 

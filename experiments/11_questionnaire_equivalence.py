@@ -2,6 +2,8 @@
 Produces all the plots in the mindset-questionnaire equivalence notes.
 https://www.notion.so/Further-Investigations-to-noise-resistance-a361f49116b64d79a93b605b2719adce
 """
+import sys
+sys.path.append("..")
 from baselines import Baseline
 from sklearn.metrics import normalized_mutual_info_score
 from questionnaire import Questionnaire
@@ -11,8 +13,6 @@ import altair as alt
 import pandas as pd
 from plotting import AltairPlotter
 import numpy as np
-import sys
-sys.path.append("..")
 
 
 def get_useful_cuts(q: Questionnaire, k):
@@ -136,52 +136,53 @@ def make_datafunc_no_std(seed):
         [[-2*mean_c, mean_c], [-2*mean_c, -mean_c], [2*mean_c, mean_c]]), 0.001, seed=seed)
 
 
-# no std setup
-no_std_result = noise_mindset_plot(
-    make_datafunc(None), density)
-no_std_result.chart.show()
-
+# # no std setup
+# no_std_result = noise_mindset_plot(
+#     make_datafunc(None), density)
+# no_std_result.chart.show()
+# 
 # # normal setup
 normal_result = noise_mindset_plot(
-    make_datafunc(None), density)
+    make_datafunc(None), density, baseline_name="soe-kmeans")
 p = AltairPlotter()
-d1 = normal_result.data_dict[0.2][2]
-ypred1 = normal_result.preds[0.2][2]
-# showing the ground truth as example
-c1 = p.assignments(d1.xs, d1.ys)
-c2 = p.assignments(d1.xs, ypred1)
-c1.show()
-c2.show()
 normal_result.chart.show()
-
-# with only useful questions
-result_useful = noise_mindset_plot(
-    make_datafunc(None), density, filter_useless_questions=True)
-result_useful.chart.show()
-
-result_soft = noise_mindset_plot(
-    make_datafunc(None), density, filter_useless_questions=False, soft=8.0)
-result_soft.chart.show()
-
-
-def make_datafunc_bad_geometry(seed):
-    # points are set such that the cuts between 2 and 3 will cut through cluster 1
-    # and introduce additional noise.
-    return lambda: generate_gmm_data_fixed_means(n, np.array(
-        [[-2*mean_c, mean_c], [-2*mean_c, -mean_c], [2*mean_c, 0]]), 1.0, seed=seed)
-
-
-# with bad geometry
-# Points are placed as such:
-# 1
-#       3
-# 2
-# This causes cuts between 1 and 2 to often go through 3
-result_bad = noise_mindset_plot(
-    make_datafunc_bad_geometry(None), density, filter_useless_questions=True, n_runs=10, baseline_name="soe-kmeans")
-result_bad.chart.show()
-
-result_bad_silhouette = noise_mindset_plot(
-    make_datafunc_bad_geometry(None), density, filter_useless_questions=True, n_runs=1, baseline_name="soe-kmeans-silhouette")
-result_bad_silhouette.chart.show()
-
+# d1 = normal_result.data_dict[0.2][2]
+# ypred1 = normal_result.preds[0.2][2]
+# # showing the ground truth as example
+# c1 = p.assignments(d1.xs, d1.ys)
+# c2 = p.assignments(d1.xs, ypred1)
+# c1.show()
+# c2.show()
+# 
+# # with only useful questions
+# result_useful = noise_mindset_plot(
+#     make_datafunc(None), density, filter_useless_questions=True)
+# result_useful.chart.show()
+# 
+# result_soft = noise_mindset_plot(
+#     make_datafunc(None), density, filter_useless_questions=False, soft=8.0)
+# result_soft.chart.show()
+# 
+# 
+# def make_datafunc_bad_geometry(seed):
+#     # points are set such that the cuts between 2 and 3 will cut through cluster 1
+#     # and introduce additional noise.
+#     return lambda: generate_gmm_data_fixed_means(n, np.array(
+#         [[-2*mean_c, mean_c], [-2*mean_c, -mean_c], [2*mean_c, 0]]), 1.0, seed=seed)
+# 
+# 
+# # with bad geometry
+# # Points are placed as such:
+# # 1
+# #       3
+# # 2
+# # This causes cuts between 1 and 2 to often go through 3
+# result_bad = noise_mindset_plot(
+#     make_datafunc_bad_geometry(None), density, filter_useless_questions=True, n_runs=10, baseline_name="soe-kmeans")
+# result_bad.chart.show()
+# 
+# result_bad_silhouette = noise_mindset_plot(
+#     make_datafunc_bad_geometry(None), density, filter_useless_questions=True, n_runs=10, baseline_name="soe-kmeans-silhouette")
+# result_bad_silhouette.chart.show()
+# 
+# 

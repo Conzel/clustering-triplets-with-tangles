@@ -104,7 +104,7 @@ for a in range(3, 13):
         node=contracted.root, cuts=cuts, weight=weight, verbose=3)
 
     ys_predicted, _ = compute_hard_predictions(
-        contracted, cuts=cuts, verbose=verbose)
+        contracted, verbose=verbose)
 
     baseline = Baseline("soe-gmm")
     y_base = baseline.predict(data.xs, questionnaire, conf.n_components)

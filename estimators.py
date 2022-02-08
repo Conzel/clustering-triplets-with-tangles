@@ -37,6 +37,12 @@ class OrdinalTangles(BaseEstimator):
         self.verbose = verbose
 
     def fit(self, X, y=None):
+        """
+        Does nothing as the model is an unsupervised algorithm. 
+        """
+        return self
+
+    def predict(self, X):
         # Interpreting the questionnaires as cuts and computing their costs
         if not np.all(np.logical_or(X == 0, X == 1)):
             raise ValueError(
@@ -66,10 +72,6 @@ class OrdinalTangles(BaseEstimator):
         self.weight_ = weight
         self.contracted_tangles_tree_ = contracted
 
-        return self
-
-    def predict(self, X):
-        check_is_fitted(self, ["weight_", "contracted_tangles_tree_"])
         bipartitions = Cuts((X == 1).T)
 
         cost_function = BipartitionSimilarity(
@@ -78,11 +80,10 @@ class OrdinalTangles(BaseEstimator):
             bipartitions, cost_function, verbose=self.verbose)
 
         compute_soft_predictions_children(
-            node=self.contracted_tangles_tree_.root, cuts=bipartitions, weight=self.weight_, verbose=self.verbose)
+            node=self.contracted_tangles_tree_.root, cuts=bipartitions, weight=weight, verbose=self.verbose)
+        contracted.processed_soft_predictions = True
 
-        ys_predicted, _ = compute_hard_predictions(
-            self.contracted_tangles_tree_, cuts=bipartitions, verbose=self.verbose)
-
+        ys_predicted, _ = compute_hard_predictions(self.contracted_tangles_tree_, verbose=self.verbose)
         return ys_predicted
 
     def fit_predict(self, X, y=None):
@@ -94,5 +95,5 @@ class OrdinalTangles(BaseEstimator):
             "Soft predictions have not been implemented yet.")
 
     def score(self, X, y):
-        y_pred = self.predict(X)
+        y_pred = self.fit_predict(X)
         return normalized_mutual_info_score(y, y_pred)
