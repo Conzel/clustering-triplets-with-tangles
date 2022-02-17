@@ -450,7 +450,12 @@ def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarr
 def majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool = False, sigmoid_scale: float = None, seed=None):
     """
     Calculates the majority neighbour cuts for a set of triplets.
+    If a sigmoid scale is given, the cuts aren't made binary (if b has appeared more often in middle 
+    position than in right position it is included), but the difference between b being in middle vs b 
+    being right is used as input to a sigmoid to then get a probability of b being in the cut or not
+    (so b being in the middle often => b will have a high chance of getting included in the cut). 
 
+    Returns array of triplets.
     Triplets are in array format, such that the following is true:
 
     Triplets[0] is closer to Triplets[1] than Triplets[2].
