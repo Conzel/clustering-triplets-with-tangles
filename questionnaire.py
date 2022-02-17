@@ -446,7 +446,8 @@ def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarr
                                        2] = triplets[wrong_order, 2], triplets[wrong_order, 1]
     return triplets
 
-def majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool=False):
+
+def majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool = False, sigmoid_scale: float = None, seed=None):
     """
     Calculates the majority neighbour cuts for a set of triplets.
 
@@ -454,23 +455,39 @@ def majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_t
 
     Triplets[0] is closer to Triplets[1] than Triplets[2].
     """
+    if seed is not None:
+        np.random.seed(seed)
     max_point = triplets.max()
     first_positions_points = np.unique(triplets[:, 0])
 
     cuts = np.zeros((max_point + 1, first_positions_points.size))
     for a in first_positions_points:
         triplets_starting_with_a = triplets[triplets[:, 0] == a, :]
-        counts_b_is_closer = np.bincount(triplets_starting_with_a[:, 1], minlength=max_point+1)
-        counts_b_is_farther = np.bincount(triplets_starting_with_a[:, 2], minlength=max_point+1)
+        counts_b_is_closer = np.bincount(
+            triplets_starting_with_a[:, 1], minlength=max_point + 1)
+        counts_b_is_farther = np.bincount(
+            triplets_starting_with_a[:, 2], minlength=max_point + 1)
         if randomize_tie:
             ties = counts_b_is_closer == counts_b_is_farther
-            counts_b_is_closer[ties] += np.random.choice(2, counts_b_is_closer.shape)[ties]
+            counts_b_is_closer[ties] += np.random.choice(
+                2, counts_b_is_closer.shape)[ties]
 
         # Points are in the same partition if they are more often closer to point than farther
-        cut = radius * counts_b_is_closer > counts_b_is_farther
+        if sigmoid_scale is None:
+            cut = radius * counts_b_is_closer > counts_b_is_farther
+        else:
+            cut_probabilities = _sigmoid(
+                radius * counts_b_is_closer - counts_b_is_farther, sigmoid_scale)
+            draws = np.random.uniform(size=cut_probabilities.shape)
+            cut = cut_probabilities >= draws
         cut[a] = True
-        cuts[:,a] = cut
+        cuts[:, a] = cut
     return cuts
+
+
+def _sigmoid(x, scale):
+    return 1 / (1 + np.exp(-x * scale))
+
 
 def _generate_questionnaire(distances: np.ndarray, noise: float = 0.0, density: float = 1.0, verbose: bool = True,
                             seed: int = None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
