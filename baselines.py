@@ -125,11 +125,11 @@ def soe_gmm_baseline(data_dimension: int, clusters: int) -> Pipeline:
     return pipe
 
 
-def soe_kmeans_baseline(data_dimension: int, clusters: int) -> Pipeline:
+def soe_kmeans_baseline(data_dimension: int, clusters: int, seed: int = None) -> Pipeline:
     """
     Similar to the soe_gmm baseline but we are using a generic KNN to 
     fit.
     """
-    pipe = Pipeline([("soe", SOE(n_components=data_dimension)),
-                     ("knn", KMeans(n_clusters=clusters))])
+    pipe = Pipeline([("soe", SOE(n_components=data_dimension, random_state=seed)),
+                     ("knn", KMeans(n_clusters=clusters, random_state=seed))])
     return pipe
