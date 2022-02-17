@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import altair as alt
+import numpy as np
 import pandas as pd
 from sklearn.metrics import normalized_mutual_info_score
 
@@ -99,14 +100,14 @@ class AltairPlotter(Plotter):
         return chart
 
     @_altair_plotting_function
-    def assignments(self, data, labels):
+    def assignments(self, data: np.ndarray, labels: np.ndarray) -> alt.Chart:
         """
         Plots the assignments of the data points to the clusters.
         """
-        data = pd.DataFrame(data, columns=["x", "y"])
-        data["predicted"] = labels
+        data_df = pd.DataFrame(data, columns=["x", "y"])
+        data_df["predicted"] = labels
 
-        chart = alt.Chart(data).mark_point().encode(
+        chart = alt.Chart(data_df).mark_point().encode(
             x="x",
             y="y",
             color=alt.Color("predicted:N", scale=alt.Scale(scheme="dark2"))
