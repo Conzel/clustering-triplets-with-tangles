@@ -205,6 +205,32 @@ class Questionnaire():
     def __repr__(self) -> str:
         return self.__str__()
 
+    def subsample_triplets_euclidean(data: np.ndarray, number_of_triplets: int, return_responses: bool = True) -> tuple(np.ndarray, np.ndarray):
+        """
+        Returns a triplet-response array with a certain number of triplets in it.
+        """
+        triplets = np.zeros((number_of_triplets, 3), dtype=int)
+        responses = np.zeros(number_of_triplets, dtype=bool)
+        for i in range(number_of_triplets):
+            while True:
+                # drawing indices
+                i_a, i_b, i_c = random.randint(0, data.shape[0] - 1), random.randint(
+                    0, data.shape[0] - 1), random.randint(0, data.shape[0] - 1)
+                if i_b != i_c:
+                    break
+            a = data[i_a, :]
+            b = data[i_b, :]
+            c = data[i_c, :]
+            triplets[i, 0] = i_a
+            triplets[i, 1] = i_b
+            triplets[i, 2] = i_c
+            responses[i] = True if np.linalg.norm(
+                a - b) < np.linalg.norm(a - c) else False
+        if return_responses:
+            return triplets, responses
+        else:
+            return unify_triplet_order(triplets, responses), None
+
     def from_euclidean(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
         """
         Generates a questionnaire from euclidean data. 
@@ -217,7 +243,8 @@ class Questionnaire():
         distances = metric.pairwise(data)
         return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)
 
-    def from_graph(data: nx.graph, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False):
+    @staticmethod
+    def from_graph(data: nx.Graph, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False):
         """
         Generates a questionnaire from a graph. 
         data is any nx graph.
@@ -246,7 +273,7 @@ class Questionnaire():
         labels = [tuple(x) for x in labels]
         return values[:, ~corrupted_cols], labels
 
-    def from_bool_array(triplets, responses):
+    def from_bool_array(triplets, responses) -> Questionnaire:
         """
         Generates a questionnaire from triplets and responses 
         given as bool array. This function is the opposite of 
@@ -313,11 +340,12 @@ class Questionnaire():
 
         return Questionnaire(xs, labels)
 
-    def to_bool_array(self) -> tuple(np.ndarray, np.ndarray):
+    def to_bool_array(self, return_responses: bool = True) -> tuple(np.ndarray, np.ndarray):
         """
         Transforms triplet value matrix to a list representing the triplets,
         conforming to the interface in David Künstles cblearn package under
-        'triplet-array'
+        'triplet-array'. Returns either only triplets (return_responses = False),
+        or responses as well (return_responses = True).
 
         Entries in the questionnaire that are missing (have value MISSING_VALUE)
         are left out of the array.
@@ -326,19 +354,20 @@ class Questionnaire():
 
         To Quote:
 
-        In the array format, the constraints are encoded by the index order.
-
-        triplet = triplets_ordered[0]
-        print(f"The triplet {triplet} means, that object {triplet[0]} (1st) should be "
-            f"embedded closer to object {triplet[1]} (2nd) than to object {triplet[2]} (3th).")
-
-        Answer Array:
-        triplets_boolean, answers_boolean = check_query_response(triplets_ordered, result_format='list-boolean')
-        print(f"Is object {triplets_boolean[0, 0]} closer to object {triplets_boolean[0, 1]} "
-            f"than to object {triplets_boolean[0, 2]}? {answers_boolean[0]}.")
-
+        > In the array format, the constraints are encoded by the index order.
+        >
+        > [responses = False]
+        > triplet = triplets_ordered[0]
+        > print(f"The triplet {triplet} means, that object {triplet[0]} (1st) should be "
+        >     f"embedded closer to object {triplet[1]} (2nd) than to object {triplet[2]} (3th).")
+        >
+        > [responses = True]
+        > triplets_boolean, answers_boolean = check_query_response(triplets_ordered, result_format='list-boolean')
+        > print(f"Is object {triplets_boolean[0, 0]} closer to object {triplets_boolean[0, 1]} "
+        >     f"than to object {triplets_boolean[0, 2]}? {answers_boolean[0]}.")
+        >
         Returns a tuple where the first part is the triplet array, the second part is the answer 
-        array (all as specified above).
+        array (all as specified above). Answer array might be None if return_responses = False.
         """
         triplets = []
         responses = self.values.flatten()
@@ -349,7 +378,13 @@ class Questionnaire():
             triplets.append(np.hstack((a_array, labels_np)))
         triplet_array = np.concatenate(triplets)
         valid_mask = ~(responses == MISSING_VALUE)
-        return triplet_array[valid_mask, :], responses[valid_mask] == 1
+
+        triplet_array = triplet_array[valid_mask, :]
+        responses = responses[valid_mask] == 1
+        if return_responses:
+            return triplet_array, responses
+        else:
+            return unify_triplet_order(triplet_array, responses), None
 
     def subset(self, n, seed=None) -> Questionnaire:
         """
@@ -397,6 +432,45 @@ def create_log_function(verbose):
     else:
         return lambda _: None
 
+
+def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarray:
+    """
+    Takes in an array of triplets and responses, and reorders the triplets such that it always
+    holds that a triplet has the meaning
+
+    triplet[0] is closer to triplet[1] than to triplet[2]
+    """
+    wrong_order = np.logical_not(responses)
+    # swap those in wrong order
+    triplets[wrong_order, 1], triplets[wrong_order,
+                                       2] = triplets[wrong_order, 2], triplets[wrong_order, 1]
+    return triplets
+
+def majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool=False):
+    """
+    Calculates the majority neighbour cuts for a set of triplets.
+
+    Triplets are in array format, such that the following is true:
+
+    Triplets[0] is closer to Triplets[1] than Triplets[2].
+    """
+    max_point = triplets.max()
+    first_positions_points = np.unique(triplets[:, 0])
+
+    cuts = np.zeros((max_point + 1, first_positions_points.size))
+    for a in first_positions_points:
+        triplets_starting_with_a = triplets[triplets[:, 0] == a, :]
+        counts_b_is_closer = np.bincount(triplets_starting_with_a[:, 1], minlength=max_point+1)
+        counts_b_is_farther = np.bincount(triplets_starting_with_a[:, 2], minlength=max_point+1)
+        if randomize_tie:
+            ties = counts_b_is_closer == counts_b_is_farther
+            counts_b_is_closer[ties] += np.random.choice(2, counts_b_is_closer.shape)[ties]
+
+        # Points are in the same partition if they are more often closer to point than farther
+        cut = radius * counts_b_is_closer > counts_b_is_farther
+        cut[a] = True
+        cuts[:,a] = cut
+    return cuts
 
 def _generate_questionnaire(distances: np.ndarray, noise: float = 0.0, density: float = 1.0, verbose: bool = True,
                             seed: int = None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
