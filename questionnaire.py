@@ -3,8 +3,10 @@ File containing functions and class definitions for working with triplets in que
 """
 from __future__ import annotations
 import math
+from multiprocessing.sharedctypes import Value
 import random
 import re
+from typing import Callable, Optional
 import networkx as nx
 from operator import itemgetter
 
@@ -118,6 +120,7 @@ class ImputationMethod():
     def __repr__(self) -> str:
         return self.__str__()
 
+    @staticmethod
     def _impute_random(data: np.ndarray):
         """
         Imputes missing values with a random value.
@@ -127,6 +130,7 @@ class ImputationMethod():
                      1] = np.random.randint(0, 2, imputed_data[imputed_data == MISSING_VALUE].shape)
         return imputed_data
 
+    @staticmethod
     def _impute_knn(data: np.ndarray, k: int):
         """
         Imputes missing values with the mean value of the k nearest neighbours. 
@@ -140,6 +144,7 @@ class ImputationMethod():
             0, 2, imputed_data[imputed_data == 0.5].shape)
         return np.around(imputed_data)
 
+    @staticmethod
     def _impute_mean(data: np.ndarray):
         """
         Imputes missing values with the mean value of the column.
@@ -154,18 +159,22 @@ class ImputationMethod():
         imputed_data[inds] = np.take(col_mean, inds[1])
         return imputed_data
 
-    def _parse_imputation(imputation_method: str):
+    @staticmethod
+    def _parse_imputation(imputation_method_name: str) -> Callable:
         """
         Parses the imputation method from a string.
         """
-        knn_regex = re.search("(\d+)-NN", imputation_method)
-        if imputation_method.lower() == "random":
+        knn_regex = re.search(r"(\d+)-NN", imputation_method_name)
+        if imputation_method_name.lower() == "random":
             return ImputationMethod._impute_random
         elif knn_regex is not None:
             k = knn_regex.group(1)
             return lambda x: ImputationMethod._impute_knn(x, int(k))
-        elif imputation_method.lower() == "mean":
+        elif imputation_method_name.lower() == "mean":
             return ImputationMethod._impute_mean
+        else:
+            raise ValueError(
+                f"No valid imputation method was passed, received {imputation_method_name}")
 
     def __call__(self, data: np.ndarray) -> np.ndarray:
         """
@@ -194,7 +203,7 @@ class Questionnaire():
     pair {b,c} in the origin column i.
     """
 
-    def __init__(self, questionnaire: np.ndarray, labels: "list[tuple]") -> None:
+    def __init__(self, questionnaire: np.ndarray, labels: list[tuple[int, int]]) -> None:
         assert len(labels) == questionnaire.shape[1]
         self.values = questionnaire
         self.labels = labels
@@ -205,7 +214,8 @@ class Questionnaire():
     def __repr__(self) -> str:
         return self.__str__()
 
-    def subsample_triplets_euclidean(data: np.ndarray, number_of_triplets: int, return_responses: bool = True) -> tuple(np.ndarray, np.ndarray):
+    @staticmethod
+    def subsample_triplets_euclidean(data: np.ndarray, number_of_triplets: int, return_responses: bool = True) -> tuple[np.ndarray, Optional[np.ndarray]]:
         """
         Returns a triplet-response array with a certain number of triplets in it.
         """
@@ -231,6 +241,7 @@ class Questionnaire():
         else:
             return unify_triplet_order(triplets, responses), None
 
+    @staticmethod
     def from_euclidean(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
         """
         Generates a questionnaire from euclidean data. 
@@ -264,6 +275,7 @@ class Questionnaire():
             threshhold, self.values, self.labels)
         return Questionnaire(new_vals, new_labels)
 
+    @staticmethod
     def _throwout_vals_labels(threshhold: float, values: np.ndarray, labels: "list[tuple]") -> "tuple[np.ndarray, list[tuple]]":
         """
         Computes new values and labels according to the procedure described in throwout.
@@ -273,6 +285,7 @@ class Questionnaire():
         labels = [tuple(x) for x in labels]
         return values[:, ~corrupted_cols], labels
 
+    @staticmethod
     def from_bool_array(triplets, responses) -> Questionnaire:
         """
         Generates a questionnaire from triplets and responses 
@@ -284,7 +297,7 @@ class Questionnaire():
         n_points = triplets.max() + 1
         values = np.zeros((n_points, math.comb(n_points, 2)))
         values[values == 0] = MISSING_VALUE
-        labels = [0] * (math.comb(n_points, 2))
+        labels = [(0, 0)] * (math.comb(n_points, 2))
         for i in range(triplets.shape[0]):
             a, b, c = triplets[i]
             if b > c:
@@ -298,17 +311,20 @@ class Questionnaire():
 
         for b in range(n_points):
             for c in range(b, n_points):
-                labels[Questionnaire.triplet_to_pos(b, c, n_points)] = (b, c)
+                index = Questionnaire.triplet_to_pos(b, c, n_points)
+                labels[index] = (b, c)
 
         return Questionnaire(values, labels)
 
-    def triplet_to_pos(b, c, n_points):
+    @staticmethod
+    def triplet_to_pos(b, c, n_points) -> int:
         """
         Returns column position of the triplet information (correspondence
         of triplet and question).
         """
         return int(b * (n_points - 1) + (c - 1) - (b**2 + b) / 2)
 
+    @staticmethod
     def from_bipartitions(xs: np.ndarray) -> Questionnaire:
         """
         Takes in an ndarray that comes from a any dataset that produces bipartitions
@@ -340,7 +356,7 @@ class Questionnaire():
 
         return Questionnaire(xs, labels)
 
-    def to_bool_array(self, return_responses: bool = True) -> tuple(np.ndarray, np.ndarray):
+    def to_bool_array(self, return_responses: bool = True) -> tuple[np.ndarray, Optional[np.ndarray]]:
         """
         Transforms triplet value matrix to a list representing the triplets,
         conforming to the interface in David Künstles cblearn package under
@@ -403,7 +419,7 @@ class Questionnaire():
         values[mask == 1] = MISSING_VALUE
         return Questionnaire(values, self.labels)
 
-    def impute(self, imputation_method: str) -> Questionnaire:
+    def impute(self, imputation_method_name: str) -> Questionnaire:
         """
         Imputes the questionnaire with the given method.
         Afterwards, the questionnaire is guaranteed to not have any 
@@ -418,9 +434,9 @@ class Questionnaire():
         OUTPUT:
             Questionnaire with imputed values.
         """
-        if imputation_method is None:
-            raise ValueError("'None' is not a valid imputation method.")
-        imputation_method = ImputationMethod(imputation_method)
+        if imputation_method_name is None:
+            raise ValueError("No imputation method given (None received).")
+        imputation_method = ImputationMethod(imputation_method_name)
         cleaned_values, cleaned_labels = Questionnaire._throwout_vals_labels(
             1, self.values, self.labels)
         return Questionnaire(imputation_method(cleaned_values), cleaned_labels)
@@ -550,6 +566,6 @@ def _generate_questionnaire(distances: np.ndarray, noise: float = 0.0, density: 
         questionnaire, list(map(tuple, question_set)))
     if imputation_method is not None:
         questionnaire = questionnaire.impute(
-            imputation_method=imputation_method)
+            imputation_method_name=imputation_method)
 
     return questionnaire
