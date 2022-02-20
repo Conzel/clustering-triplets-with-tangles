@@ -8,7 +8,7 @@ from random import random
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.cluster import KMeans
-from sklearn.metrics import normalized_mutual_info_score
+from sklearn.metrics import normalized_mutual_info_score, silhouette_score
 from sklearn.utils.validation import check_is_fitted
 from cblearn.embedding import SOE
 
@@ -150,3 +150,27 @@ class SoeKmeans(BaseEstimator):
         """
         y_pred = self.fit_predict(triplets, responses)
         return normalized_mutual_info_score(y, y_pred)
+
+
+def find_k_silhouette(xs: np.ndarray, k_max: int = 20) -> int:
+    """
+        When using, keep in mind that k_max of 20 might not be necessarily desirable
+
+        We use the Silhouette method of finding an optimal k as a starter,
+        since it's pretty easy. Different methods of finding optimal k might be gleaned
+        from von Luxburg: https://arxiv.org/abs/1007.1075
+
+        Blog article where the silhouette method is described:
+        https://medium.com/analytics-vidhya/how-to-determine-the-optimal-k-for-k-means-708505d204eb
+    """
+    sil = []
+    ks = list(range(2, k_max + 1))
+
+    # dissimilarity would not be defined for a single cluster, thus, minimum number of clusters should be 2
+    for k in ks:
+        kmeans = KMeans(n_clusters=k).fit(xs)
+        labels = kmeans.labels_
+        sil.append(silhouette_score(xs, labels, metric='euclidean'))
+
+    optimal_k = ks[np.argmax(sil)]
+    return optimal_k
