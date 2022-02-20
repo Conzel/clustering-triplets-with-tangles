@@ -6,6 +6,7 @@ from data_generation import generate_gmm_data_fixed_means
 from estimators import OrdinalTangles
 from experiment_runner import Questionnaire
 from cblearn.datasets import make_random_triplets
+from estimators import SoeKmeans
 import pytest
 from cblearn.embedding import SOE
 from sklearn.cluster import KMeans
@@ -24,10 +25,9 @@ def test_tangles_performance():
 def test_soe_kmeans_performance():
     data = generate_gmm_data_fixed_means(
         n=15, means=np.array(np.array([[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]])), std=0.5, seed=1)
-    soe = SOE(n_components=2)
-    kmeans = KMeans(5)
     q = Questionnaire.from_metric(data.xs, density=0.01, seed=1)
-    pred = kmeans.fit_predict(soe.fit_transform(*q.to_bool_array()))
+    soe_kmeans = SoeKmeans(embedding_dimension=2, n_clusters=5)
+    pred = soe_kmeans.fit_predict(*q.to_bool_array())
     score = normalized_mutual_info_score(pred, data.ys)
     assert score > 0.95
 
@@ -35,7 +35,7 @@ def test_soe_kmeans_performance():
     # checking if performance is similar with Davids triplet generation
     t, r = make_random_triplets(
         data.xs, size=num_triplets, result_format="list-boolean")
-    pred_david = kmeans.fit_predict(soe.fit_transform(t, r))
+    pred_david = soe_kmeans.fit_predict(t, r)
     score_david = normalized_mutual_info_score(pred_david, data.ys)
     assert score_david > 0.95
 
