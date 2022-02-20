@@ -152,12 +152,12 @@ class ImputationMethod():
         According to:
         https://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
         """
-        imputed_data = data.copy()
+        imputed_data = data.copy().astype(np.float32)
         imputed_data[imputed_data == MISSING_VALUE] = np.nan
         col_mean = np.nanmean(imputed_data, axis=0)
         inds = np.where(np.isnan(imputed_data))
         imputed_data[inds] = np.take(col_mean, inds[1])
-        return imputed_data
+        return imputed_data.round()
 
     @staticmethod
     def _parse_imputation(imputation_method_name: str) -> Callable:
