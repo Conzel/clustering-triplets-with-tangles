@@ -34,3 +34,17 @@ def test_soe_kmeans_performance():
     assert score_david > 0.95
 
     assert np.abs(score - score_david) < 0.01
+
+
+def test_soe_kmeans_silhouette_performance():
+    # We have to go a bit easy on the Silhouette method.
+    # With the values above, it does not work very well
+    # (which is interesting... maybe this could be used for our purposes)
+    data = generate_gmm_data_fixed_means(
+        n=15, means=np.array(np.array([[10, -10], [-9, 7]])), std=0.1, seed=1)
+    q = Questionnaire.from_metric(data.xs, density=0.1, seed=2)
+    soe_kmeans = SoeKmeans(embedding_dimension=2, n_clusters=None, k_max=5)
+    pred = soe_kmeans.fit_predict(*q.to_bool_array())
+    score = normalized_mutual_info_score(pred, data.ys)
+    assert score > 0.95
+    assert soe_kmeans.k_ == 2

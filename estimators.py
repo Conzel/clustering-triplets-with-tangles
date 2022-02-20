@@ -98,13 +98,17 @@ class OrdinalTangles(BaseEstimator):
 
 
 class SoeKmeans(BaseEstimator):
-    def __init__(self, embedding_dimension, n_clusters, seed=None):
+    def __init__(self, embedding_dimension, n_clusters, seed=None, k_max=20):
         """
         Initializes a classifier that uses a combination of SOE and kMeans
         to predict labels of given triplets.
 
         First, an embedding is created via SOE. Next, the embedding is
         used to run a k-Means cluster on it.
+
+        If n_clusters is explicitly set to None, the Silhouette method will
+        be used to infer k. k_max will then be the maximum number of k
+        to search up to.
 
         Input is triplets, responses as in the detailed in cblearn.
         """
@@ -113,9 +117,23 @@ class SoeKmeans(BaseEstimator):
         self.seed = seed
         self._soe = SOE(n_components=self.embedding_dimension,
                         random_state=self.seed)
-        self._kmeans = KMeans(n_clusters=self.n_clusters,
-                              random_state=self.seed)
+        if n_clusters is None:
+            self._kmeans = None
+            self._k_max = k_max
+            self._k = None
+        else:
+            self._kmeans = KMeans(n_clusters=self.n_clusters,
+                                  random_state=self.seed)
+            self._k = n_clusters
         self._embedding = None
+
+    @property
+    def k_(self):
+        if self._k is None:
+            raise ValueError(
+                "No value of k has been determined yet. Call fit_predict (uses Silhouette method to choose k).")
+        else:
+            return self._k
 
     @property
     def embedding_(self):
@@ -141,6 +159,11 @@ class SoeKmeans(BaseEstimator):
         Performs SOE-kMeans to predict labels of given triplets.
         """
         self._embedding = self._soe.fit_transform(triplets, responses)
+        if self._kmeans is None:
+            k = find_k_silhouette(self._soe.embedding_, k_max=self._k_max)
+            self._k = k
+            kmeans = KMeans(n_clusters=k, random_state=self.seed)
+            self._kmeans = kmeans
         ys = self._kmeans.fit_predict(self._soe.embedding_)
         return ys
 
