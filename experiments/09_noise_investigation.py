@@ -43,12 +43,12 @@ for a in range(3, 13):
     random.seed(conf.seed)
 
     imputation = ImputationMethod(conf.imputation_method)
-    questionnaire = Questionnaire.from_euclidean(
+    questionnaire = Questionnaire.from_metric(
         data.xs, noise=conf.noise, density=conf.density, seed=conf.seed,
         verbose=verbose)
     imputed_questionnaire_values = imputation(questionnaire.values)
 
-    questionnaire_exact = Questionnaire.from_euclidean(
+    questionnaire_exact = Questionnaire.from_metric(
         data.xs, noise=0.0, density=conf.density, seed=conf.seed,
         verbose=verbose).values
 

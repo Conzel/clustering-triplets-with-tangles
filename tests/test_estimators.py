@@ -13,7 +13,7 @@ class OrdinalTanglesTestCase(unittest.TestCase):
     def test_predict_subset_equal(self):
         iris = load_iris()
         tangles = OrdinalTangles(agreement=5, verbose=False)
-        q = Questionnaire.from_euclidean(iris.data)
+        q = Questionnaire.from_metric(iris.data)
 
         tangles.fit(q.values)
         ys1 = tangles.predict(q.values[:10])
@@ -24,7 +24,7 @@ class OrdinalTanglesTestCase(unittest.TestCase):
         synthetic_data = generate_gmm_data_fixed_means(
             n=15, means=np.array(np.array([[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]])), std=0.5, seed=1)
         tangles = OrdinalTangles(agreement=5, verbose=False)
-        q = Questionnaire.from_euclidean(synthetic_data.xs)
+        q = Questionnaire.from_metric(synthetic_data.xs)
         tangles.fit(q.values)
         self.assertAlmostEqual(tangles.score(q.values, synthetic_data.ys), 1.0)
 

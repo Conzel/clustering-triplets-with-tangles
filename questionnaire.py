@@ -242,14 +242,19 @@ class Questionnaire():
             return unify_triplet_order(triplets, responses), None
 
     @staticmethod
-    def from_euclidean(data: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
+    def from_metric(data: np.ndarray, metric=None, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
         """
         Generates a questionnaire from euclidean data. 
         data is a nxm ndarray with n points and m features. 
 
+        If metric is None, we use the euclidean metric. Else, an sklearn-compatible metric
+        can be passed. It only has to posess a 'pairwise' function, that takes in an array
+        and returns a gram matrix.
+
         For information on the other arguments, see "_generate_questionnaire".
         """
-        metric = DistanceMetric.get_metric("euclidean")
+        if metric is None:
+            metric = DistanceMetric.get_metric("euclidean")
         # cached distances for all points
         distances = metric.pairwise(data)
         return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)

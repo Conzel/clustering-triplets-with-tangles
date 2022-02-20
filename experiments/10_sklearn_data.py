@@ -16,7 +16,7 @@ from questionnaire import Questionnaire
 wine = sklearn.datasets.load_wine()
 standardized_data = StandardScaler().fit_transform(wine.data)
 
-questionnaire = Questionnaire.from_euclidean(standardized_data, density=0.1)
+questionnaire = Questionnaire.from_metric(standardized_data, density=0.1)
 
 tangles = OrdinalTangles(agreement=12, verbose=False)
 ys_tangles = tangles.fit_predict(questionnaire.values)

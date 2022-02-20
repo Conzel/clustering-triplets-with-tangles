@@ -33,6 +33,7 @@ mean_c = 3.0
 density = 0.001
 seed = 1
 
+
 class MindsetResult():
     def __init__(self, df_avg, data_dict, preds, chart, preds_baseline, embedding):
         """
@@ -52,7 +53,6 @@ class MindsetResult():
         self.preds_baseline = preds_baseline
         self.embedding = embedding
 
-        
 
 def noise_mindset_plot(datafunc, density, filter_useless_questions=False, n_runs=10, soft=None, baseline_name=None):
     scores_tangles = []
@@ -72,7 +72,7 @@ def noise_mindset_plot(datafunc, density, filter_useless_questions=False, n_runs
         embeddings[noise] = []
         for _ in range(n_runs):
             data = datafunc()
-            questionnaire = Questionnaire.from_euclidean(
+            questionnaire = Questionnaire.from_metric(
                 data.xs, noise=noise, density=density, imputation_method="random", soft_threshhold=soft, flip_noise=True)
             if filter_useless_questions:
                 triplets = get_useful_cuts(questionnaire, 3)
@@ -88,7 +88,7 @@ def noise_mindset_plot(datafunc, density, filter_useless_questions=False, n_runs
                 embeddings[noise].append(baseline._embedding)
 
             # noise but no std
-            tangles = OrdinalTangles(agreement=int(n/3), verbose=True)
+            tangles = OrdinalTangles(agreement=int(n / 3), verbose=True)
             ys_pred = tangles.fit_predict(triplets)
             score = normalized_mutual_info_score(
                 data.ys, ys_pred)
@@ -128,19 +128,19 @@ def noise_mindset_plot(datafunc, density, filter_useless_questions=False, n_runs
 
 def make_datafunc(seed):
     return lambda: generate_gmm_data_fixed_means(n, np.array(
-        [[-2*mean_c, mean_c], [-2*mean_c, -mean_c], [2*mean_c, mean_c]]), 1.0, seed=seed)
+        [[-2 * mean_c, mean_c], [-2 * mean_c, -mean_c], [2 * mean_c, mean_c]]), 1.0, seed=seed)
 
 
 def make_datafunc_no_std(seed):
     return lambda: generate_gmm_data_fixed_means(n, np.array(
-        [[-2*mean_c, mean_c], [-2*mean_c, -mean_c], [2*mean_c, mean_c]]), 0.001, seed=seed)
+        [[-2 * mean_c, mean_c], [-2 * mean_c, -mean_c], [2 * mean_c, mean_c]]), 0.001, seed=seed)
 
 
 # # no std setup
 # no_std_result = noise_mindset_plot(
 #     make_datafunc(None), density)
 # no_std_result.chart.show()
-# 
+#
 # # normal setup
 normal_result = noise_mindset_plot(
     make_datafunc(None), density, baseline_name="soe-kmeans")
@@ -153,24 +153,24 @@ normal_result.chart.show()
 # c2 = p.assignments(d1.xs, ypred1)
 # c1.show()
 # c2.show()
-# 
+#
 # # with only useful questions
 # result_useful = noise_mindset_plot(
 #     make_datafunc(None), density, filter_useless_questions=True)
 # result_useful.chart.show()
-# 
+#
 # result_soft = noise_mindset_plot(
 #     make_datafunc(None), density, filter_useless_questions=False, soft=8.0)
 # result_soft.chart.show()
-# 
-# 
+#
+#
 # def make_datafunc_bad_geometry(seed):
 #     # points are set such that the cuts between 2 and 3 will cut through cluster 1
 #     # and introduce additional noise.
 #     return lambda: generate_gmm_data_fixed_means(n, np.array(
 #         [[-2*mean_c, mean_c], [-2*mean_c, -mean_c], [2*mean_c, 0]]), 1.0, seed=seed)
-# 
-# 
+#
+#
 # # with bad geometry
 # # Points are placed as such:
 # # 1
@@ -180,9 +180,9 @@ normal_result.chart.show()
 # result_bad = noise_mindset_plot(
 #     make_datafunc_bad_geometry(None), density, filter_useless_questions=True, n_runs=10, baseline_name="soe-kmeans")
 # result_bad.chart.show()
-# 
+#
 # result_bad_silhouette = noise_mindset_plot(
 #     make_datafunc_bad_geometry(None), density, filter_useless_questions=True, n_runs=10, baseline_name="soe-kmeans-silhouette")
 # result_bad_silhouette.chart.show()
-# 
-# 
+#
+#
