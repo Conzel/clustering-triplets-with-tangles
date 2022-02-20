@@ -315,7 +315,7 @@ class Questionnaire():
             values[a][Questionnaire.triplet_to_pos(b, c, n_points)] = val
 
         for b in range(n_points):
-            for c in range(b, n_points):
+            for c in range(b + 1, n_points):
                 index = Questionnaire.triplet_to_pos(b, c, n_points)
                 labels[index] = (b, c)
 
