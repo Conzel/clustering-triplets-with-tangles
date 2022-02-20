@@ -1,8 +1,5 @@
 from data_generation import generate_gmm_data_fixed_means
 from questionnaire import Questionnaire
-from sklearn.neighbors import DistanceMetric
-from cblearn.datasets import fetch_car_similarity, make_random_triplets
-from cblearn.utils import check_query_response
 import numpy as np
 
 

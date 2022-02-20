@@ -9,6 +9,7 @@ import re
 from typing import Callable, Optional
 import networkx as nx
 from operator import itemgetter
+from triplets import unify_triplet_order, is_triplet, MISSING_VALUE
 
 import numpy as np
 from sklearn.impute import KNNImputer
@@ -16,36 +17,6 @@ from sklearn.neighbors import DistanceMetric
 from tqdm import tqdm
 
 from data_generation import clean_bipartitions
-
-MISSING_VALUE = -1
-
-
-def distance_function(x, y):
-    return np.linalg.norm(x - y)
-
-
-def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, flip_noise=False):
-    """"
-    Returns 1 if a is closer to b than c, 0 otherwise.
-    If noise > 0, then the questions answer is set to -1 with probability noise.
-
-    distances: ndarray of shape (num_datapoints, num_datapoints),
-        precomputed distances, where distances_ij = distance between point i and j
-    soft: If soft is given, the answer is set randomly if a is further away from b
-        and c than soft
-    flip_noise: if set to True, the answer is flipped with probability noise instead of set to 0
-                (this is equivalent to calling this functionwith flip_noise = False and noise' = 2*noise, 
-                but makes it easier to reproduce the results in the Tangles paper)
-    """
-    if soft_threshhold is not None and distances[a, b] > soft_threshhold and distances[a, c] > soft_threshhold:
-        return MISSING_VALUE
-    if noise > 0 and random.random() < noise:
-        if flip_noise:
-            return int(distances[a, b] > distances[a, c])
-        else:
-            return MISSING_VALUE
-    else:
-        return int(distances[a, b] <= distances[a, c])
 
 
 def generate_k_subsets(values: list, k: int) -> "list[list]":
@@ -215,33 +186,6 @@ class Questionnaire():
         return self.__str__()
 
     @staticmethod
-    def subsample_triplets_euclidean(data: np.ndarray, number_of_triplets: int, return_responses: bool = True) -> tuple[np.ndarray, Optional[np.ndarray]]:
-        """
-        Returns a triplet-response array with a certain number of triplets in it.
-        """
-        triplets = np.zeros((number_of_triplets, 3), dtype=int)
-        responses = np.zeros(number_of_triplets, dtype=bool)
-        for i in range(number_of_triplets):
-            while True:
-                # drawing indices
-                i_a, i_b, i_c = random.randint(0, data.shape[0] - 1), random.randint(
-                    0, data.shape[0] - 1), random.randint(0, data.shape[0] - 1)
-                if i_b != i_c:
-                    break
-            a = data[i_a, :]
-            b = data[i_b, :]
-            c = data[i_c, :]
-            triplets[i, 0] = i_a
-            triplets[i, 1] = i_b
-            triplets[i, 2] = i_c
-            responses[i] = True if np.linalg.norm(
-                a - b) < np.linalg.norm(a - c) else False
-        if return_responses:
-            return triplets, responses
-        else:
-            return unify_triplet_order(triplets, responses), None
-
-    @staticmethod
     def from_metric(data: np.ndarray, metric=None, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
         """
         Generates a questionnaire from euclidean data. 
@@ -269,38 +213,6 @@ class Questionnaire():
         """
         distances = nx.floyd_warshall_numpy(data)
         return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)
-
-    def throwout(self, threshhold: float):
-        """
-        Throws out column that has equal or more than threshhold% corrupted values.
-
-        Returns a new questionnaire and doesn't change the old one.
-        """
-        new_vals, new_labels = Questionnaire._throwout_vals_labels(
-            threshhold, self.values, self.labels)
-        return Questionnaire(new_vals, new_labels)
-
-    @staticmethod
-    def _throwout_vals_labels(threshhold: float, values: np.ndarray, labels: "list[tuple]") -> "tuple[np.ndarray, list[tuple]]":
-        """
-        Computes new values and labels according to the procedure described in throwout.
-        """
-        corrupted_cols = (values == MISSING_VALUE).mean(axis=0) >= threshhold
-        labels = np.array(labels)[~corrupted_cols]
-        labels = [tuple(x) for x in labels]
-        return values[:, ~corrupted_cols], labels
-
-    def fill_self_labels(self) -> Questionnaire:
-        """
-        Fills a questionnaire with self-information:
-        A point is always closer to itself than to another point. 
-        """
-        v_ = self.values.copy()
-        l_ = self.labels.copy()
-        for (i, l) in enumerate(l_):
-            v_[l[0], i] = 1
-            v_[l[1], i] = 0
-        return Questionnaire(v_, l_)
 
     @staticmethod
     def from_bool_array(triplets, responses, self_fill: bool = True) -> Questionnaire:
@@ -331,11 +243,11 @@ class Questionnaire():
                     "Triplet information on distance of point to itself.")
             # invariant: c > b
             val = 1 if responses[i] else 0
-            values[a][Questionnaire.triplet_to_pos(b, c, n_points)] = val
+            values[a][Questionnaire._triplet_to_pos(b, c, n_points)] = val
 
         for b in range(n_points):
             for c in range(b + 1, n_points):
-                index = Questionnaire.triplet_to_pos(b, c, n_points)
+                index = Questionnaire._triplet_to_pos(b, c, n_points)
                 labels[index] = (b, c)
 
         if self_fill:
@@ -344,12 +256,25 @@ class Questionnaire():
             return Questionnaire(values, labels)
 
     @staticmethod
-    def triplet_to_pos(b, c, n_points) -> int:
+    def _triplet_to_pos(b, c, n_points) -> int:
         """
         Returns column position of the triplet information (correspondence
         of triplet and question).
         """
         return int(b * (n_points - 1) + (c - 1) - (b**2 + b) / 2)
+
+    def fill_self_labels(self) -> Questionnaire:
+        """
+        Fills a questionnaire with self-information:
+        A point is always closer to itself than to another point. 
+        """
+        v_ = self.values.copy()
+        l_ = self.labels.copy()
+        for (i, l) in enumerate(l_):
+            v_[l[0], i] = 1
+            v_[l[1], i] = 0
+        return Questionnaire(v_, l_)
+
 
     @staticmethod
     def from_bipartitions(xs: np.ndarray) -> Questionnaire:
@@ -470,73 +395,31 @@ class Questionnaire():
             1, self.values, self.labels)
         return Questionnaire(imputation_method(cleaned_values), cleaned_labels)
 
+    def throwout(self, threshhold: float):
+        """
+        Throws out column that has equal or more than threshhold% corrupted values.
+
+        Returns a new questionnaire and doesn't change the old one.
+        """
+        new_vals, new_labels = Questionnaire._throwout_vals_labels(
+            threshhold, self.values, self.labels)
+        return Questionnaire(new_vals, new_labels)
+
+    @staticmethod
+    def _throwout_vals_labels(threshhold: float, values: np.ndarray, labels: "list[tuple]") -> "tuple[np.ndarray, list[tuple]]":
+        """
+        Computes new values and labels according to the procedure described in throwout.
+        """
+        corrupted_cols = (values == MISSING_VALUE).mean(axis=0) >= threshhold
+        labels = np.array(labels)[~corrupted_cols]
+        labels = [tuple(x) for x in labels]
+        return values[:, ~corrupted_cols], labels
 
 def create_log_function(verbose):
     if verbose:
         return lambda x: print(x)
     else:
         return lambda _: None
-
-
-def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarray:
-    """
-    Takes in an array of triplets and responses, and reorders the triplets such that it always
-    holds that a triplet has the meaning
-
-    triplet[0] is closer to triplet[1] than to triplet[2]
-    """
-    wrong_order = np.logical_not(responses)
-    # swap those in wrong order
-    triplets[wrong_order, 1], triplets[wrong_order,
-                                       2] = triplets[wrong_order, 2], triplets[wrong_order, 1]
-    return triplets
-
-
-def majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool = False, sigmoid_scale: float = None, seed=None):
-    """
-    Calculates the majority neighbour cuts for a set of triplets.
-    If a sigmoid scale is given, the cuts aren't made binary (if b has appeared more often in middle 
-    position than in right position it is included), but the difference between b being in middle vs b 
-    being right is used as input to a sigmoid to then get a probability of b being in the cut or not
-    (so b being in the middle often => b will have a high chance of getting included in the cut). 
-
-    Returns array of triplets.
-    Triplets are in array format, such that the following is true:
-
-    Triplets[0] is closer to Triplets[1] than Triplets[2].
-    """
-    if seed is not None:
-        np.random.seed(seed)
-    max_point = triplets.max()
-    first_positions_points = np.unique(triplets[:, 0])
-
-    cuts = np.zeros((max_point + 1, first_positions_points.size))
-    for a in first_positions_points:
-        triplets_starting_with_a = triplets[triplets[:, 0] == a, :]
-        counts_b_is_closer = np.bincount(
-            triplets_starting_with_a[:, 1], minlength=max_point + 1)
-        counts_b_is_farther = np.bincount(
-            triplets_starting_with_a[:, 2], minlength=max_point + 1)
-        if randomize_tie:
-            ties = counts_b_is_closer == counts_b_is_farther
-            counts_b_is_closer[ties] += np.random.choice(
-                2, counts_b_is_closer.shape)[ties]
-
-        # Points are in the same partition if they are more often closer to point than farther
-        if sigmoid_scale is None:
-            cut = radius * counts_b_is_closer > counts_b_is_farther
-        else:
-            cut_probabilities = _sigmoid(
-                radius * counts_b_is_closer - counts_b_is_farther, sigmoid_scale)
-            draws = np.random.uniform(size=cut_probabilities.shape)
-            cut = cut_probabilities >= draws
-        cut[a] = True
-        cuts[:, a] = cut
-    return cuts
-
-
-def _sigmoid(x, scale):
-    return 1 / (1 + np.exp(-x * scale))
 
 
 def _generate_questionnaire(distances: np.ndarray, noise: float = 0.0, density: float = 1.0, verbose: bool = True,

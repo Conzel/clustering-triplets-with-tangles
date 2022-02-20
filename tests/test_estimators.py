@@ -1,16 +1,10 @@
-import unittest
-from unittest import result
-from sklearn.datasets import load_iris
 from sklearn.metrics import normalized_mutual_info_score
 from data_generation import generate_gmm_data_fixed_means
 from estimators import OrdinalTangles
-from experiment_runner import Questionnaire
 from cblearn.datasets import make_random_triplets
 from estimators import SoeKmeans
-import pytest
-from cblearn.embedding import SOE
-from sklearn.cluster import KMeans
 import numpy as np
+from questionnaire import Questionnaire
 
 
 def test_tangles_performance():

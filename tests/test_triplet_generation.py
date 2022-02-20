@@ -1,7 +1,8 @@
 from data_generation import generate_gmm_data_fixed_means
-from questionnaire import Questionnaire, generate_k_subsets, generate_question_set, is_triplet, majority_neighbour_cuts, unify_triplet_order
+from questionnaire import Questionnaire, generate_k_subsets, generate_question_set
+from triplets import triplets_to_majority_neighbour_cuts, subsample_triplets_euclidean, unify_triplet_order, is_triplet
 from sklearn.neighbors import DistanceMetric
-from cblearn.datasets import fetch_car_similarity, make_random_triplets, make_all_triplets
+from cblearn.datasets import make_random_triplets, make_all_triplets
 from cblearn.utils import check_query_response
 import numpy as np
 
@@ -88,7 +89,7 @@ def test_to_from_bool_array():
 
 def test_majority_cut():
     triplets = np.array([[0, 1, 2], [0, 1, 3], [1, 3, 2], [1, 3, 4]])
-    cuts = majority_neighbour_cuts(triplets, radius=1)
+    cuts = triplets_to_majority_neighbour_cuts(triplets, radius=1)
     assert np.all(cuts == np.array([[1, 1, 0, 0, 0], [0, 1, 0, 1, 0]]).T)
 
 
@@ -96,7 +97,7 @@ def test_subsample():
     data = generate_gmm_data_fixed_means(
         n=15, means=np.array(np.array([[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]])), std=0.5, seed=1)
     q = Questionnaire.from_metric(data.xs)
-    t, _ = q.subsample_triplets_euclidean(data.xs, 100, return_responses=True)
+    t, _ = subsample_triplets_euclidean(data.xs, 100, return_responses=True)
     assert t.size == 300
 
 
