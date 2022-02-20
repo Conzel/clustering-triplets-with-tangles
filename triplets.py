@@ -4,8 +4,7 @@ A file that is made for handling triplet data.
 import numpy as np
 import random
 from typing import Optional
-
-MISSING_VALUE = -1
+from imputation import MISSING_VALUE
 
 
 def distance_function(x, y):
