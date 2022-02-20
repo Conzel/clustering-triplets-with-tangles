@@ -290,12 +290,31 @@ class Questionnaire():
         labels = [tuple(x) for x in labels]
         return values[:, ~corrupted_cols], labels
 
-    @staticmethod
-    def from_bool_array(triplets, responses) -> Questionnaire:
+    def fill_self_labels(self) -> Questionnaire:
         """
-        Generates a questionnaire from triplets and responses 
-        given as bool array. This function is the opposite of 
-        'triplets_to_bool_array'
+        Fills a questionnaire with self-information:
+        A point is always closer to itself than to another point. 
+        """
+        v_ = self.values.copy()
+        l_ = self.labels.copy()
+        for (i, l) in enumerate(l_):
+            v_[l[0], i] = 1
+            v_[l[1], i] = 0
+        return Questionnaire(v_, l_)
+
+    @staticmethod
+    def from_bool_array(triplets, responses, self_fill: bool = True) -> Questionnaire:
+        """
+        Generates a questionnaire from triplets and responses given as bool array. 
+        This function is the opposite of 'triplets_to_bool_array'
+
+        self_fill:
+            If set to true, we also fill in self-information with the correct values: 
+            A point is always closer to itself than to another point. This is reflected in the returned questionnaire,
+            even if not provided in the original triplet information.
+
+        The arguments are as received from the corresponding cblearn functions 
+        when called with result format (list-boolean).
         """
         # Eventually we could have more points but those don't have
         # any triplet information
@@ -319,7 +338,10 @@ class Questionnaire():
                 index = Questionnaire.triplet_to_pos(b, c, n_points)
                 labels[index] = (b, c)
 
-        return Questionnaire(values, labels)
+        if self_fill:
+            return Questionnaire(values, labels).fill_self_labels()
+        else:
+            return Questionnaire(values, labels)
 
     @staticmethod
     def triplet_to_pos(b, c, n_points) -> int:
@@ -355,6 +377,8 @@ class Questionnaire():
             while True:
                 b, c = np.random.choice(
                     possible_bs), np.random.choice(possible_cs)
+                if b > c:
+                    c, b = b, c
                 if (b, c) not in labels:
                     labels.append((b, c))
                     break
