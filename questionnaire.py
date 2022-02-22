@@ -3,6 +3,7 @@ File containing functions and class definitions for working with triplets in que
 """
 from __future__ import annotations
 import math
+from hierarchies import HierarchyTree
 from imputation import MISSING_VALUE, ImputationMethod
 import random
 from typing import Optional
@@ -115,6 +116,16 @@ class Questionnaire():
         """
         distances = nx.floyd_warshall_numpy(data)
         return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)
+
+    @staticmethod
+    def from_hierarchy(hierarchy: HierarchyTree, labels: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
+        distances = np.zeros((labels.shape[0], labels.shape[0]))
+        for i in range(labels.shape[0]):
+            for j in range(i, labels.shape[0]):
+                distances[i, j] = hierarchy.closest_ancestor_level(
+                    labels[i], labels[j])
+        distances = distances + distances.T
+        return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, randomize_ties=True, similarity=True)
 
     @staticmethod
     def from_bool_array(triplets, responses, self_fill: bool = True) -> Questionnaire:
@@ -325,7 +336,8 @@ def create_log_function(verbose):
 
 
 def _generate_questionnaire(distances: np.ndarray, noise: float = 0.0, density: float = 1.0, verbose: bool = True,
-                            seed: int = None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
+                            seed: int = None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False,
+                            randomize_ties: bool = False, similarity: bool = False) -> Questionnaire:
     """
     Generates a questionnaire for the given data. This is agnostic of the data source, 
     as any distance matrix can be passed (which can arise from euclidean data, a graph or anything else).
@@ -372,7 +384,7 @@ def _generate_questionnaire(distances: np.ndarray, noise: float = 0.0, density: 
             b = question[0]
             c = question[1]
             answer = is_triplet(a, b, c, distances, noise=noise,
-                                soft_threshhold=soft_threshhold, flip_noise=flip_noise)
+                                soft_threshhold=soft_threshhold, flip_noise=flip_noise, randomize_tie=randomize_ties, similarity=similarity)
             answers[j] = answer
         questionnaire[i] = np.array(answers)
 

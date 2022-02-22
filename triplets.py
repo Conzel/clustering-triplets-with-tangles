@@ -11,7 +11,7 @@ def distance_function(x, y):
     return np.linalg.norm(x - y)
 
 
-def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, flip_noise=False):
+def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, flip_noise=False, randomize_tie: bool = False, similarity: bool = False):
     """"
     Returns 1 if a is closer to b than c, 0 otherwise.
     If noise > 0, then the questions answer is set to -1 with probability noise.
@@ -32,7 +32,15 @@ def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, fli
         else:
             return MISSING_VALUE
     else:
-        return int(distances[a, b] <= distances[a, c])
+        dist_ab = distances[a, b]
+        dist_ac = distances[a, c]
+        if randomize_tie and dist_ab == dist_ac:
+            return int(np.random.random() < 0.5)
+        else:
+            if similarity:
+                return int(distances[a, b] >= distances[a, c])
+            else:
+                return int(distances[a, b] <= distances[a, c])
 
 
 def subsample_triplets_euclidean(data: np.ndarray, number_of_triplets: int, return_responses: bool = True) -> tuple[np.ndarray, Optional[np.ndarray]]:
