@@ -5,7 +5,7 @@ from __future__ import annotations
 from multiprocessing.sharedctypes import Value
 from typing import Optional
 from copy import deepcopy
-import numpy as np
+from ete3 import Tree
 
 
 class HierarchyNode:
@@ -36,6 +36,20 @@ class HierarchyNode:
         for child in children:
             child.parent = self
             self.children.append(child)
+
+    def _newick_tree(self) -> str:
+        if self.children == []:
+            if len(self.value) == 1:
+                return str(next(iter(self.value)))
+            else:
+                raise ValueError(f"Leaf has not only one value: {self.value}")
+        else:
+            s = "(" + ",".join([child._newick_tree()
+                                for child in self.children]) + ")"
+            if self.parent is None:
+                return s + ";"
+            else:
+                return s
 
 
 def merge_nodes(nodes: list[HierarchyNode]) -> HierarchyNode:
@@ -79,6 +93,10 @@ class HierarchyTree:
                 continue
             if len(eligible_children) > 1:
                 raise ValueError("Erroneous hierarchy, hierarchies overlap.")
+
+    def draw(self):
+        newick = self.root._newick_tree()
+        print(Tree(newick))
 
 
 def get_primitives(elements: list[int]):
