@@ -68,6 +68,7 @@ class OrdinalTangles(BaseEstimator):
 
         self.weight_ = weight
         self.contracted_tangles_tree_ = contracted
+        self.tangles_tree_ = tangles_tree
 
         bipartitions = Cuts((X == 1).T)
 
@@ -82,9 +83,11 @@ class OrdinalTangles(BaseEstimator):
 
         ys_predicted, _ = compute_hard_predictions(
             self.contracted_tangles_tree_, verbose=self.verbose)
+
+        self.cuts_ = bipartitions
         return ys_predicted
 
-    def fit_predict(self, X, y=None):
+    def fit_predict(self, X, y=None) -> np.ndarray:
         self.fit(X, y)
         return self.predict(X)
 
@@ -154,7 +157,7 @@ class SoeKmeans(BaseEstimator):
         """
         return self
 
-    def fit_predict(self, triplets, responses, y=None):
+    def fit_predict(self, triplets, responses, y=None) -> np.ndarray:
         """
         Performs SOE-kMeans to predict labels of given triplets.
         """
