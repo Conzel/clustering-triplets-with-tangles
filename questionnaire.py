@@ -118,14 +118,14 @@ class Questionnaire():
         return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)
 
     @staticmethod
-    def from_hierarchy(hierarchy: HierarchyTree, labels: np.ndarray, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
-        distances = np.zeros((labels.shape[0], labels.shape[0]))
+    def from_hierarchy(hierarchy: HierarchyTree, labels: np.ndarray, randomize_ties: bool = True, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
+        similarities = np.zeros((labels.shape[0], labels.shape[0]))
         for i in range(labels.shape[0]):
             for j in range(i, labels.shape[0]):
-                distances[i, j] = hierarchy.closest_ancestor_level(
+                similarities[i, j] = hierarchy.closest_ancestor_level(
                     labels[i], labels[j])
-        distances = distances + distances.T
-        return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, randomize_ties=True, similarity=True)
+        similarities = similarities + similarities.T
+        return _generate_questionnaire(similarities, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, randomize_ties=randomize_ties, similarity=True)
 
     @staticmethod
     def from_bool_array(triplets, responses, self_fill: bool = True) -> Questionnaire:

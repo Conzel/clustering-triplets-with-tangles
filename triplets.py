@@ -21,26 +21,27 @@ def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, fli
     soft: If soft is given, the answer is set randomly if a is further away from b
         and c than soft
     flip_noise: if set to True, the answer is flipped with probability noise instead of set to 0
-                (this is equivalent to calling this functionwith flip_noise = False and noise' = 2*noise, 
+                (this is equivalent to calling this function with flip_noise = False and noise' = 2*noise, 
                 but makes it easier to reproduce the results in the Tangles paper)
     """
     if soft_threshhold is not None and distances[a, b] > soft_threshhold and distances[a, c] > soft_threshhold:
         return MISSING_VALUE
+    dist_ab = distances[a, b]
+    dist_ac = distances[a, c]
+    if randomize_tie and dist_ab == dist_ac:
+        return int(np.random.random() < 0.5)
+    else:
+        if similarity:
+            result = dist_ab >= dist_ac
+        else:
+            result = dist_ab <= dist_ac
     if noise > 0 and random.random() < noise:
         if flip_noise:
-            return int(distances[a, b] > distances[a, c])
+            return int(not result)
         else:
             return MISSING_VALUE
     else:
-        dist_ab = distances[a, b]
-        dist_ac = distances[a, c]
-        if randomize_tie and dist_ab == dist_ac:
-            return int(np.random.random() < 0.5)
-        else:
-            if similarity:
-                return int(distances[a, b] >= distances[a, c])
-            else:
-                return int(distances[a, b] <= distances[a, c])
+        return int(result)
 
 
 def subsample_triplets_euclidean(data: np.ndarray, number_of_triplets: int, return_responses: bool = True) -> tuple[np.ndarray, Optional[np.ndarray]]:
