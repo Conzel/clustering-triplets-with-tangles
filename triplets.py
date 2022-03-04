@@ -78,6 +78,7 @@ def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarr
 
     triplet[0] is closer to triplet[1] than to triplet[2]
     """
+    triplets = triplets.copy()
     wrong_order = np.logical_not(responses)
     # swap those in wrong order
     triplets[wrong_order, 1], triplets[wrong_order,
@@ -98,6 +99,8 @@ def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1,
 
     Triplets[0] is closer to Triplets[1] than Triplets[2].
     """
+    # TODO: This is mostly duplicated code as the stochastic matrix method below. Maybe
+    # we can bring those two together and remove some code.
     if seed is not None:
         np.random.seed(seed)
     max_point = triplets.max()
@@ -126,6 +129,36 @@ def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1,
         cut[a] = True
         cuts[:, a] = cut
     return cuts
+
+
+def majority_neighbours_count_matrix(triplets: np.ndarray) -> np.ndarray:
+    """
+    Returns a matrix where the entry i,j contains how often the point j was closer to i than it was farther.
+    Assume we have the triplets (a,b,c), (a,b,e), (a,b,f), (a,l,b)
+    then the matrix would have the value 4-1 = 3 for the entry (a,b)
+    """
+    max_point = triplets.max()
+    first_positions_points = np.unique(triplets[:, 0])
+
+    cuts = np.zeros((max_point + 1, first_positions_points.size))
+    for a in first_positions_points:
+        triplets_starting_with_a = triplets[triplets[:, 0] == a, :]
+        counts_b_is_closer = np.bincount(
+            triplets_starting_with_a[:, 1], minlength=max_point + 1)
+        counts_b_is_farther = np.bincount(
+            triplets_starting_with_a[:, 2], minlength=max_point + 1)
+        cuts[:, a] = counts_b_is_closer - counts_b_is_farther
+    np.fill_diagonal(cuts, max_point)
+    return cuts
+
+
+def triplets_to_stochastic_matrix_cuts(triplets: np.ndarray, threshhold: float = 0.25, iterations: int = 2, seed=None):
+    A = majority_neighbours_count_matrix(triplets)
+    n = triplets.shape[0]
+    A = ((A + n) / (2 * n))
+    for _ in range(iterations - 1):
+        A = A @ A
+    return A > threshhold
 
 
 def _sigmoid(x, scale):
