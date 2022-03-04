@@ -163,11 +163,11 @@ class SoeKmeans(BaseEstimator):
         """
         self._embedding = self._soe.fit_transform(triplets, responses)
         if self._kmeans is None:
-            k = find_k_silhouette(self._soe.embedding_, k_max=self._k_max)
+            k = find_k_silhouette(self.embedding_, k_max=self._k_max)
             self._k = k
             kmeans = KMeans(n_clusters=k, random_state=self.seed)
             self._kmeans = kmeans
-        ys = self._kmeans.fit_predict(self._soe.embedding_)
+        ys = self._kmeans.fit_predict(self.embedding_)
         return ys
 
     def score(self, triplets, responses, y):
