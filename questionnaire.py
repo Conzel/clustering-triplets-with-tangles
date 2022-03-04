@@ -285,6 +285,58 @@ class Questionnaire():
         values[mask == 1] = MISSING_VALUE
         return Questionnaire(values, self.labels)
 
+    def labels_are_ordered(self) -> bool:
+        """
+        Returns true, if for all labels, the index of b < c.
+        """
+        for l in self.labels:
+            if l[0] > l[1]:
+                return False
+        return True
+
+    def order_labels(self) -> Questionnaire:
+        """
+        Returns Questionnaire equivalent to self where all labels are ordered
+        (it is always b < c).
+        """
+        vals = self.values.copy()
+        labels = self.labels.copy()
+        for i, label in enumerate(labels):
+            if label[0] > label[1]:
+                vals_valid = vals[:, i] != MISSING_VALUE
+                vals[vals_valid, i] = np.logical_not(
+                    vals[vals_valid, i]).astype(int)
+                labels[i] = (label[1], label[0])
+        return Questionnaire(vals, labels)
+
+    def fill_with(self, other: Questionnaire) -> Questionnaire:
+        """
+        Imputes missing values in this questionnaire with the other questionnaire.
+
+        Returns the imputed questionnaire, doesn't change self.
+
+        The return questionnaire may still have missing values, if the other
+        questionnaire had missing values as well.
+        """
+        vals = self.values.copy()
+        labels = self.labels.copy()
+        label_indices_not_in_this_questionnaire = []
+        labels_not_in_this_questionnaire = []
+        for (i, label) in enumerate(other.labels):
+            assert label[0] < label[1]
+            if label not in labels:
+                labels_not_in_this_questionnaire.append(label)
+                label_indices_not_in_this_questionnaire.append(i)
+            else:
+                idx_in_vals = labels.index(label)
+                missing = vals[:, idx_in_vals] == MISSING_VALUE
+                vals[:, idx_in_vals][missing] = other.values[:, i][missing]
+
+        vals = np.concatenate(
+            (vals, other.values[:, label_indices_not_in_this_questionnaire]), axis=1)
+        labels.extend(labels_not_in_this_questionnaire)
+        return Questionnaire(vals, labels)
+
     def impute(self, imputation_method_name: str) -> Questionnaire:
         """
         Imputes the questionnaire with the given method.
