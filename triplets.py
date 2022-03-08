@@ -83,31 +83,54 @@ def _lens_distance(triplets: np.ndarray, most_central_triplet: np.ndarray, x: in
     return other_is_most_central.sum()
 
 
-def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=DistanceMetric.get_metric('euclidean'), return_responses: bool = True) -> tuple[np.ndarray, Optional[np.ndarray]]:
+def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=DistanceMetric.get_metric('euclidean'), return_mostcentral: bool = False, seed: int = None) -> tuple[np.ndarray, np.ndarray]:
     """
     Returns a triplet-response array with a certain number of triplets in it.
+
+    If return_mostcentral is set to True, arrays returned are sucht that the following holds:
+
+    Out of the objects triplets[i][0], triplets[i][1], triplets[i][2], triplets[i][responses[i]]
+    is the most central object ouf of them.
+
+    Else they are such that this holds:
+    Is triplet[i][0] closer to triplet[i][1] than to triplet[i][2]? responses[i]
     """
+    if seed is not None:
+        random.seed(seed)
     triplets = np.zeros((number_of_triplets, 3), dtype=int)
-    responses = np.zeros(number_of_triplets, dtype=bool)
+    if return_mostcentral is True:
+        responses = np.zeros(number_of_triplets, dtype=int)
+    else:
+        responses = np.zeros(number_of_triplets, dtype=bool)
+    dists = metric.pairwise(data)
     for i in range(number_of_triplets):
         while True:
             # drawing indices
-            i_a, i_b, i_c = random.randint(0, data.shape[0] - 1), random.randint(
+            a, b, c = random.randint(0, data.shape[0] - 1), random.randint(
                 0, data.shape[0] - 1), random.randint(0, data.shape[0] - 1)
-            if i_b != i_c:
+            if b != c:
                 break
-        a = data[i_a, :]
-        b = data[i_b, :]
-        c = data[i_c, :]
-        triplets[i, 0] = i_a
-        triplets[i, 1] = i_b
-        triplets[i, 2] = i_c
-        responses[i] = True if metric.pairwise(
-            a[None, :], b[None, :])[0][0] < metric.pairwise(a[None, :], c[None, :])[0][0] else False
-    if return_responses:
-        return triplets, responses
-    else:
-        return unify_triplet_order(triplets, responses), None
+        triplets[i, 0] = a
+        triplets[i, 1] = b
+        triplets[i, 2] = c
+        if return_mostcentral is True:
+            responses[i] = _most_central(a, b, c, dists)
+        else:
+            responses[i] = True if dists[a, b] < dists[a, c] else False
+    return triplets, responses
+
+
+def _most_central(a: int, b: int, c: int, distances: np.ndarray) -> int:
+    """
+    Returns 0 if a is the most central object out of (a,b,c), 1 if b is the most central object,
+    else 2.
+
+    Assumes that distance matrix is symmetric.
+    """
+    assert np.all(distances == distances.T)
+    dists = [distances[a, b] + distances[a, c], distances[b, c] +
+             distances[b, a], distances[c, a] + distances[c, b]]
+    return np.argmin(dists).item()
 
 
 def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarray:

@@ -350,9 +350,14 @@ class Questionnaire():
     def impute(self, imputation_method_name: str) -> Questionnaire:
         """
         Imputes the questionnaire with the given method.
+        This is guaranteed not to change the original questionnaire. 
+        The imputed questionnaire will be returned.
+
         Afterwards, the questionnaire is guaranteed to not have any 
         rows left with missing values. 
-        This might change the shape of the questionnaire, as completely
+
+        The output questionnaire might have a different shape
+        as the input questionnaire, as completely
         corrupted columns will be thrown out.
 
         INPUT:

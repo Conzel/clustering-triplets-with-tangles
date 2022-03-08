@@ -1,6 +1,6 @@
 from data_generation import generate_gmm_data_fixed_means
 from questionnaire import Questionnaire, generate_k_subsets, generate_question_set
-from triplets import _lens_distance, lens_distance_matrix, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
+from triplets import _lens_distance, _most_central, lens_distance_matrix, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
 from sklearn.neighbors import DistanceMetric
 from cblearn.datasets import make_random_triplets, make_all_triplets
 from cblearn.utils import check_query_response
@@ -97,7 +97,7 @@ def test_subsample():
     data = generate_gmm_data_fixed_means(
         n=15, means=np.array(np.array([[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]])), std=0.5, seed=1)
     q = Questionnaire.from_metric(data.xs)
-    t, _ = subsample_triplets(data.xs, 100, return_responses=True)
+    t, _ = subsample_triplets(data.xs, 100)
     assert t.size == 300
 
 
@@ -118,6 +118,20 @@ def test_lens_distance():
         [[0, 1, 2, 0], [1, 0, 0, 0], [2, 0, 0, 1], [0, 0, 1, 0]])
     assert np.all(target_dists == lens_distance_matrix(t, r))
 
+def test_centrality_triplets():
+    points = np.array([[2, 0], [-2, 0], [0.01, 1], [0, -1]])
+    # we just oversample the triplets, we will most likely get every triplet once then
+    t, r = subsample_triplets(points, 5000, return_mostcentral=True, seed=10)
+    assert np.all(r[np.all(t == np.array([0, 1, 2]), axis=1)] == 2)
+    assert np.all(r[np.all(t == np.array([0, 2, 1]), axis=1)] == 1)
+    assert np.all(r[np.all(t == np.array([2, 1, 0]), axis=1)] == 0)
+    assert np.all(r[np.all(t == np.array([2, 3, 0]), axis=1)] == 0)
+    assert np.all(r[np.all(t == np.array([2, 3, 1]), axis=1)] == 1)
+
+def test_most_central():
+    d = np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])
+    assert _most_central(0, 1, 2, d) == 1
+
 
 def test_is_triplet():
     dists = np.array([[0, 2, 1], [2, 0, 4], [1, 4, 0]])
@@ -134,3 +148,4 @@ def test_subsets():
 def test_generate_question_set():
     assert generate_question_set(3) == [[0, 1], [0, 2], [1, 2]]
     assert generate_question_set(3, density=0.0) == set()
+    
