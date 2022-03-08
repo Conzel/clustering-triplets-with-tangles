@@ -5,13 +5,14 @@ import numpy as np
 import random
 from typing import Optional
 from imputation import MISSING_VALUE
+from sklearn.neighbors import DistanceMetric
 
 
 def distance_function(x, y):
     return np.linalg.norm(x - y)
 
 
-def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, flip_noise=False, randomize_tie: bool = False, similarity: bool = False):
+def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: Optional[float] = None, flip_noise=False, randomize_tie: bool = False, similarity: bool = False):
     """"
     Returns 1 if a is closer to b than c, 0 otherwise.
     If noise > 0, then the questions answer is set to -1 with probability noise.
@@ -21,7 +22,7 @@ def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, fli
     soft: If soft is given, the answer is set randomly if a is further away from b
         and c than soft
     flip_noise: if set to True, the answer is flipped with probability noise instead of set to 0
-                (this is equivalent to calling this function with flip_noise = False and noise' = 2*noise, 
+                (this is equivalent to calling this function with flip_noise = False and noise' = 2*noise,
                 but makes it easier to reproduce the results in the Tangles paper)
     """
     if soft_threshhold is not None and distances[a, b] > soft_threshhold and distances[a, c] > soft_threshhold:
@@ -44,7 +45,45 @@ def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: float = None, fli
         return int(result)
 
 
-def subsample_triplets_euclidean(data: np.ndarray, number_of_triplets: int, return_responses: bool = True) -> tuple[np.ndarray, Optional[np.ndarray]]:
+def lens_distance_matrix(triplets: np.ndarray, responses: np.ndarray) -> np.ndarray:
+    """
+    Based on the dissertation of Kleindessner, 2017, available here:
+    https://hsbiblio.uni-tuebingen.de/xmlui/bitstream/handle/10900/77452/thesis_Kleindessner.pdf
+
+    We interpret and calculate a distance as follows:
+    If the lens (all points c, such that c is the most central object of (x,c,y))
+    of x and y contain a lot of points, they are further away than if the lens contains only a few points.
+
+    Calculates the pairwise lens distance between all points.
+    """
+    assert triplets.shape[1] == 3
+    assert triplets.shape[0] == responses.shape[0]
+    n_points = triplets.max() + 1
+    distances = np.zeros((n_points, n_points))
+    most_central_triplet = np.take_along_axis(
+        triplets, responses[:, None], axis=1)
+    for i in range(0, n_points):
+        for j in range(i + 1, n_points):
+            distances[i, j] = _lens_distance(
+                triplets, most_central_triplet, i, j)
+    return distances + distances.T
+
+
+def _lens_distance(triplets: np.ndarray, most_central_triplet: np.ndarray, x: int, y: int) -> int:
+    """
+    See lens_distance_matrix.
+    Responses has been replaced by just an array of the most central triplet for each triplet
+    for computational reasons.
+    """
+    contains_x_y = np.logical_and(
+        np.any(triplets == x, axis=1), np.any(triplets == y, axis=1))
+    other_is_most_central = np.logical_and(
+        most_central_triplet[contains_x_y] != x, most_central_triplet[contains_x_y] != y)
+    # we can take the sum directly, as we assume uniform randomly sampled triplets
+    return other_is_most_central.sum()
+
+
+def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=DistanceMetric.get_metric('euclidean'), return_responses: bool = True) -> tuple[np.ndarray, Optional[np.ndarray]]:
     """
     Returns a triplet-response array with a certain number of triplets in it.
     """
@@ -63,8 +102,8 @@ def subsample_triplets_euclidean(data: np.ndarray, number_of_triplets: int, retu
         triplets[i, 0] = i_a
         triplets[i, 1] = i_b
         triplets[i, 2] = i_c
-        responses[i] = True if np.linalg.norm(
-            a - b) < np.linalg.norm(a - c) else False
+        responses[i] = True if metric.pairwise(
+            a[None, :], b[None, :])[0][0] < metric.pairwise(a[None, :], c[None, :])[0][0] else False
     if return_responses:
         return triplets, responses
     else:
@@ -89,10 +128,10 @@ def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarr
 def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool = False, sigmoid_scale: float = None, seed=None) -> np.ndarray:
     """
     Calculates the majority neighbour cuts for a set of triplets.
-    If a sigmoid scale is given, the cuts aren't made binary (if b has appeared more often in middle 
-    position than in right position it is included), but the difference between b being in middle vs b 
+    If a sigmoid scale is given, the cuts aren't made binary (if b has appeared more often in middle
+    position than in right position it is included), but the difference between b being in middle vs b
     being right is used as input to a sigmoid to then get a probability of b being in the cut or not
-    (so b being in the middle often => b will have a high chance of getting included in the cut). 
+    (so b being in the middle often => b will have a high chance of getting included in the cut).
 
     Returns array of triplets.
     Triplets are in array format, such that the following is true:
