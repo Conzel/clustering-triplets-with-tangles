@@ -9,7 +9,7 @@ import random
 from typing import Optional
 import networkx as nx
 from operator import itemgetter
-from triplets import lens_distance_matrix, unify_triplet_order, is_triplet
+from triplets import LensMetric, unify_triplet_order, is_triplet
 
 import numpy as np
 from sklearn.impute import KNNImputer
@@ -128,14 +128,14 @@ class Questionnaire():
         return _generate_questionnaire(similarities, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, randomize_ties=randomize_ties, similarity=True)
 
     @staticmethod
-    def from_most_central_triplets(triplets: np.ndarray, responses: np.ndarray, randomize_ties: bool = True, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
+    def from_most_central_triplets(triplets: np.ndarray, responses: np.ndarray, randomize_ties: bool = True, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False, normalize: bool = False) -> Questionnaire:
         """
         Generates a questionnaire from similarity triplets.
 
         Each row of the triplet array corresponds to three datapoints that have been shown 
         to a participant. The responses indicate the most central datapoint of each triplet.
         """
-        return _generate_questionnaire(lens_distance_matrix(triplets, responses), noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, randomize_ties=randomize_ties)
+        return _generate_questionnaire(LensMetric().pairwise_triplets(triplets, responses, normalize=normalize), noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, randomize_ties=randomize_ties)
 
     @staticmethod
     def from_bool_array(triplets, responses, self_fill: bool = True) -> Questionnaire:

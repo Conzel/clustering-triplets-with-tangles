@@ -1,6 +1,6 @@
 from data_generation import generate_gmm_data_fixed_means
 from questionnaire import Questionnaire, generate_k_subsets, generate_question_set
-from triplets import _lens_distance, _most_central, lens_distance_matrix, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
+from triplets import _most_central, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
 from sklearn.neighbors import DistanceMetric
 from cblearn.datasets import make_random_triplets, make_all_triplets
 from cblearn.utils import check_query_response
@@ -107,16 +107,6 @@ def test_unify_triplet_order():
     t_ = np.array([[0, 1, 2], [0, 4, 3], [1, 4, 6]])
     assert np.all(t == t_)
 
-
-def test_lens_distance():
-    t = np.array([[0, 1, 2], [0, 1, 2], [0, 1, 3], [1, 3, 2]])
-    # 0-1: 1
-    # 0-2: 2
-    # 2-3: 1
-    r = np.array([1, 1, 2, 0])
-    target_dists = np.array(
-        [[0, 1, 2, 0], [1, 0, 0, 0], [2, 0, 0, 1], [0, 0, 1, 0]])
-    assert np.all(target_dists == lens_distance_matrix(t, r))
 
 def test_centrality_triplets():
     points = np.array([[2, 0], [-2, 0], [0.01, 1], [0, -1]])

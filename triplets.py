@@ -45,42 +45,90 @@ def is_triplet(a, b, c, distances, noise=0.0, soft_threshhold: Optional[float] =
         return int(result)
 
 
-def lens_distance_matrix(triplets: np.ndarray, responses: np.ndarray) -> np.ndarray:
-    """
-    Based on the dissertation of Kleindessner, 2017, available here:
-    https://hsbiblio.uni-tuebingen.de/xmlui/bitstream/handle/10900/77452/thesis_Kleindessner.pdf
-
-    We interpret and calculate a distance as follows:
-    If the lens (all points c, such that c is the most central object of (x,c,y))
-    of x and y contain a lot of points, they are further away than if the lens contains only a few points.
-
-    Calculates the pairwise lens distance between all points.
-    """
-    assert triplets.shape[1] == 3
-    assert triplets.shape[0] == responses.shape[0]
-    n_points = triplets.max() + 1
-    distances = np.zeros((n_points, n_points))
-    most_central_triplet = np.take_along_axis(
-        triplets, responses[:, None], axis=1)
-    for i in range(0, n_points):
-        for j in range(i + 1, n_points):
-            distances[i, j] = _lens_distance(
-                triplets, most_central_triplet, i, j)
-    return distances + distances.T
-
-
-def _lens_distance(triplets: np.ndarray, most_central_triplet: np.ndarray, x: int, y: int) -> int:
+def _lens_distance(triplets: np.ndarray, most_central_triplet: np.ndarray, x: int, y: int, normalize: bool = False) -> int:
     """
     See lens_distance_matrix.
     Responses has been replaced by just an array of the most central triplet for each triplet
     for computational reasons.
+
+    If normalize is set to true, divides the distances by the number of statements containing both x and y
     """
     contains_x_y = np.logical_and(
         np.any(triplets == x, axis=1), np.any(triplets == y, axis=1))
     other_is_most_central = np.logical_and(
         most_central_triplet[contains_x_y] != x, most_central_triplet[contains_x_y] != y)
     # we can take the sum directly, as we assume uniform randomly sampled triplets
-    return other_is_most_central.sum()
+    dist = other_is_most_central.sum()
+    if normalize and contains_x_y.sum() != 0:
+        return dist / contains_x_y.sum()
+    else:
+        return dist
+
+
+class LensMetric():
+    """
+    SkLearn compatible metric using the lens distance between points.
+    Always uses euclidean distances
+    """
+
+    def pairwise(self, xs: np.ndarray):
+        """
+        Returns the pairwise lens distance between all points. Uses a euclidean
+        metric to determine distances.
+        """
+        n_points = xs.shape[0]
+        point_to_point_dist = DistanceMetric.get_metric(
+            'euclidean').pairwise(xs)
+        lens_dists = np.zeros((n_points, n_points))
+        for i in range(0, n_points):
+            for j in range(i + 1, n_points):
+                radius = point_to_point_dist[i, j]
+                in_lens = np.logical_and(
+                    point_to_point_dist[:, i] < radius, point_to_point_dist[:, j] < radius)
+                lens_dists[i, j] = np.sum(in_lens)
+        return lens_dists + lens_dists.T
+
+    def pairwise_triplets(self, triplets: np.ndarray, responses: np.ndarray, normalize: bool = True) -> np.ndarray:
+        """
+        Based on the dissertation of Kleindessner, 2017, available here:
+        https://hsbiblio.uni-tuebingen.de/xmlui/bitstream/handle/10900/77452/thesis_Kleindessner.pdf
+
+        We interpret and calculate a distance as follows:
+        If the lens (all points c, such that c is the most central object of (x,c,y))
+        of x and y contain a lot of points, they are further away than if the lens contains only a few points.
+
+        If normalize is set to true, divides each distance by the total amount of objects 
+        that compromised both x and y to begin with. The dissertation of Kleindessner, p.84.
+
+        Calculates the pairwise lens distance between all points.
+        """
+        assert triplets.shape[1] == 3
+        assert triplets.shape[0] == responses.shape[0]
+        n_points = triplets.max() + 1
+        distances = np.zeros((n_points, n_points))
+        most_central_triplet = np.take_along_axis(
+            triplets, responses[:, None], axis=1)
+        for i in range(0, n_points):
+            for j in range(i + 1, n_points):
+                distances[i, j] = _lens_distance(
+                    triplets, most_central_triplet, i, j, normalize=normalize)
+        return distances + distances.T
+
+    def outside_point(self, xs: np.ndarray, x: int, z: np.ndarray):
+        """
+        Calculates the lens distance between a point x and a point z, while
+        z is a point that is not contained in the dataset.
+        """
+        if len(z.shape) == 1:
+            z = z[None, :]
+        n_points = xs.shape[0]
+        euclidean = DistanceMetric.get_metric('euclidean')
+        point_to_point_dist = euclidean.pairwise(xs)
+        z_and_points_dist = euclidean.pairwise(xs, z)
+        radius = z_and_points_dist[x, 0]
+        in_lens = np.logical_and(
+            point_to_point_dist[:, x] < radius, z_and_points_dist[:, 0] < radius)
+        return in_lens.sum()
 
 
 def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=DistanceMetric.get_metric('euclidean'), return_mostcentral: bool = False, seed: int = None) -> tuple[np.ndarray, np.ndarray]:
@@ -108,7 +156,7 @@ def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=Distanc
             # drawing indices
             a, b, c = random.randint(0, data.shape[0] - 1), random.randint(
                 0, data.shape[0] - 1), random.randint(0, data.shape[0] - 1)
-            if b != c:
+            if a != b and a != c and b != c:
                 break
         triplets[i, 0] = a
         triplets[i, 1] = b
