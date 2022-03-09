@@ -4,9 +4,11 @@ Module for generating synthetic data. Current possible data sets are:
 - Gaussian Mixture Model
 - Stochastic Block Model
 """
+from typing import Optional
 import numpy as np
 import sklearn
 import networkx as nx
+from torchvision.datasets import USPS
 
 from tangles.data_types import Data
 from tangles.loading import load_GMM
@@ -88,6 +90,53 @@ def generate_gmm_data_draw_means(n: int, std: float, seed: int, components: int,
     """
     means = draw_cluster_means(components, dimension, min_cluster_dist)
     return _generate_gmm_data(n, means, std, seed)
+
+
+def get_usps(shuffle: bool = True, seed: Optional[int] = None, subset: Optional[set[int]] = None, num_samples: Optional[int] = None) -> Data:
+    """
+    Returns data from the USPS dataset. Values returned are flattened arrays of the images with values in [0,255],
+    as well as the number that the image depicts. 
+
+    If subset is set to a set of ints, returns only those numbers.
+    If num_samples is set, returns this many samples per number. Only useable if subset is not None.
+    """
+    if num_samples is not None and subset is None:
+        raise ValueError(
+            "Illegal parameter combination: num_samples is set but subset is None")
+    usps = USPS(root='./datasets', download=True)
+    labels = []
+    images = []
+    for im, label in usps:
+        images.append(np.asarray(im).flatten()[None, :])
+        labels.append(label)
+    im_arr = np.concatenate(images, axis=0)
+    label_arr = np.array(labels)
+    if subset is not None:
+        is_in_subset = [l in subset for l in labels]
+        im_arr = im_arr[is_in_subset, :]
+        label_arr = label_arr[is_in_subset]
+
+    if shuffle:
+        np.random.seed(seed)
+        perm = np.random.permutation(im_arr.shape[0])
+        im_arr = im_arr[perm, :]
+        label_arr = label_arr[perm]
+
+    if num_samples is not None and subset is not None:
+        im_arr_subsampled = np.zeros(
+            (num_samples * len(subset), im_arr.shape[1]))
+        label_arr_subsampled = np.zeros(num_samples * len(subset))
+        for (k, j) in enumerate(subset):
+            subsample = np.where(label_arr == j)[0][:num_samples]
+            im_arr_subsample = im_arr[subsample, :]
+            im_arr_subsampled[(k * num_samples):((k + 1) *
+                                                 num_samples), :] = im_arr_subsample
+            label_arr_subsampled[(k * num_samples):((k + 1) * num_samples)] = j
+
+        perm = np.random.permutation(im_arr_subsampled.shape[0])
+        im_arr = im_arr_subsampled[perm, :]
+        label_arr = label_arr_subsampled[perm]
+    return Data(im_arr, label_arr)
 
 
 def _generate_gmm_data(n, means: np.ndarray, std: float, seed: int):
