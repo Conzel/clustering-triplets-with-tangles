@@ -59,10 +59,52 @@ def _lens_distance(triplets: np.ndarray, most_central_triplet: np.ndarray, x: in
         most_central_triplet[contains_x_y] != x, most_central_triplet[contains_x_y] != y)
     # we can take the sum directly, as we assume uniform randomly sampled triplets
     dist = other_is_most_central.sum()
-    if normalize and contains_x_y.sum() != 0:
+    if contains_x_y.sum() == 0:
+        # maximum distance, we don't use the
+        return triplets.max() + 1
+    elif normalize:
         return dist / contains_x_y.sum()
     else:
         return dist
+
+
+def remove_outliers(triplets: np.ndarray, responses: np.ndarray, outliers: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Removes the indices in the array outliers from the triplets and responses arrays.
+    This induces renaming of the elements in the triplet array, such that the elements
+    are still contigous after the renaming.
+
+    Outliers shall be a 1-dimensional array that contains the names of all the outliers.
+
+    f.e. if we have 5 elements, and element 2 should be removed, the namings will be:
+    1 -> 1, 2 -> removed, 3 -> 2, 4 -> 3, 5 -> 4
+
+    Returns cleaned triplets and responses arrays.
+    """
+    assert len(outliers.shape) == 1
+
+    outliers_list = list(outliers)
+    outliers_list.append(triplets.max() + 1)
+
+    # getting replacements for numbers
+    replacements = {}
+    for (i, o) in enumerate(outliers_list):
+        if i == 0:
+            start = -1
+        else:
+            start = outliers[i - 1]
+        for j in range(start + 1, o):
+            replacements[j] = j - i
+        replacements[o] = None
+
+    contains_outlier = np.any(
+        np.any((triplets[None, :, :] == outliers[:, None, None]), axis=0), axis=1)
+    triplets_without_outliers = triplets[~contains_outlier, :]
+    responses_without_outliers = responses[~contains_outlier]
+
+    replacev = np.vectorize(lambda x: replacements[x])
+    triplets_without_outliers_renamed = replacev(triplets_without_outliers)
+    return triplets_without_outliers_renamed, responses_without_outliers
 
 
 class LensMetric():

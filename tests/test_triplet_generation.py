@@ -1,6 +1,6 @@
 from data_generation import generate_gmm_data_fixed_means
 from questionnaire import Questionnaire, generate_k_subsets, generate_question_set
-from triplets import _most_central, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
+from triplets import _most_central, remove_outliers, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
 from sklearn.neighbors import DistanceMetric
 from cblearn.datasets import make_random_triplets, make_all_triplets
 from cblearn.utils import check_query_response
@@ -118,6 +118,7 @@ def test_centrality_triplets():
     assert np.all(r[np.all(t == np.array([2, 3, 0]), axis=1)] == 0)
     assert np.all(r[np.all(t == np.array([2, 3, 1]), axis=1)] == 1)
 
+
 def test_most_central():
     d = np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])
     assert _most_central(0, 1, 2, d) == 1
@@ -138,4 +139,14 @@ def test_subsets():
 def test_generate_question_set():
     assert generate_question_set(3) == [[0, 1], [0, 2], [1, 2]]
     assert generate_question_set(3, density=0.0) == set()
-    
+
+
+def test_remove_outliers():
+    t = np.array([[1, 2, 3], [0, 1, 2], [0, 2, 0], [1, 2, 4]])
+    r = np.array([True, False, True, False])
+    outliers = np.array([3, ])
+    t_r, r_r = remove_outliers(t, r, outliers)
+    t_r_ = np.array([[0, 1, 2], [0, 2, 0], [1, 2, 3]])
+    r_r_ = np.array([False, True, False])
+    assert np.all(t_r == t_r_)
+    assert np.all(r_r == r_r_)
