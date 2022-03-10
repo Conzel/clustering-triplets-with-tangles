@@ -251,14 +251,12 @@ def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1,
 
     Triplets[0] is closer to Triplets[1] than Triplets[2].
     """
-    # TODO: This is mostly duplicated code as the stochastic matrix method below. Maybe
-    # we can bring those two together and remove some code.
     if seed is not None:
         np.random.seed(seed)
     max_point = triplets.max()
     first_positions_points = np.unique(triplets[:, 0])
 
-    cuts = np.zeros((max_point + 1, first_positions_points.size))
+    cuts = np.zeros((max_point + 1, max_point + 1))
     for a in first_positions_points:
         triplets_starting_with_a = triplets[triplets[:, 0] == a, :]
         counts_b_is_closer = np.bincount(
@@ -283,24 +281,30 @@ def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1,
     return cuts
 
 
-def majority_neighbours_count_matrix(triplets: np.ndarray) -> np.ndarray:
+def majority_neighbours_count_matrix(triplets: np.ndarray, symmetric: bool = False) -> np.ndarray:
     """
     Returns a matrix where the entry i,j contains how often the point j was closer to i than it was farther.
     Assume we have the triplets (a,b,c), (a,b,e), (a,b,f), (a,l,b)
     then the matrix would have the value 4-1 = 3 for the entry (a,b)
+
+    If symmetric is set to true, then the relationship goes both ways, e.g.
+    the triplet (a,b,c) tells us, that probably a belongs to the same cluster as
+    b in the a-cut and also in the b-cut. 
     """
     max_point = triplets.max()
     first_positions_points = np.unique(triplets[:, 0])
 
-    cuts = np.zeros((max_point + 1, first_positions_points.size))
+    cuts = np.zeros((max_point + 1, max_point + 1))
     for a in first_positions_points:
         triplets_starting_with_a = triplets[triplets[:, 0] == a, :]
         counts_b_is_closer = np.bincount(
             triplets_starting_with_a[:, 1], minlength=max_point + 1)
         counts_b_is_farther = np.bincount(
             triplets_starting_with_a[:, 2], minlength=max_point + 1)
-        cuts[:, a] = counts_b_is_closer - counts_b_is_farther
-    np.fill_diagonal(cuts, max_point)
+        cuts[:, a] += counts_b_is_closer - counts_b_is_farther
+        if symmetric:
+            cuts[a, :] += counts_b_is_closer.T
+    np.fill_diagonal(cuts, max_point + 1)
     return cuts
 
 
