@@ -1,6 +1,6 @@
 from data_generation import generate_gmm_data_fixed_means
 from questionnaire import Questionnaire, generate_k_subsets, generate_question_set
-from triplets import _most_central, remove_outliers, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
+from triplets import _most_central, majority_neighbours_count_matrix, remove_outliers, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
 from sklearn.neighbors import DistanceMetric
 from cblearn.datasets import make_random_triplets, make_all_triplets
 from cblearn.utils import check_query_response
@@ -90,7 +90,8 @@ def test_to_from_bool_array():
 def test_majority_cut():
     triplets = np.array([[0, 1, 2], [0, 1, 3], [1, 3, 2], [1, 3, 4]])
     cuts = triplets_to_majority_neighbour_cuts(triplets, radius=1)
-    assert np.all(cuts == np.array([[1, 1, 0, 0, 0], [0, 1, 0, 1, 0]]).T)
+    assert np.all(cuts == np.array([[1, 1, 0, 0, 0], [0, 1, 0, 1, 0], [
+                  0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]).T)
 
 
 def test_subsample():
@@ -117,6 +118,19 @@ def test_centrality_triplets():
     assert np.all(r[np.all(t == np.array([2, 1, 0]), axis=1)] == 0)
     assert np.all(r[np.all(t == np.array([2, 3, 0]), axis=1)] == 0)
     assert np.all(r[np.all(t == np.array([2, 3, 1]), axis=1)] == 1)
+
+
+def test_majority_neighbours_count_matrix():
+    triplets = np.array(
+        [[0, 1, 2], [1, 3, 4], [2, 3, 4], [1, 2, 3], [0, 3, 4]])
+    count_matrix = np.array([[5, 1, -1, 1, -1], [0, 5, 1, 0, -1],
+                             [0, 0, 5, 1, -1], [0, 0, 0, 5, 0], [0, 0, 0, 0, 5]]).T
+    count_matrix_sym = np.array(
+        [[5, 1, -1, 1, -1], [1, 5, 1, 0, -1], [0, 1, 5, 1, -1], [1, 1, 1, 5, 0], [0, 0, 0, 0, 5]]).T
+    assert np.all(count_matrix == majority_neighbours_count_matrix(
+        triplets, symmetric=False))
+    assert np.all(count_matrix_sym == majority_neighbours_count_matrix(
+        triplets, symmetric=True))
 
 
 def test_most_central():

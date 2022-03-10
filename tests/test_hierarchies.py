@@ -28,6 +28,6 @@ def test_questionnaire_from_hierarchy():
     qv = np.zeros((3, 3))
     for i in range(10000):
         qv += Questionnaire.from_hierarchy(tree,
-                                           np.array(data), verbose=False).values
+                                           np.array(data), verbose=False, randomize_ties=True).values
     assert np.abs(
         qv / 10000 - np.array([[1, 1, 1], [0, 1, 1], [0.5, 0, 0]])).sum() < 0.01
