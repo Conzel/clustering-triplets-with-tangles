@@ -4,7 +4,7 @@ Module for generating synthetic data. Current possible data sets are:
 - Gaussian Mixture Model
 - Stochastic Block Model
 """
-from typing import Optional
+from typing import Optional, Union
 import numpy as np
 import sklearn
 import networkx as nx
@@ -77,7 +77,18 @@ def clean_bipartitions(xs: np.ndarray) -> np.ndarray:
     return res
 
 
-def generate_gmm_data_fixed_means(n: int, means: np.ndarray, std: float, seed: int) -> Data:
+def generate_gmm_data_fixed_means(n: Union[int, list[int]], means: np.ndarray, std: float, seed: int) -> Data:
+    if isinstance(n, list):
+        xs = []
+        ys = []
+        i = 0
+        for cluster_size, mean in zip(n, means):
+            data_n = _generate_gmm_data(
+                cluster_size, mean[None, :], std, seed + i)
+            xs.append(data_n.xs)
+            ys.append(data_n.ys + i)
+            i += 1
+        return Data(xs=np.concatenate(xs), ys=np.concatenate(ys))
     return _generate_gmm_data(n, means, std, seed)
 
 
