@@ -238,7 +238,7 @@ def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarr
     return triplets
 
 
-def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool = False, sigmoid_scale: float = None, seed=None) -> np.ndarray:
+def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool = False, seed=None) -> np.ndarray:
     """
     Calculates the majority neighbour cuts for a set of triplets.
     If a sigmoid scale is given, the cuts aren't made binary (if b has appeared more often in middle
@@ -269,13 +269,7 @@ def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1,
                 2, counts_b_is_closer.shape)[ties]
 
         # Points are in the same partition if they are more often closer to point than farther
-        if sigmoid_scale is None:
-            cut = radius * counts_b_is_closer > counts_b_is_farther
-        else:
-            cut_probabilities = _sigmoid(
-                radius * counts_b_is_closer - counts_b_is_farther, sigmoid_scale)
-            draws = np.random.uniform(size=cut_probabilities.shape)
-            cut = cut_probabilities >= draws
+        cut = radius * counts_b_is_closer > counts_b_is_farther
         cut[a] = True
         cuts[:, a] = cut
     return cuts
