@@ -190,9 +190,9 @@ def find_k_silhouette(xs: np.ndarray, k_max: int = 20) -> int:
         https://medium.com/analytics-vidhya/how-to-determine-the-optimal-k-for-k-means-708505d204eb
     """
     sil = []
+    # dissimilarity would not be defined for a single cluster, thus, minimum number of clusters should be 2
     ks = list(range(2, k_max + 1))
 
-    # dissimilarity would not be defined for a single cluster, thus, minimum number of clusters should be 2
     for k in ks:
         kmeans = KMeans(n_clusters=k).fit(xs)
         labels = kmeans.labels_
