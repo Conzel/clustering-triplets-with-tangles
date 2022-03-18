@@ -28,28 +28,26 @@ RUNS_AVERAGED = 3
 RESULTS_FOLDER = Path("results")
 
 
-def evaluation_embedders(triplets: np.ndarray, responses: np.ndarray, embedding_dim: int, n_clusters: int, target: np.ndarray, n_runs: int = RUNS_AVERAGED) -> pd.DataFrame:
+def evaluation_embedders(triplets: np.ndarray, responses: np.ndarray, embedding_dim: int, n_clusters: int, target: np.ndarray, seed: int) -> pd.DataFrame:
     """
     Evaluates the performance of a lot of baseline embedding algorithms
     on the given triplets and responses.
     """
     rows = []
     names = ["SOE", "CKL", "GNMDS", "FORTE", "TSTE", "MLDS"]
-    for j in range(n_runs):
-        seed = SEED + j
-        embedders = [SOE(n_components=embedding_dim, random_state=seed), CKL(n_components=embedding_dim, random_state=seed),
-                     GNMDS(n_components=embedding_dim, random_state=seed), FORTE(
-            n_components=embedding_dim, random_state=seed), TSTE(n_components=embedding_dim, random_state=seed),
-            MLDS(n_components=1, random_state=seed)]
-        embeddings = [embedder.fit_transform(
-            triplets, responses) for embedder in embedders]
-        kmeans = KMeans(n_clusters=n_clusters, random_state=seed)
-        preds = [kmeans.fit_predict(embedding) for embedding in embeddings]
-        for i in range(len(embedders)):
-            nmi = normalized_mutual_info_score(preds[i], target)
-            ars = adjusted_rand_score(preds[i], target)
-            name = names[i]
-            rows.append(dict(method=name, nmi=nmi, ars=ars))
+    embedders = [SOE(n_components=embedding_dim, random_state=seed), CKL(n_components=embedding_dim, random_state=seed),
+                 GNMDS(n_components=embedding_dim, random_state=seed), FORTE(
+        n_components=embedding_dim, random_state=seed), TSTE(n_components=embedding_dim, random_state=seed),
+        MLDS(n_components=1, random_state=seed)]
+    embeddings = [embedder.fit_transform(
+        triplets, responses) for embedder in embedders]
+    kmeans = KMeans(n_clusters=n_clusters, random_state=seed)
+    preds = [kmeans.fit_predict(embedding) for embedding in embeddings]
+    for i in range(len(embedders)):
+        nmi = normalized_mutual_info_score(preds[i], target)
+        ars = adjusted_rand_score(preds[i], target)
+        name = names[i]
+        rows.append(dict(method=name, nmi=nmi, ars=ars))
 
     return pd.DataFrame(rows)
 
@@ -160,7 +158,7 @@ def simulation_all_triplets_gauss(debug: bool, n_runs=RUNS_AVERAGED):
     q = Questionnaire.from_metric(data.xs)
     triplets, responses = q.to_bool_array(return_responses=True)
     df = evaluation_embedders(triplets, responses,
-                              embedding_dim=2, n_clusters=3, target=data.ys, n_runs=n_runs)
+                              embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED)
     tangles = OrdinalTangles(agreement=8)
     ys_tangles = tangles.fit_predict(q.values)
     # saving raw data
@@ -180,20 +178,22 @@ def _sim_lower_density(dataset: int, agreement: int, densities: list[float], n_r
     dfs = []
     j = 0
     for density in densities:
-        data = Dataset.get(dataset, SEED + j)
-        j += 1
         print(f"Density = {density}")
-        q = Questionnaire.from_metric(data.xs, density=density, verbose=False)
-        #
-        triplets, responses = q.to_bool_array(return_responses=True)
-        df = evaluation_embedders(triplets, responses,
-                                  embedding_dim=2, n_clusters=3, target=data.ys, n_runs=n_runs).assign(density=density)
-        dfs.append(df)
+        for _ in range(n_runs):
+            data = Dataset.get(dataset, SEED + j)
+            j += 1
+            q = Questionnaire.from_metric(
+                data.xs, density=density, verbose=False)
+            #
+            triplets, responses = q.to_bool_array(return_responses=True)
+            df = evaluation_embedders(triplets, responses,
+                                      embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED + j).assign(density=density)
+            dfs.append(df)
 
-        tangles = OrdinalTangles(agreement=agreement)
-        ys_tangles = tangles.fit_predict(q.values)
-        dfs.append(tangles_result_to_row(
-            ys_tangles, data.ys, TanglesMethod.DIRECT).assign(density=density))
+            tangles = OrdinalTangles(agreement=agreement)
+            ys_tangles = tangles.fit_predict(q.values)
+            dfs.append(tangles_result_to_row(
+                ys_tangles, data.ys, TanglesMethod.DIRECT).assign(density=density))
     return pd.concat(dfs, ignore_index=True)
 
 
@@ -205,7 +205,7 @@ def simulation_lowering_density_gauss_small(debug: bool, n_runs=RUNS_AVERAGED) -
     if debug:
         densities = [0.5, 0.1, 0.01]
     else:
-        densities = np.logspace(0, -4, 20)
+        densities = np.logspace(0, -4, 20).tolist()
     df = _sim_lower_density(Dataset.GAUSS_SMALL, 8, densities, n_runs).assign(
         experiment="sim-lower-density-gauss-small")
     df.to_csv(RESULTS_FOLDER / "sim-lower-density-gauss-small.csv")
@@ -221,7 +221,7 @@ def simulation_lowering_density_gauss_large(debug: bool, n_runs=RUNS_AVERAGED) -
     if debug:
         densities = [0.0001, 0.00008, 0.00005]
     else:
-        densities = np.logspace(-3, -5, 10)
+        densities = np.logspace(-3, -5, 10).tolist()
     df = _sim_lower_density(Dataset.GAUSS_LARGE, 80, densities, n_runs).assign(
         experiment="sim-lower-density-gauss-large")
     df.to_csv(RESULTS_FOLDER / "sim-lower-density-gauss-large.csv")
@@ -241,20 +241,21 @@ def simulation_adding_noise_gauss(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataF
     else:
         noises = np.arange(0, 0.51, 0.01)
     for noise in noises:
-        data = Dataset.get(Dataset.GAUSS_SMALL, SEED + j)
-        j += 1
         print(f"Noise = {noise}")
-        q = Questionnaire.from_metric(
-            data.xs, verbose=False, noise=noise, flip_noise=True)
-        triplets, responses = q.to_bool_array(return_responses=True)
-        df = evaluation_embedders(
-            triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, n_runs=n_runs).assign(noise=noise)
-        dfs.append(df)
+        for _ in range(n_runs):
+            data = Dataset.get(Dataset.GAUSS_SMALL, SEED + j)
+            j += 1
+            q = Questionnaire.from_metric(
+                data.xs, verbose=False, noise=noise, flip_noise=True)
+            triplets, responses = q.to_bool_array(return_responses=True)
+            df = evaluation_embedders(
+                triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED + j).assign(noise=noise)
+            dfs.append(df)
 
-        tangles = OrdinalTangles(agreement=8)
-        ys_tangles = tangles.fit_predict(q.values)
-        dfs.append(tangles_result_to_row(
-            ys_tangles, data.ys, TanglesMethod.DIRECT).assign(noise=noise))
+            tangles = OrdinalTangles(agreement=8)
+            ys_tangles = tangles.fit_predict(q.values)
+            dfs.append(tangles_result_to_row(
+                ys_tangles, data.ys, TanglesMethod.DIRECT).assign(noise=noise))
 
     df = pd.concat(dfs, ignore_index=True).assign(
         experiment="sim-adding-noise-gauss")
@@ -275,25 +276,24 @@ def simulation_majority_cuts(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataFrame:
         num_triplets = [100, 500, 1000, 5000, 10000, 20000, 50000]
     dfs = []
 
-    for j, n in enumerate(num_triplets):
-        data = Dataset.get(Dataset.GAUSS_SMALL, SEED + j)
+    j = 0
+    for n in num_triplets:
         print(f"#triplets = {n}")
-        triplets, responses = subsample_triplets(data.xs, n)
-        unified_triplets = unify_triplet_order(triplets, responses)
-        cuts = triplets_to_majority_neighbour_cuts(
-            unified_triplets, radius=1 / 2)
-        df = evaluation_embedders(
-            triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, n_runs=n_runs).assign(**{r"\# triplets": n})
-        dfs.append(df)
+        for k in range(n_runs):
+            data = Dataset.get(Dataset.GAUSS_SMALL, SEED + j)
+            j += 1
+            triplets, responses = subsample_triplets(data.xs, n)
+            unified_triplets = unify_triplet_order(triplets, responses)
+            cuts = triplets_to_majority_neighbour_cuts(
+                unified_triplets, radius=1 / 2)
+            df = evaluation_embedders(
+                triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED + j).assign(**{r"\# triplets": n})
+            dfs.append(df)
 
-        tangles = OrdinalTangles(agreement=8)
-        ys_tangles = tangles.fit_predict(cuts)
-        dfs.append(tangles_result_to_row(
-            ys_tangles, data.ys, TanglesMethod.MAJORITY_CUT).assign(**{r"\# triplets": n}))
-
-        plot_assignments(data.xs, cuts[5, :])
-        plt.plot(data.xs[5, 0], data.xs[5, 1], "kx", markersize=14)
-        save_plot(f"majority-cut-5-n_triplets-{n}")
+            tangles = OrdinalTangles(agreement=8)
+            ys_tangles = tangles.fit_predict(cuts)
+            dfs.append(tangles_result_to_row(
+                ys_tangles, data.ys, TanglesMethod.MAJORITY_CUT).assign(**{r"\# triplets": n}))
 
     df = pd.concat(dfs, ignore_index=True).assign(
         experiment="sim-majority-cuts")
@@ -303,33 +303,53 @@ def simulation_majority_cuts(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataFrame:
     return df
 
 
+def simulation_majority_cuts_appearance(debug: bool, n_runs=RUNS_AVERAGED):
+    num_triplets = [100, 500, 1000, 5000, 10000, 20000, 50000, 100000]
+
+    data = Dataset.get(Dataset.GAUSS_SMALL, SEED)
+    for n in num_triplets:
+        print(f"#triplets = {n}")
+        triplets, responses = subsample_triplets(data.xs, n)
+        unified_triplets = unify_triplet_order(triplets, responses)
+        cuts = triplets_to_majority_neighbour_cuts(
+            unified_triplets, radius=1 / 2)
+
+        p = 8
+        plot_assignments(data.xs, cuts[p, :])
+        plt.plot(data.xs[p, 0], data.xs[p, 1], "kx", markersize=14)
+        save_plot(f"majority-cut-{p}-n_triplets-{n}")
+
+
 def simulation_adding_noise_and_lowering_density(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataFrame:
     """
     Simulates on the small gaussian dataset:
     Lower density and simultaneously adds noise.
     """
     dfs = []
-    data = Dataset.get(Dataset.GAUSS_SMALL)
     if debug:
         noises = [0.05, 0.1]
         densities = [0.01, 0.1]
     else:
         noises = np.arange(0, 0.41, 0.02)
         densities = np.logspace(0, -4, 20)
+    j = 0
     for noise in noises:
         for density in densities:
             print(f"Density = {density}, Noise = {noise}")
-            q = Questionnaire.from_metric(
-                data.xs, density=density, verbose=False, noise=noise, flip_noise=True)
-            triplets, responses = q.to_bool_array(return_responses=True)
-            df = evaluation_embedders(
-                triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, n_runs=n_runs).assign(noise=noise, density=density)
-            dfs.append(df)
+            for _ in range(n_runs):
+                data = Dataset.get(Dataset.GAUSS_SMALL, SEED + j)
+                j += 1
+                q = Questionnaire.from_metric(
+                    data.xs, density=density, verbose=False, noise=noise, flip_noise=True)
+                triplets, responses = q.to_bool_array(return_responses=True)
+                df = evaluation_embedders(
+                    triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED + j).assign(noise=noise, density=density)
+                dfs.append(df)
 
-            tangles = OrdinalTangles(agreement=8)
-            ys_tangles = tangles.fit_predict(q.values)
-            dfs.append(tangles_result_to_row(
-                ys_tangles, data.ys, TanglesMethod.DIRECT).assign(noise=noise, density=density))
+                tangles = OrdinalTangles(agreement=8)
+                ys_tangles = tangles.fit_predict(q.values)
+                dfs.append(tangles_result_to_row(
+                    ys_tangles, data.ys, TanglesMethod.DIRECT).assign(noise=noise, density=density))
     df = pd.concat(dfs, ignore_index=True).assign(
         experiment="sim-adding-noise-lowering-density-gauss")
     df.to_csv(RESULTS_FOLDER / "sim-noise-density.csv")
@@ -354,7 +374,8 @@ def all_experiments(debug: bool, n_runs=RUNS_AVERAGED):
 
 
 available_experiments = ["sim-all-gauss", "sim-lower-density-small",
-                         "sim-lower-density-large", "sim-noise", "sim-noise-density", "sim-majority", "all"]
+                         "sim-lower-density-large", "sim-noise", "sim-noise-density",
+                         "sim-majority", "sim-majority-cuts-appearance", "all"]
 
 experiment_function_binding = {
     "sim-all-gauss": simulation_all_triplets_gauss,
@@ -363,6 +384,7 @@ experiment_function_binding = {
     "sim-noise": simulation_adding_noise_gauss,
     "sim-noise-density": simulation_adding_noise_and_lowering_density,
     "sim-majority": simulation_majority_cuts,
+    "sim-majority-cuts-appearance": simulation_majority_cuts_appearance,
     "all": all_experiments,
 }
 
