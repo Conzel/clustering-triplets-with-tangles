@@ -5,6 +5,7 @@ from cblearn.datasets import make_random_triplets
 from estimators import SoeKmeans
 import numpy as np
 from questionnaire import Questionnaire
+from tangles.tree_tangles import get_hard_predictions
 
 
 def test_tangles_performance():
@@ -48,3 +49,16 @@ def test_soe_kmeans_silhouette_performance():
     score = normalized_mutual_info_score(pred, data.ys)
     assert score > 0.95
     assert soe_kmeans.k_ == 2
+
+
+def test_estimator_same_as_tangles_impl():
+    """
+    Ensures the estimator performs the same as the implementation
+    in the tangles module.
+    """
+    synthetic_data = generate_gmm_data_fixed_means(
+        n=15, means=np.array(np.array([[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]])), std=0.5, seed=1)
+    tangles = OrdinalTangles(agreement=5, verbose=False)
+    q = Questionnaire.from_metric(synthetic_data.xs, density=0.01, seed=1)
+    ys_pred = tangles.fit_predict(q.values)
+    assert np.all(ys_pred == get_hard_predictions(q.values, 5))

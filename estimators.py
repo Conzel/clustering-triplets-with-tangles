@@ -17,7 +17,7 @@ from tangles.data_types import Cuts
 from tangles.tree_tangles import (ContractedTangleTree,
                                   compute_soft_predictions_children,
                                   tangle_computation)
-from tangles.utils import compute_cost_and_order_cuts, compute_hard_predictions, normalize
+from tangles.utils import normalize, compute_hard_predictions
 
 
 class OrdinalTangles(BaseEstimator):
@@ -44,11 +44,10 @@ class OrdinalTangles(BaseEstimator):
         if not np.all(np.logical_or(X == 0, X == 1)):
             raise ValueError(
                 "X contains illegal values. X must only contain values equal to 0 or 1. You might have forgotten to impute missing values?")
-        bipartitions = Cuts((X == 1).T)
+        cuts = Cuts((X == 1).T)
         cost_function = BipartitionSimilarity(
-            bipartitions.values.T)
-        cuts = compute_cost_and_order_cuts(
-            bipartitions, cost_function, verbose=self.verbose)
+            cuts.values.T)
+        cuts.compute_cost_and_order_cuts(cost_function, verbose=self.verbose)
 
         # Building the tree, contracting and calculating predictions
         tangles_tree = tangle_computation(cuts=cuts,
@@ -66,25 +65,18 @@ class OrdinalTangles(BaseEstimator):
         # soft predictions
         weight = np.exp(-normalize(cuts.costs))
 
-        self.weight_ = weight
-        self.contracted_tangles_tree_ = contracted
-        self.tangles_tree_ = tangles_tree
-
-        bipartitions = Cuts((X == 1).T)
-
-        cost_function = BipartitionSimilarity(
-            bipartitions.values.T)
-        _ = compute_cost_and_order_cuts(
-            bipartitions, cost_function, verbose=self.verbose)
-
         compute_soft_predictions_children(
-            node=self.contracted_tangles_tree_.root, cuts=bipartitions, weight=weight, verbose=self.verbose)
+            node=contracted.root, cuts=cuts, weight=weight, verbose=self.verbose)
         contracted.processed_soft_predictions = True
 
         ys_predicted, _ = compute_hard_predictions(
-            self.contracted_tangles_tree_, verbose=self.verbose)
+            contracted, verbose=self.verbose)
 
-        self.cuts_ = bipartitions
+        self.weight_ = weight
+        self.contracted_tangles_tree_ = contracted
+        self.tangles_tree_ = tangles_tree
+        self.cuts_ = cuts
+
         return ys_predicted
 
     def fit_predict(self, X, y=None) -> np.ndarray:
