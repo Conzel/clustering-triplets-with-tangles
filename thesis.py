@@ -6,6 +6,7 @@ Produce plot via calling the script and then calling
 """
 from __future__ import annotations
 import argparse
+from audioop import add
 from typing import Optional, Union
 from pathlib import Path
 import numpy as np
@@ -320,6 +321,39 @@ def simulation_majority_cuts_appearance(debug: bool, n_runs=RUNS_AVERAGED):
         save_plot(f"majority-cut-{p}-n_triplets-{n}")
 
 
+def simulation_majority_cuts_adding_noise(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataFrame:
+    dfs = []
+    j = 0
+    n = 20000  # majority triplets has reasonable performance there
+    if debug:
+        noises = [0.05, 0.1, 0.15, 0.2]
+    else:
+        noises = np.arange(0, 0.51, 0.01)
+    for noise in noises:
+        print(f"Noise = {noise}")
+        for _ in range(n_runs):
+            data = Dataset.get(Dataset.GAUSS_SMALL, SEED + j)
+            j += 1
+            triplets, responses = subsample_triplets(data.xs, n, noise=noise)
+            unified_triplets = unify_triplet_order(triplets, responses)
+            cuts = triplets_to_majority_neighbour_cuts(
+                unified_triplets, radius=1 / 2)
+            df = evaluation_embedders(
+                triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED + j).assign(noise=noise)
+            dfs.append(df)
+
+            tangles = OrdinalTangles(agreement=8)
+            ys_tangles = tangles.fit_predict(cuts)
+            dfs.append(tangles_result_to_row(
+                ys_tangles, data.ys, TanglesMethod.MAJORITY_CUT).assign(noise=noise))
+    df = pd.concat(dfs, ignore_index=True).assign(
+        experiment="sim-adding-noise-gauss")
+    df.to_csv(RESULTS_FOLDER / "sim-majority-noise.csv")
+    plot_line(df, "noise", "nmi")
+    save_plot("sim-majority-noise")
+    return df
+
+
 def simulation_adding_noise_and_lowering_density(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataFrame:
     """
     Simulates on the small gaussian dataset:
@@ -375,7 +409,8 @@ def all_experiments(debug: bool, n_runs=RUNS_AVERAGED):
 
 available_experiments = ["sim-all-gauss", "sim-lower-density-small",
                          "sim-lower-density-large", "sim-noise", "sim-noise-density",
-                         "sim-majority", "sim-majority-cuts-appearance", "all"]
+                         "sim-majority", "sim-majority-cuts-appearance", "sim-majority-noise",
+                         "all"]
 
 experiment_function_binding = {
     "sim-all-gauss": simulation_all_triplets_gauss,
@@ -385,18 +420,19 @@ experiment_function_binding = {
     "sim-noise-density": simulation_adding_noise_and_lowering_density,
     "sim-majority": simulation_majority_cuts,
     "sim-majority-cuts-appearance": simulation_majority_cuts_appearance,
+    "sim-majority-noise": simulation_majority_cuts_adding_noise,
     "all": all_experiments,
 }
 
 
-def main(experiment: str, debug: bool):
+def main(experiment: str, debug: bool, n_runs: int):
     if experiment not in experiment_function_binding.keys():
         raise ValueError(f"Experiment {experiment} not implemented yet.")
     else:
         if debug:
             experiment_function_binding[experiment](n_runs=1, debug=True)
         else:
-            experiment_function_binding[experiment](debug=False)
+            experiment_function_binding[experiment](n_runs=n_runs, debug=False)
 
 
 if __name__ == "__main__":
@@ -405,5 +441,6 @@ if __name__ == "__main__":
                         choices=available_experiments, help="Experiment to run")
     parser.add_argument(
         "--debug", action="store_true", help="Activates debug runs. Runs every experiment only once and with a reduced parameter set, if applicable. This is designed to make the experiments run fast as a priority.")
+    parser.add_argument("--runs", type=int, default=RUNS_AVERAGED)
     args = parser.parse_args()
-    main(args.experiment, args.debug)
+    main(args.experiment, args.debug, args.runs)
