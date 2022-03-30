@@ -173,7 +173,7 @@ class LensMetric():
         return in_lens.sum()
 
 
-def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=DistanceMetric.get_metric('euclidean'), return_mostcentral: bool = False, seed: int = None) -> tuple[np.ndarray, np.ndarray]:
+def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=DistanceMetric.get_metric('euclidean'), return_mostcentral: bool = False, noise: Optional[float] = None, seed: int = None) -> tuple[np.ndarray, np.ndarray]:
     """
     Returns a triplet-response array with a certain number of triplets in it.
 
@@ -184,6 +184,8 @@ def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=Distanc
 
     Else they are such that this holds:
     Is triplet[i][0] closer to triplet[i][1] than to triplet[i][2]? responses[i]
+
+    If noise is not none, flips every triplet response with chance noise.
     """
     if seed is not None:
         random.seed(seed)
@@ -207,6 +209,8 @@ def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=Distanc
             responses[i] = _most_central(a, b, c, dists)
         else:
             responses[i] = True if dists[a, b] < dists[a, c] else False
+            if noise is not None and random.random() < noise:
+                responses[i] = not responses[i]
     return triplets, responses
 
 
