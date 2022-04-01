@@ -16,8 +16,9 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from data_generation import generate_gmm_data_fixed_means
 from cblearn.embedding import SOE, CKL, GNMDS, FORTE, TSTE, MLDS
+from cblearn.datasets import make_random_triplets
 from questionnaire import Questionnaire
-from estimators import OrdinalTangles
+from estimators import OrdinalTangles, SoeKmeans
 from matplotlib.cm import get_cmap
 from triplets import majority_neighbours_count_matrix, subsample_triplets, triplets_to_majority_neighbour_cuts, unify_triplet_order
 import pandas as pd
@@ -185,7 +186,7 @@ def _sim_lower_density(dataset: int, agreement: int, densities: list[float], n_r
             j += 1
             q = Questionnaire.from_metric(
                 data.xs, density=density, verbose=False)
-            #
+
             triplets, responses = q.to_bool_array(return_responses=True)
             df = evaluation_embedders(triplets, responses,
                                       embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED + j).assign(density=density)
@@ -195,6 +196,18 @@ def _sim_lower_density(dataset: int, agreement: int, densities: list[float], n_r
             ys_tangles = tangles.fit_predict(q.values)
             dfs.append(tangles_result_to_row(
                 ys_tangles, data.ys, TanglesMethod.DIRECT).assign(density=density))
+
+            # SOE result, with the same number of Triplets, but random
+            t_r, r_r = make_random_triplets(
+                data.xs, "list-boolean", size=q.values.size)
+            soe_kmeans = SoeKmeans(embedding_dimension=2,
+                                   n_clusters=3, seed=SEED + j)
+            ys_soe = soe_kmeans.fit_predict(t_r, r_r)
+            nmi_soe = normalized_mutual_info_score(ys_soe, data.ys)
+            ars_soe = adjusted_rand_score(ys_soe, data.ys)
+
+            dfs.append(pd.DataFrame(dict(method="SOE-RANDOM",
+                       nmi=nmi_soe, ars=ars_soe, density=density), index=[0]))
     return pd.concat(dfs, ignore_index=True)
 
 
@@ -425,19 +438,22 @@ experiment_function_binding = {
 }
 
 
-def main(experiment: str, debug: bool, n_runs: int):
-    if experiment not in experiment_function_binding.keys():
-        raise ValueError(f"Experiment {experiment} not implemented yet.")
-    else:
+def main(experiment: list[str], debug: bool, n_runs: int):
+    # validation for quick-fail
+    for exp in experiment:
+        if exp not in experiment_function_binding.keys():
+            raise ValueError(f"Experiment {experiment} not implemented yet.")
+    # all good, can proceed
+    for exp in experiment:
         if debug:
-            experiment_function_binding[experiment](n_runs=1, debug=True)
+            experiment_function_binding[exp](n_runs=1, debug=True)
         else:
-            experiment_function_binding[experiment](n_runs=n_runs, debug=False)
+            experiment_function_binding[exp](n_runs=n_runs, debug=False)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the thesis experiments")
-    parser.add_argument("experiment",
+    parser.add_argument("experiment", nargs="+",
                         choices=available_experiments, help="Experiment to run")
     parser.add_argument(
         "--debug", action="store_true", help="Activates debug runs. Runs every experiment only once and with a reduced parameter set, if applicable. This is designed to make the experiments run fast as a priority.")
