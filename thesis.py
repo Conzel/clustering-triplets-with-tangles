@@ -30,7 +30,14 @@ RUNS_AVERAGED = 3
 RESULTS_FOLDER = Path("results")
 
 
-def evaluation_embedders(triplets: np.ndarray, responses: np.ndarray, embedding_dim: int, n_clusters: int, target: np.ndarray, seed: int) -> pd.DataFrame:
+def zero_pad_end_like(arr: np.ndarray, other: np.ndarray) -> np.ndarray:
+    """
+    Pads the end of the array with zeros to the given length.
+    """
+    return np.pad(arr, (0, other.shape[0] - arr.shape[0]), mode="constant", constant_values=(0, 0))
+
+
+def evaluation_embedders(triplets: np.ndarray, responses: np.ndarray, embedding_dim: int, n_clusters: int, target: np.ndarray, seed: int, names_to_evaluate: Optional[list[str]] = None) -> pd.DataFrame:
     """
     Evaluates the performance of a lot of baseline embedding algorithms
     on the given triplets and responses.
@@ -41,14 +48,17 @@ def evaluation_embedders(triplets: np.ndarray, responses: np.ndarray, embedding_
                  GNMDS(n_components=embedding_dim, random_state=seed), FORTE(
         n_components=embedding_dim, random_state=seed), TSTE(n_components=embedding_dim, random_state=seed),
         MLDS(n_components=1, random_state=seed)]
-    embeddings = [embedder.fit_transform(
-        triplets, responses) for embedder in embedders]
-    kmeans = KMeans(n_clusters=n_clusters, random_state=seed)
-    preds = [kmeans.fit_predict(embedding) for embedding in embeddings]
     for i in range(len(embedders)):
-        nmi = normalized_mutual_info_score(preds[i], target)
-        ars = adjusted_rand_score(preds[i], target)
         name = names[i]
+        if names_to_evaluate is not None and name not in names_to_evaluate:
+            continue
+        embedder = embedders[i]
+        embedding = embedder.fit_transform(triplets, responses)
+        kmeans = KMeans(n_clusters=n_clusters, random_state=seed)
+        pred = kmeans.fit_predict(embedding)
+
+        nmi = normalized_mutual_info_score(pred, target)
+        ars = adjusted_rand_score(pred, target)
         rows.append(dict(method=name, nmi=nmi, ars=ars))
 
     return pd.DataFrame(rows)
@@ -197,18 +207,31 @@ def _sim_lower_density(dataset: int, agreement: int, densities: list[float], n_r
             dfs.append(tangles_result_to_row(
                 ys_tangles, data.ys, TanglesMethod.DIRECT).assign(density=density))
 
-            # SOE result, with the same number of Triplets, but random
-            t_r, r_r = make_random_triplets(
-                data.xs, "list-boolean", size=q.values.size)
-            soe_kmeans = SoeKmeans(embedding_dimension=2,
-                                   n_clusters=3, seed=SEED + j)
-            ys_soe = soe_kmeans.fit_predict(t_r, r_r)
-            nmi_soe = normalized_mutual_info_score(ys_soe, data.ys)
-            ars_soe = adjusted_rand_score(ys_soe, data.ys)
-
-            dfs.append(pd.DataFrame(dict(method="SOE-RANDOM",
-                       nmi=nmi_soe, ars=ars_soe, density=density), index=[0]))
+            dfs.append(make_soe_random(data, q.values.size,
+                       SEED + j).assign(density=density))
     return pd.concat(dfs, ignore_index=True)
+
+
+def make_soe_random(data, num_triplets: int, seed: int):
+    """
+    Returns a SOE-Result, but triplets are sampled in a uniform-random 
+    fashion.
+    """
+    # SOE result, with the same number of Triplets, but random
+    t_r, r_r = make_random_triplets(
+        data.xs, "list-boolean", size=num_triplets)
+    soe_kmeans = SoeKmeans(embedding_dimension=2,
+                           n_clusters=3, seed=seed)
+
+    # maybe we havent sampled enough points
+    ys_soe = zero_pad_end_like(
+        soe_kmeans.fit_predict(t_r, r_r), data.ys)
+
+    nmi_soe = normalized_mutual_info_score(ys_soe, data.ys)
+    ars_soe = adjusted_rand_score(ys_soe, data.ys)
+
+    return pd.DataFrame(dict(method="SOE-RANDOM",
+                             nmi=nmi_soe, ars=ars_soe), index=[0])
 
 
 def simulation_lowering_density_gauss_small(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataFrame:
@@ -390,17 +413,19 @@ def simulation_adding_noise_and_lowering_density(debug: bool, n_runs=RUNS_AVERAG
                     data.xs, density=density, verbose=False, noise=noise, flip_noise=True)
                 triplets, responses = q.to_bool_array(return_responses=True)
                 df = evaluation_embedders(
-                    triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED + j).assign(noise=noise, density=density)
+                    triplets, responses, embedding_dim=2, n_clusters=3, target=data.ys, seed=SEED + j, names_to_evaluate=["SOE"]).assign(noise=noise, density=density)
                 dfs.append(df)
 
                 tangles = OrdinalTangles(agreement=8)
                 ys_tangles = tangles.fit_predict(q.values)
                 dfs.append(tangles_result_to_row(
                     ys_tangles, data.ys, TanglesMethod.DIRECT).assign(noise=noise, density=density))
+                dfs.append(make_soe_random(data, q.values.size,
+                                           SEED + j).assign(density=density, noise=noise))
     df = pd.concat(dfs, ignore_index=True).assign(
         experiment="sim-adding-noise-lowering-density-gauss")
     df.to_csv(RESULTS_FOLDER / "sim-noise-density.csv")
-    for method in ["TANGLES-DIRECT", "SOE"]:
+    for method in ["TANGLES-DIRECT", "SOE", "SOE-RANDOM"]:
         plot_heatmap(df, "density", "noise", "nmi", method)
         plt.gca().invert_yaxis()
         plt.gca().invert_xaxis()
