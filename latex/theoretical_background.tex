@@ -1,0 +1,108 @@
+\chapter{Theoretical Background}\label{theory}
+Here we write about the theoretical background.
+\section{Ordinal Data}
+% What is Ordinal Data?
+% Mathematical formulation, where do they appear, what are problems..
+
+\section{Tangles}
+% What are Tangles? How are they used? What advantages do they
+% prove?
+% TODO: How to cite correctly here?
+Tangles have been a tool in mathematical graph theory, introduced originally by \cite{robertsonGraphMinorsObstructions1991} 
+with a diverse range of application %TODO: Citations from Solveig. \\
+
+In recent times, through the work of \cite{klepperClusteringTanglesAlgorithmitc2020}, they have been successfully applied
+to solve problems of clustering. The mentioned work delivers an algorithmic framework and theoretical guarantees for basic problem settings.
+Additionally, it delivers simplified notations, adapted to the domain of computer science. When talking about Tangles,
+we will exclusively use the definitions introduced there, not those that might be common in mathematics. \\
+
+In this section, we will now deliver a very brief recap of the basic notions, theory and applications of Tangles in a clustering context.
+For more in-depth explanations of the algorithms and exact procedures, refer to \cite{klepperClusteringTanglesAlgorithmic2020A}.
+\subsection{What is a Tangle?}
+The central object in Tangles Theory is a \textbf{bipartition} (which we also refer to as a cut). 
+A bipartition is simply a way of dividing a set of elements $V =  \{ v_1, v_2, \ldots \}$ into two distinct subsets $A, B \subset V$, such that
+$A \cap B = \O$ and $A \cup B = V$. We can also write a bipartition as $P = \{A, \overline{A}\}$, with $A \subset V$ and $\overline{A}$ being the
+complement of $A$ with respect to $V$. \\
+
+For such a bipartition to be useful in clustering, we expect it to hold some degree of information about the cluster 
+structure of our data. This means that a good bipartition should not separate groups of data that are tightly coupled.
+If we imagine a graph data structure, a good bipartition $P = \{A, \overline{A}\}$ might be a separation of the set of nodes $V$ such that there 
+are only a few edges between $A$ and $\overline{A}$. How useful a cut might be for our clustering will be quantified through a \textbf{cost function} 
+$c: \mathcal{P}(V) \to \R$, with $\mathcal{P}(V)$ denoting the power set of V. One is free to choose this cost function and it might be dependent on the problem at hand. 
+%TODO: Figure of bipartiion
+%TODO: insert cost function used?
+\\
+Assume that for a set of elements $V$ that we are equipped with a set of bipartitions $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \} $ on $V$.
+Coupled with the cost function, this set of bipartitions should tell us a lot about the cluster structure of the data:
+we know for all bipartitions, how much they do or don't separate dense regions in $V$. The task of the Tangles framework is to aggregate
+the information present in the bipartitions and bring it into a useable form. For this, we process $\mathcal{B}$ to a set of so-called \textbf{Tangles}, which
+correspond to specific ways of orienting the cuts in a consistent way such that they point to cohesive structures in the data. 
+Orienting here means that we pick one specific side of a bipartition. An \textbf{Orientation} of $\mathcal{B}$ is then a set $O = \{o_1, o_2, \ldots o_n\}$, where $o_i$ 
+corresponds to either the partition $A_i$ (oriented \textit{left}) or $\overline{A_i}$ (oriented \textit{right}). A consistent orientation (which we also call a Tangle) is an orientation for which:
+
+\begin{align}
+    \forall A,B,C \in O: \left| A \cap B \cap B \right| \ge a
+.\end{align}
+for some fixed parameter $a \in \N$, which we refer to as \textbf{agreement} parameter. This point is also where we need the cost function: Without it, a lot
+of reasonably sized sets of bipartitions wouldn't allow for any tangles, as there are simply too many of them to consistently orient. Imagine if our set of bipartitions would 
+contain a few random bipartitions: on average, each of these cuts our set of points in half, so we can at most consistently orient on the order of $O(\log(n))$ many of them.
+Using the cost function, we can simply restrict our tangles to a set of low-cost (and thus very insightful) cuts $P_{\psi}$, using a threshhold $\psi \in \R$ such that
+$P_{\psi} = \{ P c(P) \le \psi \}$. A tangle on $P_{\psi}$ is then said to have order $\psi$.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/tangles-example.pdf}
+    \caption{An example of how a simple tangle might look like, if we assume a reasonably sized agreement (say $a = 3$). The red lines represent simple cuts, which divide the sets of points into a bipartition.
+    A tangle on this set of bipartitions might orient all bipartitions to the left side (indicated by the arrow), so that they point to the dense structure there. Another 
+possible tangle might orient all cuts to the left. Notice that a tangle on this set of bipartitions can only either point all bipartitions to the left or to the right, else
+the consistency criterion is violated. This might already give a good intuition on why tangles are able to find dense structures in data.}
+    \label{fig:tangles-example}
+\end{figure}
+\FloatBarrier
+
+\subsection{Processing Tangles to a clustering}
+As we have seen in \autoref{fig:tangles-example}, a tangle might correspond directly to a cluster. But, a given set of bipartitions usually allows for a wide 
+variety of possible tangles, some of them pointing to different or overlapping clusters. We now have to process this set of tangles into a useable clustering.
+This step is a bit involved and we aim to only give a rough, intuitional overview here. \\
+
+Given a set of bipartitions $\mathcal{B} = \{b_1, b_2, \ldots b_n\} $, we first want to determine for all possible orders $\psi$ the sets of all tangles of order $\psi$ on $\mathcal{B}$ 
+according to a given cost function $c$. Inuitively, the order of the set of tangles determines how coarse the clustering is they define:
+If we only use bipartitions with a low cost (so in the case of small $\psi$), then the bipartitions cut only very loosely connected structures. 
+If the cost is higher, the bipartitions are allowed to cut through more dense regions. This directly induces a sort of hierarchy, where we go from coarse cluster
+structures to fine ones with increasing $\psi$. \\
+To better handle this procedure computationally, we build a tree structure on the set of tangles, called the \textbf{Tangle Search Tree}. In the tangles search tree, 
+one node represents a possible tangle. Every level of the tree contains all possible tangles of a certain threshhold $\psi_i$ which directly corresponds to the cost of bipartition $b_i$. 
+The exact makeup of the tangle is determined by walking the path from the root to the node, and adding bipartition $b_i$ to the tangle in a left-oriented way, if it is a left child and
+in a right-oriented way if it is a right child. An exemplary tangle search tree is illustrated in \autoref{tangles-tree-example}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/tangles-tree-example.png}
+    \caption{An example of a possible tangles search tree for a set of bipartitions $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \{A_2, \overline{A_2}\}, \{A_3, \overline{A_3}\} \}$. 
+        Each level corresponds to the tangles of the order given by the bipartition $P_i$ that is indicated to the left of it.
+        Let us take a look at the sole node in level 3. If we would want to find out, which orientations the corresponding tangle $T$ consists of, we just walk from
+        the root to it and add the bipartitions in the direction indicated by the tree. We end up with $T = \{\overline{A_1}, \overline{A_2}, A_3\}$. 
+        Figure taken with permission from \autoref{klepperClusteringTanglesAlgorithmic2020A}.}
+    \label{fig:figures-tangles-tree-example}
+\end{figure}
+
+We can now obtain a soft, hierarchical clustering from this tangle search tree. For this, the interesting nodes are those
+where the tree splits up (as this represents a new clustering) and the leaves (which correspond to the clusters). 
+For each of the \textit{splitting nodes}, we determine the set of \textit{characterizing cuts}.
+A cut belongs to this set, if it is both oriented the same way inside the subtrees, and if it is oriented in a different way between the two subtrees.
+To illustrate this, we take a look at the exemplary tree in \autoref{tangle-tree-example}. Here, for the root node, $P_1$ is a characterizing cut (pretty trivially),
+while $P_2$ is not: below the node $A_1$, the bipartition is both oriented to the left and to to the right, violating the requirement that the cuts are always oriented
+the same way inside the subtrees. 
+
+The characterizing cuts express some kind of agreement on how to align the bipartitions in the subtrees of the node, which we can leverage 
+for a soft clustering. If we now want to determine, with what probability a point $a$ belongs to a cluster $C$ represented by a leaf in the tree, we simply walk down 
+the tree from the root, and count at every splitting node how many characterizing cuts contain the point $a$, and how many don't. Normalized by the total amount of
+characterizing cuts, we can interpret this as a probability to walk down either the left or the right path. To get a total probability that $a$ belongs to $C$, 
+we simply multiply the probabilities that we obtain on the path to $C$ at every splitting node.
+    
+% Given a set of bipartitions $\mathcal{B}$, we first sort the bipartitions according to their costs given by the cost function $c$. 
+% We now iterate over the set of bipartitions, while building up a binary tree in a level-wise fashion. For every bipartition $P_i$, 
+% we add it to each node in level $i-1$, if it is consistent with the tangle inducded by the given node. 
+
+\section{Clustering Ordinal Data}
