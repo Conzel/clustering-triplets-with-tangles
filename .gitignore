@@ -1,6 +1,8 @@
 .DS_Store
 figures
 results
+datasets
+notion-images
 .vscode
 # profiling data
 *.prof
