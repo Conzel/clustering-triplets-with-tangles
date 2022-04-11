@@ -4,8 +4,10 @@ A file that is made for handling triplet data.
 import numpy as np
 import random
 from typing import Optional
+
 from imputation import MISSING_VALUE
 from sklearn.neighbors import DistanceMetric
+from itertools import permutations
 
 
 def distance_function(x, y):
@@ -227,19 +229,116 @@ def _most_central(a: int, b: int, c: int, distances: np.ndarray) -> int:
     return np.argmin(dists).item()
 
 
-def unify_triplet_order(triplets: np.ndarray, responses: np.ndarray) -> np.ndarray:
+def check_triplet_response_shapes(triplets: np.ndarray, responses: np.ndarray):
+    """
+    Checks if triplets and responses have the correct format.
+    Raises ValueError else.
+    """
+    if triplets.shape[0] != responses.shape[0]:
+        raise ValueError(
+            f"Triplets {triplets.shape}/responses {responses.shape} have wrong format: Should agree on first dimension.")
+    if len(triplets.shape) != 2:
+        raise ValueError(
+            f"Triplets {triplets.shape} have wrong format: Should be 2-dimensional matrix.")
+    if len(responses.shape) != 1:
+        raise ValueError(
+            f"Responses {responses.shape} have wrong format: Should be 1-dimensional array.")
+
+
+def unify_triplet_order(triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
     """
     Takes in an array of triplets and responses, and reorders the triplets such that it always
     holds that a triplet has the meaning
 
     triplet[0] is closer to triplet[1] than to triplet[2]
     """
+    if responses is None:
+        return triplets
+    check_triplet_response_shapes(triplets, responses)
     triplets = triplets.copy()
     wrong_order = np.logical_not(responses)
     # swap those in wrong order
     triplets[wrong_order, 1], triplets[wrong_order,
                                        2] = triplets[wrong_order, 2], triplets[wrong_order, 1]
     return triplets
+
+
+def unify_triplets_mostcentral(triplets: np.ndarray, responses: Optional[np.ndarray]) -> np.ndarray:
+    """
+    Analog to unify_triplet_order, but works on most-central (ord odd-one-out)
+    style triplets.
+
+    Response here indicates which triplets is the most central one.
+
+    Returns Unified triplets, so that the first triplet is always the central one.
+    """
+    if responses is None:
+        return triplets
+    check_triplet_response_shapes(triplets, responses)
+    valid_mask = (responses == 0) | (responses == 1) | (responses == 2)
+    if np.any(responses[~valid_mask]):
+        raise ValueError(
+            f"Responses array contains some answers that are not 0, 1 or 2: {responses[~valid_mask]}")
+    triplets_unified = []
+    for t, r in zip(triplets, responses):
+        a, b, c = t
+        if r == 0:
+            t_ = [a, b, c]
+        elif r == 1:
+            t_ = [b, c, a]
+        elif r == 2:
+            t_ = [c, a, b]
+        else:
+            raise ValueError(f"Response must be 0, 1 or 2, not {r}")
+        triplets_unified.append(t_)
+    res = np.array(triplets_unified)
+    assert res.shape == triplets.shape
+    return res
+
+
+def reduce_triplets_mostcentral(triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
+    """
+    Reduces a set of triplets by removing duplicates and deciding conflicting triplets
+    by a majority vote. 
+
+    The set of triplets is in most-central (or odd-one-out) format, with the responses array
+    indicating, if the first, second or third triplet is the most central.
+
+    Returns reduced triplet set.
+    """
+    unified_triplets = unify_triplets_mostcentral(triplets, responses)
+    reduced_triplets = []
+    for t in unified_triplets:
+        if any(list(t_perm) in reduced_triplets for t_perm in permutations(t)):
+            # we already added this
+            continue
+        a, b, c = t
+        a_first_mask = np.all(triplets == np.array([a, b, c]), axis=1) | np.all(
+            triplets == np.array([a, c, b]), axis=1)
+        b_first_mask = np.all(triplets == np.array([b, a, c]), axis=1) | np.all(
+            triplets == np.array([b, c, a]), axis=1)
+        c_first_mask = np.all(triplets == np.array([c, a, b]), axis=1) | np.all(
+            triplets == np.array([c, b, a]), axis=1)
+        first_pick = np.argmax(
+            [a_first_mask.sum(), b_first_mask.sum(), c_first_mask.sum()])
+        reduced_triplets.append(
+            [t[first_pick], t[(first_pick + 1) % 3], t[(first_pick + 2) % 3]])
+
+    return np.array(reduced_triplets)
+
+
+def reduce_triplets(triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
+    triplets = unify_triplet_order(triplets, responses)
+    reduced_triplets = []
+    for t in triplets:
+        a, b, c = t
+        closer_to_b = np.all(triplets == np.array([a, b, c]), axis=1)
+        closer_to_c = np.all(triplets == np.array([a, c, b]), axis=1)
+        if closer_to_b.sum() > closer_to_c.sum():
+            reduced_triplets.append([a, b, c])
+        else:
+            reduced_triplets.append([a, c, b])
+    return np.unique(reduced_triplets, axis=0)
 
 
 def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1, randomize_tie: bool = False, seed=None) -> np.ndarray:
