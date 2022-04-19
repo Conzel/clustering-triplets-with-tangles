@@ -19,9 +19,9 @@ def test_tangles_performance():
 
 def test_soe_kmeans_performance():
     data = generate_gmm_data_fixed_means(
-        n=15, means=np.array(np.array([[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]])), std=0.5, seed=1)
+        n=15, means=np.array(np.array([[0, -10], [-9, 7], [9, 5], [-7, -9], [-10, 0]])), std=0.7, seed=1)
     q = Questionnaire.from_metric(data.xs, density=0.01, seed=1)
-    soe_kmeans = SoeKmeans(embedding_dimension=2, n_clusters=5)
+    soe_kmeans = SoeKmeans(embedding_dimension=2, n_clusters=5, seed=1)
     pred = soe_kmeans.fit_predict(*q.to_bool_array())
     score = normalized_mutual_info_score(pred, data.ys)
     assert score > 0.95
