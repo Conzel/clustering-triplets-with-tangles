@@ -1,10 +1,7 @@
 \chapter{Theoretical Background}\label{theory}
 Here we write about the theoretical background.
-\section{Ordinal Data}
-% What is Ordinal Data?
-% Mathematical formulation, where do they appear, what are problems..
 
-\section{Tangles}
+\section{Tangles}\label{theory:tangles}
 % What are Tangles? How are they used? What advantages do they
 % prove?
 % TODO: How to cite correctly here?
@@ -83,7 +80,7 @@ in a right-oriented way if it is a right child. An exemplary tangle search tree 
         Each level corresponds to the tangles of the order given by the bipartition $P_i$ that is indicated to the left of it.
         Let us take a look at the sole node in level 3. If we would want to find out, which orientations the corresponding tangle $T$ consists of, we just walk from
         the root to it and add the bipartitions in the direction indicated by the tree. We end up with $T = \{\overline{A_1}, \overline{A_2}, A_3\}$. 
-        Figure taken with permission from \autoref{klepperClusteringTanglesAlgorithmic2020A}.}
+        Figure taken with permission from \cite{klepperClusteringTanglesAlgorithmic2020A}.}
     \label{fig:figures-tangles-tree-example}
 \end{figure}
 
@@ -99,10 +96,102 @@ The characterizing cuts express some kind of agreement on how to align the bipar
 for a soft clustering. If we now want to determine, with what probability a point $a$ belongs to a cluster $C$ represented by a leaf in the tree, we simply walk down 
 the tree from the root, and count at every splitting node how many characterizing cuts contain the point $a$, and how many don't. Normalized by the total amount of
 characterizing cuts, we can interpret this as a probability to walk down either the left or the right path. To get a total probability that $a$ belongs to $C$, 
-we simply multiply the probabilities that we obtain on the path to $C$ at every splitting node.
+we simply multiply the probabilities that we obtain on the path to $C$ at every splitting node. The corresponding hard clustering is obtained by assigning each
+node to the cluster it belongs to with the highest probability.
     
 % Given a set of bipartitions $\mathcal{B}$, we first sort the bipartitions according to their costs given by the cost function $c$. 
 % We now iterate over the set of bipartitions, while building up a binary tree in a level-wise fashion. For every bipartition $P_i$, 
 % we add it to each node in level $i-1$, if it is consistent with the tangle inducded by the given node. 
 
-\section{Clustering Ordinal Data}
+\section{Ordinal Constraints}
+A dataset of ordinal constraints consists of object for which we don't know their exact attributes or features, but only how they relate to other objects
+in the form of comparisons such as \textit{item $i$ is closer to item $j$ than to item $k$}. Formally, we assume that $i, j, k$ are from 
+a set $D$ where we can define a dissimilarity function $d: D \times D \to \R$. Note that $d$ which can be a metric on $D$, but does not have to be.
+We can then express our above constraint as $d(i, j) < d(i, k)$. \\
+
+Such data often appears when humans are asked to judge objects, as they are often naturally perform better on comparing objects
+than on accurately placing them on an abstract scale \cite{stewartAbsoluteIdentificationRelative2005}. Applications are for example estimation of perceptual scales in psychophysics 
+\cite{haghiriEstimationPerceptualScales2019} or crowd-sourcing clustering algorithms \cite{ukkonenCrowdsourcedCorrelationClustering2017}. 
+We want to keep our focus here mainly the realm of psychophysics.
+
+
+\subsection{Formats of Ordinal Constraints}
+%TODO: Explain d as metric
+Ordinal data usually takes two possible forms. 
+The more general form of an ordinal data constraint is the quadruplet form, for example used in \cite{ghoshdastidarFoundationsComparisonBasedHierarchical2019}. 
+Here, we have constraints such as $\text{d}(a,b) < \text{d}(c,d)$. A more commonly encountered form is the triplet form, which is simply a quadruplet where $a = c$, such as
+$\text{d}(a,b) < \text{d}(a,d)$, used for example in \cite{vankadaraInsightsOrdinalEmbedding2019,haghiriComparisonBasedFrameworkPsychophysics2019}. We refer to datasets
+consisting of triplet comparisons as \textit{triplet data}.
+To obtain such triplet data, one might present to human participants three images $a, b, d$, with image $a$ as anchor point and ask them, which of the images $b,d$ are closer to $a$. \\
+
+The way that participants are questioned is often varied on the context of the experiment (and might also influence their answers). An
+example is presenting the participant with three images, and asking \textit{which is the most central image?}, or \textit{which is the odd one out?},
+but the results are then always transformed back to triplet format for further prcoessing. For example, if $a$ is the \textit{odd-one-out} of the three elements $a,b,c$, 
+then we know that $d(b,c) < d(b,a)$ and $d(c, b) < d(c,a)$. 
+
+\subsection{Ordinal embeddings}
+One of the most central problems consists of finding a so called \textit{ordinal embedding} of the data. If we have a set of triplet comparisons $T = \{t_1, t_2, \ldots t_n\}$, 
+of the form $t_i = \left( a,b,c \right)$, encoding that $d(a,b) < d(a,c)$, 
+we want to find a set of points $y_1, y_2, \ldots y_n \in \R^{m}$, such that they uphold the most of the original triplet constraints in $\R^{m}$ with the euclidean distance
+as metric. More formally, we want to minimize \cite{vankadaraInsightsOrdinalEmbedding2019}:
+\[
+    \min_{y_1, \ldots y_n \in \R^{m}} \sum_{t=\left( i,j,k \right)  \in T} \mathbbm{1}_{ \|y_i - y_j\| < \|y_i - y_k\| }
+.\] 
+This problem is difficult to optimize and thus various algorithms have been propose that solve a relaxed or modified version of this objective function. 
+These include Soft Ordinal Embedding (SOE) \cite{teradaLocalOrdinalEmbedding2014}, Generalized Non-Metric Multidimensional Scaling (GNDMS) \cite{agarwalGeneralizedNonmetricMultidimensional}, 
+Crowd Kernel Learning (CKL) \cite{tamuzAdaptivelyLearningCrowd2011}, Fast Ordinal Triplets Embedding (FORTE) \cite{jainFiniteSamplePrediction2016},
+T-Stochatic Triplet Embedding (T-STE) \cite{vandermaatenStochasticTripletEmbedding2012} and various others. \\
+
+It has been proven that if the original points come from the space $\R^{m}$, one can recover the points (up to scaling and orthogonal transformations) with $O(mn\log(n)$ triplet comparisons
+\cite{jainFiniteSamplePrediction2016}. On this basis, an ordinal embedding can be used together with more classical machine learning algorithms, such as support vector machines or k-Means,
+for other machine learning tasks. This approach has for example been used for classification \cite{AdaptivelyLearningCrowd2011, kleindessnerLensDepthFunction2016} and for clustering \cite{kleindessnerLensDepthFunction2016} on ordinal data. \\
+
+%TODO This might better be something like "methods"?
+\section{Applying Tangles to Triplet Data}
+As we have made out in \autoref{theory:tangles}, the tangles algorithm operates on bipartitions of data that contain some information about the cluster structure.
+If we have obtained a set of triplet data, we are now faced with the task of processing this data to appropriate bipartitions. In this work, we have developed two
+methods for this which we call \textit{landmark cuts} and \textit{majority cuts}. We will elaborate on the methods and intuitions in the following sections.
+
+\subsection{Landmark cuts}\label{theory:landmark_cuts}
+In recent years, there have been algorithms that hope to speed up ordinal embedding by focussing on so-called \textit{landmarks}\cite{ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019a}, which are objects in the dataset that for which we know all (or all relevant) triplet comparisons. 
+The definitions of what constitutes landmarks varies a bit, but we will use one that is used in \cite{haghiriComparisonBasedFrameworkPsychophysics2019}.
+Assume we have a set of objects $D$, as well as a set of $T$ triplet constraints of the form $(a,b,c)$, indicating that $d(a,b) < d(a,c)$. In a landmark setting, we have a set 
+of $m$ objects $L \subset D$, for which $\forall l_1, l_2 \in L \forall x \in D: (x, l_1, l_2) \in T \vee (x, l_2, l_1) \in T$. This admits to a very natural notion of bipartitions: 
+for each combination of landmarks $l_1, l_2$, we can make a bipartition $P = \{A, \overline{A}\}$ by assigning all points closer to $l_1$ to $A$ and all 
+those closer to $l_2$ to $\overline{A}$. Thus we can define $A_{12} = \{ x \in D \mid \left( x, l_1, l_2 \right) \in T \}$, denoting as $P_L = \{A_ij  \mid i, j \in 1\ldots m\}, i < j\}$ 
+all such bipartitions on $L$. These bipartitions are then called \textit{landmark cuts}.
+Later in the simulations, as tangles is not reliant on having all triplet constraints for all landmark objects, we will simply sample a subset $P'_{L} \subset P_L$ of bipartitions,
+which corresponds to repeatedly picking some objects $a, b$ and sampling all triplet comparisons to all other objects $x \in D$. \\
+
+These landmark cuts intuitively capture a cluster structure: the more close $x$ is to $l_1$ according to $d$, the more likely that $A_{12}$ will contain $x$. In the end, $A_{12}$ will
+consist of the points that are in some sense close to $l_1$. In the euclidean space, this notion is very easily captured: A landmark cut between $l_1, l_2$ is
+simply a linear cut between the two points, as illustrated in \autoref{landmark_cut}.
+
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/landmark_cut.png}
+        \caption{Example of a simple landmark cut, with the two triangles being the landmarks $l_1, l_2$, where all red items (left of the line) 
+        would be assigned to $A$, all blue items to $\overline{A}$ (or equivalently the other way around).}
+        \label{fig:landmark_cut}
+    \end{figure}
+
+The landmark approach is a quite unusual way of sampling triplet questions.
+In most triplet experiments, the triplets to sample are chosen randomly \cite{kleindessnerLensDepthFunction2016, haghiriEstimationPerceptualScales2019} 
+or according to some metric (f.e. maximizing some measure of gained information) \cite{roadsEnrichingImageNetHuman2020}. 
+There was no experimental dataset available which is sampled according to a landmark approach, where the objects exhibit a cluster structure, thus we rely on simulations
+for testing our methods.
+
+\subsection{Majority cuts}
+As explained in \autoref{theory:landmark_cuts}, sampling triplet data in a landmark-fashion is not very widely used in current practice. Due to this, we aimed
+to also develop a more general approach to processing tangles to cuts that can be applied to any set of triplet comparisons $T$ regardless of the sampling method.
+For this, we again use the intuition that triplets tell us something about the closeness of data point, and thus about the cluster structure. Assume again
+that we have a set of objects $D$ and a set of triplet comparisons $T$. We fix two points $a,b \in D$. Assume that $a,b$ are close and we and sample a random point $x$,
+then, with high probability, it will be that $d(a,b) < d(a,x)$. The reverse holds, if $a,b$ are far away. Now we can take this the other way around: 
+if we observe a triplet $(a,b,c) \in D$, then we can more reasonably assume that $a,b$ are close than $a,c$ being close. This leads us to the following method of defining
+a set of close points of $a$: Let $L_x = \{t \in T | t = (x, b,c), b,c \in D\}$ be the set of all available triplets where $a$ is in the left position, and equivalently $M_x$ and $R_x$ 
+for set of triplets where $x$ is in the middle and right position, respectively. Then we define: $P_a := \{x \in D \mid \left|   L_a \cap M_x\right| < \left| L_a \cap R_x \right| \}$
+which is the set of all points that are more often closer to $a$ than they are farther away. We refer to these bipartitions as \textit{majority cuts}. Again, they capture
+some cluster structure by assigning points that are close together to the same bipartition.
+
+%TODO: Examining the quality of the cuts
+
