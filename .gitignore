@@ -6,6 +6,7 @@ notion-images
 .vscode
 # profiling data
 *.prof
+latex/*.pdf
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,latex,rust,c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,visualstudiocode,latex,rust,c++
