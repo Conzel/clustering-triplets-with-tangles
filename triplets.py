@@ -229,20 +229,21 @@ def _most_central(a: int, b: int, c: int, distances: np.ndarray) -> int:
     return np.argmin(dists).item()
 
 
-def check_triplet_response_shapes(triplets: np.ndarray, responses: np.ndarray):
+def check_triplet_response_shapes(triplets: np.ndarray, responses: Optional[np.ndarray]):
     """
     Checks if triplets and responses have the correct format.
     Raises ValueError else.
     """
-    if triplets.shape[0] != responses.shape[0]:
-        raise ValueError(
-            f"Triplets {triplets.shape}/responses {responses.shape} have wrong format: Should agree on first dimension.")
+    if responses is not None:
+        if triplets.shape[0] != responses.shape[0]:
+            raise ValueError(
+                f"Triplets {triplets.shape}/responses {responses.shape} have wrong format: Should agree on first dimension.")
+        if len(responses.shape) != 1:
+            raise ValueError(
+                f"Responses {responses.shape} have wrong format: Should be 1-dimensional array.")
     if len(triplets.shape) != 2:
         raise ValueError(
             f"Triplets {triplets.shape} have wrong format: Should be 2-dimensional matrix.")
-    if len(responses.shape) != 1:
-        raise ValueError(
-            f"Responses {responses.shape} have wrong format: Should be 1-dimensional array.")
 
 
 def unify_triplet_order(triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
@@ -349,10 +350,14 @@ def triplets_to_majority_neighbour_cuts(triplets: np.ndarray, radius: float = 1,
     being right is used as input to a sigmoid to then get a probability of b being in the cut or not
     (so b being in the middle often => b will have a high chance of getting included in the cut).
 
-    Returns array of triplets.
-    Triplets are in array format, such that the following is true:
+    Args: 
+        triplets: triplets to calculate cuts for
+            Triplets are in array format, such that the following is true:
 
-    Triplets[0] is closer to Triplets[1] than Triplets[2].
+            Triplets[0] is closer to Triplets[1] than Triplets[2].
+
+    Returns:
+        array of cuts.
     """
     if seed is not None:
         np.random.seed(seed)

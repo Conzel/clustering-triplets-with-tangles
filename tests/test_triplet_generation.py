@@ -87,6 +87,30 @@ def test_to_from_bool_array():
     assert q.labels == q_.labels
 
 
+def test_to_from_bool_array_low_density():
+    data = generate_gmm_data_fixed_means(n=3, means=np.array([[-1, 0], [1, 0]]), std=0.5, seed=1)
+    q = Questionnaire.from_metric(data.xs, density=0.1)
+    t, r = q.to_bool_array()
+    q_ = Questionnaire.from_bool_array(t, r)
+    assert q.equivalent(q_)
+
+
+def test_to_from_bool_array_low_density_manual():
+    data = np.array([[0, 1, 1], [0, 0, 0], [1, 1, 1], [0, 0, 0]])
+    # some labels missing
+    labels = [(0, 1), (0, 2), (1, 3)]
+    q = Questionnaire(data, labels)
+    t, r = q.to_bool_array()
+    t_ = np.array([[0, 0, 1], [0, 0, 2], [0, 1, 3], [1, 0, 1], [1, 0, 2], [1, 1, 3],
+                   [2, 0, 1], [2, 0, 2], [2, 1, 3], [3, 0, 1], [3, 0, 2], [3, 1, 3]])
+    r_ = np.array([0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0])
+    assert np.all(t_ == t)
+    assert np.all(r_ == r)
+    q_ = Questionnaire.from_bool_array(t, r, self_fill=False)
+    assert np.all(q_.values == data)
+    assert np.all(np.array(q_.labels) == np.array(labels))
+
+
 def test_majority_cut():
     triplets = np.array([[0, 1, 2], [0, 1, 3], [1, 3, 2], [1, 3, 4]])
     cuts = triplets_to_majority_neighbour_cuts(triplets, radius=1)

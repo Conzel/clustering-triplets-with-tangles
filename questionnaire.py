@@ -9,14 +9,14 @@ import random
 from typing import Optional
 import networkx as nx
 from operator import itemgetter
-from triplets import LensMetric, unify_triplet_order, is_triplet
+from triplets import LensMetric, check_triplet_response_shapes, unify_triplet_order, is_triplet
 
 import numpy as np
-from sklearn.impute import KNNImputer
 from sklearn.neighbors import DistanceMetric
 from tqdm import tqdm
 
 from data_generation import clean_bipartitions
+from utils import argsort
 
 
 def generate_k_subsets(values: list, k: int) -> "list[list]":
@@ -57,7 +57,7 @@ def generate_question_set(num_datapoints: int, density=1.0):
         while num_sampled < total_questions:
             b, c = random.randint(
                 0, num_datapoints - 1), random.randint(0, num_datapoints - 1)
-            if b > c and (b, c) not in sampled_questions:
+            if b < c and (b, c) not in sampled_questions:
                 sampled_questions.add((b, c))
                 num_sampled += 1
             else:
@@ -87,6 +87,28 @@ class Questionnaire():
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def normal_form(self) -> Questionnaire:
+        """
+        Returns a Questionnaire equivalent to self where all labels are ordered
+        (it is always b < c). This is the normal form of the questionnaire
+        and allows us to check for equality of two questionnaires.
+        Additionally, all labels are sorted lexicographically.
+        """
+        if self.labels_are_ordered():
+            return self.sort_labels()
+        else:
+            return self.order_labels().sort_labels()
+    
+    def equivalent(self, right: Questionnaire) -> bool:
+        """
+        Returns true, if the two questionnaires are equivalent.
+        """
+        left_normal = self.normal_form()
+        right_normal = right.normal_form()
+        return bool(np.all(left_normal.values == right_normal.values)) and (left_normal.labels == right_normal.labels)
+
+        
 
     @staticmethod
     def from_metric(data: np.ndarray, metric=None, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
@@ -138,19 +160,30 @@ class Questionnaire():
         return _generate_questionnaire(LensMetric().pairwise_triplets(triplets, responses, normalize=normalize), noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, randomize_ties=randomize_ties)
 
     @staticmethod
-    def from_bool_array(triplets, responses, self_fill: bool = True) -> Questionnaire:
+    def from_bool_array(triplets: np.ndarray, responses: Optional[np.ndarray], self_fill: bool = True, throwout_empty: bool = True) -> Questionnaire:
         """
         Generates a questionnaire from triplets and responses given as bool array. 
         This function is the opposite of 'triplets_to_bool_array'
 
+        Args: 
+        triplets: 
+            Triplets in the form of a bool array with shape (n, 3).
+        responses: 
+            Of the form: Is triplet[i][0] closer to triplet[i][1] than triplet[i][2]? response[i]
+            Has  shape (n,). If responses is None, assume that all responses are True.
         self_fill:
             If set to true, we also fill in self-information with the correct values: 
             A point is always closer to itself than to another point. This is reflected in the returned questionnaire,
             even if not provided in the original triplet information.
+        throwout_empty:
+            If set to true, we throw out all columns in the resulting questionnaire that
+            have no information. This is needed to accurately reconstruct 
+            questionnaires with density > 0.0
 
         The arguments are as received from the corresponding cblearn functions 
         when called with result format (list-boolean).
         """
+        check_triplet_response_shapes(triplets, responses)
         # Eventually we could have more points but those don't have
         # any triplet information
         n_points = triplets.max() + 1
@@ -165,7 +198,7 @@ class Questionnaire():
                 raise ValueError(
                     "Triplet information on distance of point to itself.")
             # invariant: c > b
-            val = 1 if responses[i] else 0
+            val = 1 if responses is None or responses[i] else 0
             values[a][Questionnaire._triplet_to_pos(b, c, n_points)] = val
 
         for b in range(n_points):
@@ -173,6 +206,10 @@ class Questionnaire():
                 index = Questionnaire._triplet_to_pos(b, c, n_points)
                 labels[index] = (b, c)
 
+        if throwout_empty:
+            empty_cols = np.all(values == MISSING_VALUE, axis=0)
+            values = values[:, ~empty_cols]
+            labels = [l for i, l in enumerate(labels) if not empty_cols[i]]
         if self_fill:
             return Questionnaire(values, labels).fill_self_labels()
         else:
@@ -317,6 +354,21 @@ class Questionnaire():
                 vals[vals_valid, i] = np.logical_not(
                     vals[vals_valid, i]).astype(int)
                 labels[i] = (label[1], label[0])
+        return Questionnaire(vals, labels)
+
+    def sort_labels(self) -> Questionnaire:
+        """
+        Returns Questionnaire equivalent to self where all labels lexicographically
+        sorted (so [0,1] comes before [1,0] etc). 
+
+        Assumes that labels are ordered!
+        """
+        if not self.labels_are_ordered():
+            raise ValueError(
+                "Labels are not ordered prior to sorting! Call sort_labels first.")
+        sorting = argsort(self.labels)
+        vals = self.values[:, sorting]
+        labels = [self.labels[i] for i in sorting]
         return Questionnaire(vals, labels)
 
     def fill_with(self, other: Questionnaire) -> Questionnaire:
