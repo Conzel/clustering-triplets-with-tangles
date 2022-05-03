@@ -13,6 +13,7 @@ from sklearn.base import BaseEstimator
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score
 from sklearn.utils.validation import check_is_fitted
+from sklearn.base import ClusterMixin
 from cblearn.embedding import SOE
 from questionnaire import Questionnaire
 
@@ -25,34 +26,38 @@ from tangles.utils import normalize, compute_hard_predictions
 
 
 class OrdinalTangles(BaseEstimator):
-    def __init__(self, agreement=5, verbose=0):
+    def __init__(self, agreement=5, verbose=0, cost_function=None):
         """
         Initializes a tangles clustering algorithm for triplet data.
 
-        verbose: Set to 0 for no console output, 
-                 1 for status updates, 2 for debugging
-                 and 3 for inspection (producing plots of cuts etc.)
+        Args: 
+            agreement: Size of smallest cluster detectable, see literature.
+            verbose: Set to 0 for no console output, 
+                    1 for status updates, 2 for debugging
+                    and 3 for inspection (producing plots of cuts etc.)
+            cost_function: Cost of the cuts to use. Defaults to mean-manhattan, if None is passed.
         """
         self.agreement = agreement
         self.verbose_level = verbose > 0
         self.verbose = verbose
+        self.labels_: Optional[np.ndarray] = None
+        self.cost_function = cost_function
 
     def fit(self, X, y=None):
         """
-        Does nothing as the model is an unsupervised algorithm. 
+        Fits the data X and writes the results to self.labels_.
         """
-        return self
-
-    def predict(self, X, cost_function=None):
         # Interpreting the questionnaires as cuts and computing their costs
         if not np.all(np.logical_or(X == 0, X == 1)):
             raise ValueError(
                 "X contains illegal values. X must only contain values equal to 0 or 1. You might have forgotten to impute missing values?")
         cuts = Cuts((X == 1).T)
 
-        if cost_function == None:
+        if self.cost_function == None:
             cost_function = BipartitionSimilarity(
                 cuts.values.T)
+        else:
+            cost_function = self.cost_function
         cuts.compute_cost_and_order_cuts(cost_function, verbose=self.verbose)
 
         # Building the tree, contracting and calculating predictions
@@ -82,20 +87,23 @@ class OrdinalTangles(BaseEstimator):
         self.contracted_tangles_tree_ = contracted
         self.tangles_tree_ = tangles_tree
         self.cuts_ = cuts
+        self.labels_ = ys_predicted
 
-        return ys_predicted
-
-    def fit_predict(self, X, y=None) -> np.ndarray:
-        self.fit(X, y)
-        return self.predict(X)
+        return self
 
     def predict_proba(self, X):
         raise NotImplementedError(
             "Soft predictions have not been implemented yet.")
 
-    def score(self, X, y):
-        y_pred = self.fit_predict(X)
-        return normalized_mutual_info_score(y, y_pred)
+
+class TripletClusterMixin:
+    def fit_predict(self, triplets: np.ndarray, responses: np.ndarray, y=None) -> np.ndarray:
+        self.fit(triplets, responses, y=None)
+        return self.labels_
+
+    def score(self, triplets: np.ndarray, responses: np.ndarray, y: np.ndarray):
+        ys = self.fit_predict(triplets, responses)
+        return normalized_mutual_info_score(y, ys)
 
 
 class SoeKmeans(BaseEstimator):
@@ -200,7 +208,7 @@ def find_k_silhouette(xs: np.ndarray, k_max: int = 20) -> int:
     return optimal_k
 
 
-class LandmarkTangles(OrdinalTangles):
+class LandmarkTangles(OrdinalTangles, TripletClusterMixin):
     """
     Tangles that work in a landmark. The triplets that are given to this
     class in the fit-predict step should be in the form of landmark triplets,
@@ -208,20 +216,13 @@ class LandmarkTangles(OrdinalTangles):
     in the dataset. 
     """
 
-    def __init__(self, agreement=5,imputation: Optional[str]=None, verbose=0):
+    def __init__(self, agreement=5, imputation: Optional[str] = None, verbose=0, cost_function=None):
         self.imputation = imputation
-        super().__init__(agreement, verbose)
+        super().__init__(agreement, verbose, cost_function)
 
-    def fit(self, X, y=None):
+    def fit(self, triplets: np.ndarray, responses: Optional[np.ndarray], y: None):
         """
-        Does nothing as the model is an unsupervised algorithm. 
-        """
-        return self
-
-    def predict(self, triplets: np.ndarray, responses: Optional[np.ndarray]):
-        """
-        Returns a hard prediction of the labels of the given triplets.
-
+        Fits the data with a hard prediction of the labels of the given triplets.
         Expectes triplets to be in the form of landmark triplets.
         """
         check_triplet_response_shapes(triplets, responses)
@@ -232,57 +233,27 @@ class LandmarkTangles(OrdinalTangles):
             raise ValueError(
                 "Triplets were not in landmark format. Some values are missing. Call method a set imputation method or change input.")
         assert (q.values == MISSING_VALUE).sum() == 0
-        return super().predict(q.values)
+        return super().fit(q.values)
 
-    def fit_predict(self, triplets: np.ndarray, responses: Optional[np.ndarray], y=None) -> np.ndarray:
-        """
-        Returns prediction of the classifier. See the predict method.
-        """
-        return self.predict(triplets, responses)
 
-    def score(self,triplets: np.ndarray, responses: Optional[np.ndarray], y: np.ndarray):
-        """
-        Returns clustering score via NMI.
-        """
-        y_pred = self.fit_predict(triplets, responses)
-        return normalized_mutual_info_score(y, y_pred)
-
-class MajorityTangles(OrdinalTangles):
+class MajorityTangles(OrdinalTangles, TripletClusterMixin):
     """
     Tangles that work in a majority-cut format. This estimator
     can accept any kind of triplets, but generally has inferior performance to the LandmarkTangles.
     """
+
     def __init__(self, agreement: int = 5, radius: float = 1.0, verbose=0):
-        self.radius=radius
+        self.radius = radius
         super().__init__(agreement, verbose)
 
-    def fit(self, X, y=None):
+    def fit(self, triplets: np.ndarray, responses: Optional[np.ndarray], y: None):
         """
-        Does nothing as the model is an unsupervised algorithm. 
-        """
-        return self
+        Fits the data with a hard prediction of the labels of the given triplets.
 
-    def predict(self, triplets: np.ndarray, responses: Optional[np.ndarray]):
-        """
-        Returns a hard prediction of the labels of the given triplets.
-
-        Triplets can be in any format.
+        Triplets can be in any format, but performs generally worse than Landmark triplets.
         """
         check_triplet_response_shapes(triplets, responses)
         triplets = unify_triplet_order(triplets, responses)
-        cuts = triplets_to_majority_neighbour_cuts(triplets, radius=self.radius)
-        return super().predict(cuts)
-
-    def fit_predict(self, triplets: np.ndarray, responses: Optional[np.ndarray], y=None) -> np.ndarray:
-        """
-        Returns prediction of the classifier. See the predict method.
-        """
-        return self.predict(triplets, responses)
-
-    def score(self,triplets: np.ndarray, responses: Optional[np.ndarray], y: np.ndarray):
-        """
-        Returns clustering score via NMI.
-        """
-        y_pred = self.fit_predict(triplets, responses)
-        return normalized_mutual_info_score(y, y_pred)
-
+        cuts = triplets_to_majority_neighbour_cuts(
+            triplets, radius=self.radius)
+        return super().fit(cuts)
