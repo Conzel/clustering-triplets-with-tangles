@@ -5,12 +5,16 @@ https://scikit-learn.org/stable/developers/develop.html
 """
 
 from random import random
+from typing import Optional
 import numpy as np
+from imputation import MISSING_VALUE
+from triplets import check_triplet_response_shapes, triplets_to_majority_neighbour_cuts, unify_triplet_order
 from sklearn.base import BaseEstimator
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score
 from sklearn.utils.validation import check_is_fitted
 from cblearn.embedding import SOE
+from questionnaire import Questionnaire
 
 from tangles.cost_functions import BipartitionSimilarity
 from tangles.data_types import Cuts
@@ -39,14 +43,16 @@ class OrdinalTangles(BaseEstimator):
         """
         return self
 
-    def predict(self, X):
+    def predict(self, X, cost_function=None):
         # Interpreting the questionnaires as cuts and computing their costs
         if not np.all(np.logical_or(X == 0, X == 1)):
             raise ValueError(
                 "X contains illegal values. X must only contain values equal to 0 or 1. You might have forgotten to impute missing values?")
         cuts = Cuts((X == 1).T)
-        cost_function = BipartitionSimilarity(
-            cuts.values.T)
+
+        if cost_function == None:
+            cost_function = BipartitionSimilarity(
+                cuts.values.T)
         cuts.compute_cost_and_order_cuts(cost_function, verbose=self.verbose)
 
         # Building the tree, contracting and calculating predictions
@@ -192,3 +198,91 @@ def find_k_silhouette(xs: np.ndarray, k_max: int = 20) -> int:
 
     optimal_k = ks[np.argmax(sil)]
     return optimal_k
+
+
+class LandmarkTangles(OrdinalTangles):
+    """
+    Tangles that work in a landmark. The triplets that are given to this
+    class in the fit-predict step should be in the form of landmark triplets,
+    meaning that every question b:c? is answered by every triplet a 
+    in the dataset. 
+    """
+
+    def __init__(self, agreement=5,imputation: Optional[str]=None, verbose=0):
+        self.imputation = imputation
+        super().__init__(agreement, verbose)
+
+    def fit(self, X, y=None):
+        """
+        Does nothing as the model is an unsupervised algorithm. 
+        """
+        return self
+
+    def predict(self, triplets: np.ndarray, responses: Optional[np.ndarray]):
+        """
+        Returns a hard prediction of the labels of the given triplets.
+
+        Expectes triplets to be in the form of landmark triplets.
+        """
+        check_triplet_response_shapes(triplets, responses)
+        q = Questionnaire.from_bool_array(triplets, responses).throwout(1.0)
+        if self.imputation is not None:
+            q = q.impute(self.imputation)
+        if (q.values == MISSING_VALUE).sum() > 0 and self.imputation is None:
+            raise ValueError(
+                "Triplets were not in landmark format. Some values are missing. Call method a set imputation method or change input.")
+        assert (q.values == MISSING_VALUE).sum() == 0
+        return super().predict(q.values)
+
+    def fit_predict(self, triplets: np.ndarray, responses: Optional[np.ndarray], y=None) -> np.ndarray:
+        """
+        Returns prediction of the classifier. See the predict method.
+        """
+        return self.predict(triplets, responses)
+
+    def score(self,triplets: np.ndarray, responses: Optional[np.ndarray], y: np.ndarray):
+        """
+        Returns clustering score via NMI.
+        """
+        y_pred = self.fit_predict(triplets, responses)
+        return normalized_mutual_info_score(y, y_pred)
+
+class MajorityTangles(OrdinalTangles):
+    """
+    Tangles that work in a majority-cut format. This estimator
+    can accept any kind of triplets, but generally has inferior performance to the LandmarkTangles.
+    """
+    def __init__(self, agreement: int = 5, radius: float = 1.0, verbose=0):
+        self.radius=radius
+        super().__init__(agreement, verbose)
+
+    def fit(self, X, y=None):
+        """
+        Does nothing as the model is an unsupervised algorithm. 
+        """
+        return self
+
+    def predict(self, triplets: np.ndarray, responses: Optional[np.ndarray]):
+        """
+        Returns a hard prediction of the labels of the given triplets.
+
+        Triplets can be in any format.
+        """
+        check_triplet_response_shapes(triplets, responses)
+        triplets = unify_triplet_order(triplets, responses)
+        cuts = triplets_to_majority_neighbour_cuts(triplets, radius=self.radius)
+        return super().predict(cuts)
+
+    def fit_predict(self, triplets: np.ndarray, responses: Optional[np.ndarray], y=None) -> np.ndarray:
+        """
+        Returns prediction of the classifier. See the predict method.
+        """
+        return self.predict(triplets, responses)
+
+    def score(self,triplets: np.ndarray, responses: Optional[np.ndarray], y: np.ndarray):
+        """
+        Returns clustering score via NMI.
+        """
+        y_pred = self.fit_predict(triplets, responses)
+        return normalized_mutual_info_score(y, y_pred)
+
