@@ -99,7 +99,7 @@ class Questionnaire():
             return self.sort_labels()
         else:
             return self.order_labels().sort_labels()
-    
+
     def equivalent(self, right: Questionnaire) -> bool:
         """
         Returns true, if the two questionnaires are equivalent.
@@ -108,7 +108,15 @@ class Questionnaire():
         right_normal = right.normal_form()
         return bool(np.all(left_normal.values == right_normal.values)) and (left_normal.labels == right_normal.labels)
 
-        
+    @staticmethod
+    def from_precomputed(distances: np.ndarray, use_similarities: bool = False, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
+        """
+        Generates a questionnaire from precomputed distances (or similarities, if sims is true).
+
+        For information on the other arguments, see "_generate_questionnaire".
+        """
+        assert distances.shape[0] == distances.shape[1]
+        return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, similarity=use_similarities)
 
     @staticmethod
     def from_metric(data: np.ndarray, metric=None, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:

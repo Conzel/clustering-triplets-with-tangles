@@ -6,6 +6,9 @@ from typing import Optional
 from comparisonhc import ComparisonHC as ComparisonHC_
 from comparisonhc.oracle import OracleComparisons
 from comparisonhc.linkage import OrdinalLinkageAverage
+from sklearn.metrics import normalized_mutual_info_score
+from triplets import reduce_triplets
+from utils import flatten
 
 
 def triplets_to_quadruplets(triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
@@ -47,17 +50,12 @@ def triplets_to_quadruplets(triplets: np.ndarray, responses: Optional[np.ndarray
         else:
             a, b, c = t[0], t[2], t[1]
 
-        if q[a, b, a, c] != 0 or q[a, c, a, b] != 0:
-            raise ValueError(
-                f"Unreduced triplets found (or responses): {t, r, i}")
+        # if q[a, b, a, c] != 0 or q[a, c, a, b] != 0:
+        #     raise ValueError(
+        #         f"Unreduced triplets found (or responses): {t, r, i}")
         q[a, b, a, c] = 1
         q[a, c, a, b] = -1
     return q
-
-
-def flatten(l: list[list]) -> list:
-    # sum can essentially be used as a mapReduce / flatMap ;)
-    return sum(l, [])
 
 
 class ComparisonHC():
@@ -68,7 +66,8 @@ class ComparisonHC():
         """
         """
         # fit
-        quads = triplets_to_quadruplets(triplets, responses)
+        triplets = reduce_triplets(triplets, responses)
+        quads = triplets_to_quadruplets(triplets)
         n = quads.shape[0]
         assert quads.shape == (n, n, n, n)
         oracle = OracleComparisons(quads)
@@ -86,3 +85,6 @@ class ComparisonHC():
             labels_for_original[pos] = lab
         assert -1 not in labels_for_original
         return np.array(labels_for_original)
+
+    def score(self, triplets: np.ndarray, responses: Optional[np.ndarray], ys: np.ndarray):
+        return normalized_mutual_info_score(ys, self.fit_predict(triplets, responses))

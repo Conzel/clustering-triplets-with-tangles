@@ -9,6 +9,7 @@ import numpy as np
 import sklearn
 import networkx as nx
 from torchvision.datasets import USPS
+from utils import flatten
 
 from tangles.data_types import Data
 from tangles.loading import load_GMM
@@ -48,7 +49,7 @@ def rescale_points(x, desired_min_dist):
         return x
 
 
-def generate_smb_data(n: int, k: int, p: float, q: float) -> "tuple(nx.Graph, np.ndarray)":
+def generate_smb_data(n: int, k: int, p: float, q: float) -> tuple[nx.Graph, np.ndarray]:
     """
     Very simple SMB, all k blocks have the same size n, 
     an edge goes from i to j with probability p if i == j,
@@ -158,3 +159,33 @@ def _generate_gmm_data(n, means: np.ndarray, std: float, seed: int):
                       blob_centers=means, blob_variances=stds, seed=seed)
     data = Data(xs=xs, ys=ys)
     return data
+
+
+def generate_planted_hierarchy(num_classes_exp: int, num_per_class: int, initial_class_dist: float, class_dist_sim_decrease: float = 1, noise_variance: float = 0) -> Data:
+    """
+    Generated according to Ghoshdastidar et al., 2019, Foundations of Comparison-Based Hierarchical Clustering.
+    This model is represented as a similarity matrix S and
+    corresponds to a noisy hierarchical block matrix, where S = M + R, 
+    with R being a symmetric perturbation matrix.
+    """
+    L = num_classes_exp
+    N0 = num_per_class
+    N = 2**L * N0
+    mu = initial_class_dist
+    delta = class_dist_sim_decrease
+    M = np.zeros((N, N))
+
+    def _set_sims(sims, start, end, l):
+        middle = int((end - start) / 2) + start
+        if l == L:
+            return
+        off_diag_value = mu - (L - l) * delta
+        sims[middle:end, start:middle] = off_diag_value
+        sims[start:middle, middle:end] = off_diag_value
+        _set_sims(sims, start, middle, l + 1)
+        _set_sims(sims, middle, end, l + 1)
+
+    R = np.random.normal(0, noise_variance, (N, N))
+    M[M == 0] = mu
+    _set_sims(M, 0, N, 0)
+    return Data(xs=M + R, ys=flatten([[i] * N0 for i in range(2**L)]))
