@@ -6,6 +6,7 @@ from estimators import SoeKmeans
 import numpy as np
 from questionnaire import Questionnaire
 from tangles.tree_tangles import get_hard_predictions
+from datasets import Dataset
 
 
 def test_tangles_performance():
@@ -81,3 +82,12 @@ def test_estimator_same_as_tangles_impl():
     q = Questionnaire.from_metric(synthetic_data.xs, density=0.01, seed=1)
     tangles.fit(q.values)
     assert np.all(tangles.labels_ == get_hard_predictions(q.values, 5))
+
+
+def test_tangles_predict_hierarchy():
+    data = Dataset.get(Dataset.GAUSS_SMALL, seed=0)
+    q = Questionnaire.from_metric(data.xs)
+    tangles = OrdinalTangles(agreement=5, verbose=False)
+    tangles.fit(q.values)
+    assert tangles.predict_hierarchy(
+    ) == [[list(range(20)), list(range(20, 40))], list(range(40, 60))]

@@ -4,6 +4,8 @@ For more information on the API, refer to
 https://scikit-learn.org/stable/developers/develop.html
 """
 
+from cProfile import label
+from utils import hierarchy_list_map, swap
 from random import random
 from typing import Optional
 import numpy as np
@@ -91,19 +93,46 @@ class OrdinalTangles(BaseEstimator):
 
         return self
 
+    def predict_hierarchy(self) -> list:
+        """
+        Returns the predicted hierarchy as a nested list of contiguous,
+        unique integers (corresponding to the labels of the elements).
+        See HierarchyList for more information, which can also aid in 
+        usage.
+        """
+        check_is_fitted(
+            self, ["contracted_tangles_tree_", "labels_", "tangles_tree_"])
+        ys_hard, _ = compute_hard_predictions(
+            self.contracted_tangles_tree_, verbose=self.verbose)
+        node_labels = dict(
+            map(swap, enumerate(self.contracted_tangles_tree_.maximals)))
+
+        def helper(node):
+            if node.is_leaf():
+                return node_labels[node]
+            else:
+                return [helper(node.left_child), helper(node.right_child)]
+        label_hierarchy = helper(self.contracted_tangles_tree_.root)
+        return hierarchy_list_map(
+            label_hierarchy, lambda x: list(np.nonzero(ys_hard == x)[0]))
+
     def predict_proba(self, X):
         raise NotImplementedError(
             "Soft predictions have not been implemented yet.")
 
 
 class TripletClusterMixin:
-    def fit_predict(self, triplets: np.ndarray, responses: np.ndarray, y=None) -> np.ndarray:
+    def fit_predict(self, triplets: np.ndarray, responses: Optional[np.ndarray], y=None) -> np.ndarray:
+        check_triplet_response_shapes(triplets, responses)
         self.fit(triplets, responses, y=None)
         return self.labels_
 
-    def score(self, triplets: np.ndarray, responses: np.ndarray, y: np.ndarray):
+    def score(self, triplets: np.ndarray, responses: Optional[np.ndarray], y: np.ndarray):
         ys = self.fit_predict(triplets, responses)
         return normalized_mutual_info_score(y, ys)
+
+    # def predict_hierarchy(self, triplets: np.ndarray, responses: Optional[np.ndarray]):
+    #    return
 
 
 class SoeKmeans(BaseEstimator):
