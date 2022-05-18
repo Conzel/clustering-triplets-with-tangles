@@ -5,26 +5,21 @@ the plots shown in the thesis.
 from __future__ import annotations
 import argparse
 import os
-from typing import Optional, Union
+from datasets import Dataset
+from typing import Optional
 from pathlib import Path
 from comparison_hc import ComparisonHC
 import numpy as np
 import matplotlib.pyplot as plt
-from prometheus_client import Enum
 import sklearn
-from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from sklearn.pipeline import Pipeline
-from data_generation import generate_gmm_data_fixed_means
 from cblearn.embedding import SOE, CKL, GNMDS, FORTE, TSTE, MLDS
-from cblearn.datasets import make_random_triplets
 from questionnaire import Questionnaire
-from estimators import LandmarkTangles, MajorityTangles, OrdinalTangles, SoeKmeans
-from matplotlib.cm import get_cmap
+from estimators import LandmarkTangles, MajorityTangles, OrdinalTangles
 from triplets import subsample_triplets, triplets_to_majority_neighbour_cuts, unify_triplet_order
 import pandas as pd
 
-from tangles.data_types import Data
 
 SEED = 1
 RUNS_AVERAGED = 3
@@ -166,34 +161,6 @@ class ClusteringEvaluationSuite:
                 triplets, responses, target).assign(**run_denoms))
             run += 1
         return pd.DataFrame(pd.concat(dfs, axis=0))
-
-
-class Dataset(Enum):
-    GAUSS_SMALL = 1
-    """Dataset with three clusters, 20 points each."""
-    GAUSS_LARGE = 2
-    """Dataset with three clusters, 200 points each."""
-    GAUSS_MASSIVE = 3
-    """NOT IMPLEMENTED"""
-
-    @ staticmethod
-    def get(en: int, seed: int) -> Union[Data, tuple[np.ndarray, np.ndarray]]:
-        """
-        Returns the dataset described by the enum either as a Data object
-        or as triplet-response combination (depends on dataset).
-        """
-        if en == Dataset.GAUSS_SMALL:
-            means = np.array([[-6, 3], [-6, -3], [6, 3]])
-            data = generate_gmm_data_fixed_means(
-                20, means, std=1.0, seed=seed)
-            return data
-        elif en == Dataset.GAUSS_LARGE:
-            means = np.array([[-6, 3], [-6, -3], [6, 3]])
-            data = generate_gmm_data_fixed_means(
-                200, means, std=0.7, seed=seed)
-            return data
-        else:
-            raise ValueError(f"Dataset not supported (yet): {en}")
 
 
 def simulation_all_triplets_gauss(debug: bool, n_runs=RUNS_AVERAGED):
