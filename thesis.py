@@ -1,155 +1,191 @@
 """
-File that is able to produce all the plots for the thesis.
-
-Produce plot via calling the script and then calling
---exp <name>
+This module contains utility functions and classes that help in creating
+the plots shown in the thesis.
 """
 from __future__ import annotations
 import argparse
-from audioop import add
+import os
 from typing import Optional, Union
 from pathlib import Path
+from comparison_hc import ComparisonHC
 import numpy as np
 import matplotlib.pyplot as plt
 from prometheus_client import Enum
+import sklearn
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.pipeline import Pipeline
 from data_generation import generate_gmm_data_fixed_means
 from cblearn.embedding import SOE, CKL, GNMDS, FORTE, TSTE, MLDS
 from cblearn.datasets import make_random_triplets
 from questionnaire import Questionnaire
-from estimators import OrdinalTangles, SoeKmeans
+from estimators import LandmarkTangles, MajorityTangles, OrdinalTangles, SoeKmeans
 from matplotlib.cm import get_cmap
-from triplets import majority_neighbours_count_matrix, subsample_triplets, triplets_to_majority_neighbour_cuts, unify_triplet_order
+from triplets import subsample_triplets, triplets_to_majority_neighbour_cuts, unify_triplet_order
 import pandas as pd
 
 from tangles.data_types import Data
 
 SEED = 1
 RUNS_AVERAGED = 3
-RESULTS_FOLDER = Path("results")
 
 
-def zero_pad_end_like(arr: np.ndarray, other: np.ndarray) -> np.ndarray:
+class DataCache:
     """
-    Pads the end of the array with zeros to the given length.
+    Simple cache structure to not reload our data if unnecessary.
     """
-    return np.pad(arr, (0, other.shape[0] - arr.shape[0]), mode="constant", constant_values=(0, 0))
+
+    def __init__(self, results_folder: str, exp_name: str, verbose: bool = True):
+        self.exp_name = exp_name
+        self.data: Optional[pd.DataFrame] = None
+        self.results_folder = Path(results_folder)
+        self.verbose = verbose
+
+    def save(self, data: pd.DataFrame):
+        """
+        Caches the data produced data.
+        """
+        self.data = data
+        data.to_csv(self.results_folder / f"{self.exp_name}.csv")
+
+    def load(self) -> bool:
+        """
+        Loads the data from the cache.
+        """
+        if self.data is not None:
+            return True
+        elif not self.results_folder.exists():
+            return False
+        elif self.exp_name + ".csv" not in os.listdir(self.results_folder):
+            return False
+        else:
+            if self.verbose:
+                print(f"Previous experiment result found.")
+                print(
+                    f"Loading data from cache at {self.results_folder / self.exp_name}.csv...")
+            self.data = pd.read_csv(
+                self.results_folder / f"{self.exp_name}.csv")
+            return True
 
 
-def evaluation_embedders(triplets: np.ndarray, responses: np.ndarray, embedding_dim: int, n_clusters: int, target: np.ndarray, seed: int, names_to_evaluate: Optional[list[str]] = None) -> pd.DataFrame:
+class ClusteringEvaluationSuite:
     """
-    Evaluates the performance of a lot of baseline embedding algorithms
-    on the given triplets and responses.
+    Evaluates the performance of different clustering algorithms and reports their
+    performance in a pandas dataframe.
+
+    The clustering algorithms used are OrdinalTangles, LandmarkTangles, as well as
+    SOE, CKL, GNMDS, FORTE, TSTE, MLDS in conjunction with a given clusterer (f.e. KMeans).
     """
-    rows = []
-    names = ["SOE", "CKL", "GNMDS", "FORTE", "TSTE", "MLDS"]
-    embedders = [SOE(n_components=embedding_dim, random_state=seed), CKL(n_components=embedding_dim, random_state=seed),
-                 GNMDS(n_components=embedding_dim, random_state=seed), FORTE(
-        n_components=embedding_dim, random_state=seed), TSTE(n_components=embedding_dim, random_state=seed),
-        MLDS(n_components=1, random_state=seed)]
-    for i in range(len(embedders)):
-        name = names[i]
-        if names_to_evaluate is not None and name not in names_to_evaluate:
-            continue
-        embedder = embedders[i]
-        embedding = embedder.fit_transform(triplets, responses)
-        kmeans = KMeans(n_clusters=n_clusters, random_state=seed)
-        pred = kmeans.fit_predict(embedding)
 
-        nmi = normalized_mutual_info_score(pred, target)
-        ars = adjusted_rand_score(pred, target)
-        rows.append(dict(method=name, nmi=nmi, ars=ars))
+    def __init__(self, agreement: int, embedding_dim: int, clusterer: sklearn.base.ClusterMixin, seed: int, radius: float = 1 / 2, methods_to_include: Optional[list[str]] = None, methods_to_exclude: Optional[list[str]] = None, imputation: Optional[str] = None):
+        """
+        Args:
+            agreement: Agreement parameter of both tangles methods
+            embedding_dim: Dimension of the embedding in the Ordinal embedding methods
+            n_clusters: Number of clusters in the kMeans clustering method
+        """
+        if methods_to_include is not None and methods_to_exclude is not None:
+            raise ValueError("White and blacklist both specified. Choose one.")
+        self.embedding_dim = embedding_dim
+        self.clusterer = clusterer
+        self.seed = seed
+        self.agreement = agreement
+        self.radius = radius
+        self.imputation = imputation
+        self.evaluators: list[sklearn.base.ClusterMixin] = []
+        self.names: list[str] = []
+        self._add_evaluators(methods_to_include)
 
-    return pd.DataFrame(rows)
+    def _add_evaluators(self, methods_to_include: Optional[list[str]] = None, methods_to_exclude: Optional[list[str]] = None):
+        """
+        Adds all evaluators to the suite that are in names_to_evaluate. If None, all
+        evaluators are set.
+        """
+        all_names = ["L-Tangles", "M-Tangles", "ComparisonHC",
+                     "SOE", "CKL", "GNMDS", "FORTE", "TSTE", "MLDS"]
+        embedders = [SOE(n_components=self.embedding_dim, random_state=self.seed), CKL(n_components=self.embedding_dim, random_state=self.seed),
+                     GNMDS(n_components=self.embedding_dim, random_state=self.seed), FORTE(
+            n_components=self.embedding_dim, random_state=self.seed), TSTE(n_components=self.embedding_dim, random_state=self.seed),
+            MLDS(n_components=1, random_state=self.seed)]
+        all_evaluators = [LandmarkTangles(agreement=self.agreement, imputation=self.imputation), MajorityTangles(
+            agreement=self.agreement, radius=self.radius), ComparisonHC(num_clusters=self.clusterer.get_params()["n_clusters"])]
+        for embedder in embedders:
+            all_evaluators.append(Pipeline([("embedder", embedder), ("clusterer",
+                                                                     self.clusterer)]))
 
+        if methods_to_include is None and methods_to_exclude is None:
+            self.evaluators = all_evaluators
+            self.names = all_names
+        else:
+            self.evaluators = []
+            self.names = []
+            for i, name in enumerate(all_names):
+                if (methods_to_include is not None and name in methods_to_include) or (methods_to_exclude is not None and name not in methods_to_exclude):
+                    self.evaluators.append(all_evaluators[i])
+                    self.names.append(name)
 
-def labels_to_colors(xs: np.ndarray) -> list[tuple]:
-    cmap = get_cmap("tab10")
-    return [cmap(x) for x in xs]
+    def score_all_once(self, triplets: np.ndarray, responses: np.ndarray, target: np.ndarray) -> pd.DataFrame:
+        """
+        Returns a dataframe containing the results of all embedders applied
+        to the given triplets.
 
+        The dataframe is in wide format, and each row contains:
+        method: str, name of the method used.
+        nmi: float, normalized mutual information.
+        ars: float, adjusted rand score.
+        """
+        rows = []
+        for name, evaluator in zip(self.names, self.evaluators):
+            pred = evaluator.fit_predict(triplets, responses)
 
-def plot_assignments(xs: np.ndarray, ys: np.ndarray):
-    """
-    Assumes contiguous labels y.
-    """
-    plt.figure()
-    for i in range(np.max(ys.astype(int)) + 1):
-        mask = (ys == i)
-        plt.plot(xs[:, 0][mask], xs[:, 1][mask], ".")
-    plt.xlabel("x")
-    plt.ylabel("y")
+            nmi = normalized_mutual_info_score(pred, target)
+            ars = adjusted_rand_score(pred, target)
+            rows.append(dict(method=name, nmi=nmi, ars=ars))
+        return pd.DataFrame(rows)
 
+    def score_all(self, data_generator) -> pd.DataFrame:
+        """
+        Runs all entries from the data generator and returns a dataframe that
+        contains the results of all runs.
 
-def plot_line(df, x: str, y: str, methods_to_use: Optional[set[str]] = None):
-    plt.figure()
-    df = df.groupby(["method", x]).mean().reset_index()
-    methods = set(df.method.unique())
-    if methods_to_use is not None:
-        methods = methods ^ methods_to_use
-    for method in methods:
-        x_arr = df[df.method == method][x]
-        y_arr = df[df.method == method][y]
-        plt.plot(x_arr, y_arr, "--o", label=f"{method}")
-    plt.legend()
-    plt.xlabel(x)
-    plt.ylabel(y)
+        Args:
+            data_generator: an iterable that yields items of the form
+                (triplets, responses, target, {run_denoms}). Must be finite, else
+                the function does not stop.
+                Run denoms is a dictionary that contains the denominators for each run
+                (run number, density, noise, ...)
 
-
-def plot_heatmap(df, x1: str, x2: str, y: str, method: str):
-    plt.figure()
-    df = df[df.method == method].groupby(
-        [x1, x2]).mean().reset_index().sort_values([x1, x2])
-    x1v, x2v = np.meshgrid(df[x1].unique(), df[x2].unique(), indexing="ij")
-    yv = np.zeros_like(x1v)
-    for i in range(x1v.shape[0]):
-        for j in range(x1v.shape[1]):
-            yv[i, j] = df[(df[x1] == x1v[i, j]) & (df[x2] == x2v[i, j])][y]
-    plt.pcolormesh(x1v, x2v, yv, cmap="Blues")
-    plt.colorbar()
-    plt.clim(0.0, 1.0)
-    plt.xlabel(x1)
-    plt.ylabel(x2)
-    plt.xlim([x1v.min(), x1v.max()])
-    plt.ylim([x2v.min(), x2v.max()])
-
-
-def save_plot(name: str):
-    """
-    Pass as name just the stem, no extension, no results folder appended.
-    Saves the plot on the current graphical axis under the given name.
-    """
-    plt.savefig(RESULTS_FOLDER / f"{name}.pgf")
-    plt.savefig(RESULTS_FOLDER / f"{name}.png")
-    plt.savefig(RESULTS_FOLDER / f"{name}.pdf")
-
-
-class TanglesMethod(Enum):
-    EMBEDDING_FILL = "TANGLES-EMBEDDING-FILL"
-    DIRECT = "TANGLES-DIRECT"
-    MAJORITY_CUT = "TANGLES-MAJORITY"
-
-
-def tangles_result_to_row(ys: np.ndarray, target: np.ndarray, tangles_method) -> pd.DataFrame:
-    nmi = normalized_mutual_info_score(ys, target)
-    ars = adjusted_rand_score(ys, target)
-    return pd.DataFrame(dict(method=str(tangles_method), nmi=nmi, ars=ars), index=[0])
+        Returns: 
+            Dataframe with columns as described in score_all_once, 
+            with the run number added.
+        """
+        run = 0
+        dfs = []
+        for triplets, responses, target, run_denoms in data_generator:
+            dfs.append(self.score_all_once(
+                triplets, responses, target).assign(**run_denoms))
+            run += 1
+        return pd.DataFrame(pd.concat(dfs, axis=0))
 
 
 class Dataset(Enum):
     GAUSS_SMALL = 1
+    """Dataset with three clusters, 20 points each."""
     GAUSS_LARGE = 2
+    """Dataset with three clusters, 200 points each."""
     GAUSS_MASSIVE = 3
+    """NOT IMPLEMENTED"""
 
-    @staticmethod
-    def get(en: int, seed=SEED) -> Union[Data, tuple[np.ndarray, np.ndarray]]:
+    @ staticmethod
+    def get(en: int, seed: int) -> Union[Data, tuple[np.ndarray, np.ndarray]]:
         """
         Returns the dataset described by the enum either as a Data object
         or as triplet-response combination (depends on dataset).
         """
         if en == Dataset.GAUSS_SMALL:
             means = np.array([[-6, 3], [-6, -3], [6, 3]])
-            data = generate_gmm_data_fixed_means(20, means, std=1.0, seed=seed)
+            data = generate_gmm_data_fixed_means(
+                20, means, std=1.0, seed=seed)
             return data
         elif en == Dataset.GAUSS_LARGE:
             means = np.array([[-6, 3], [-6, -3], [6, 3]])
@@ -162,8 +198,8 @@ class Dataset(Enum):
 
 def simulation_all_triplets_gauss(debug: bool, n_runs=RUNS_AVERAGED):
     """
-    Simulates using all triplets on a gaussian dataset. As this is 
-    a very simple experiment, no line plot is produced, just an assignment 
+    Simulates using all triplets on a gaussian dataset. As this is
+    a very simple experiment, no line plot is produced, just an assignment
     of the final clustering.
     """
     data = Dataset.get(Dataset.GAUSS_SMALL)
@@ -210,28 +246,6 @@ def _sim_lower_density(dataset: int, agreement: int, densities: list[float], n_r
             dfs.append(make_soe_random(data, q.values.size,
                        SEED + j).assign(density=density))
     return pd.concat(dfs, ignore_index=True)
-
-
-def make_soe_random(data, num_triplets: int, seed: int):
-    """
-    Returns a SOE-Result, but triplets are sampled in a uniform-random 
-    fashion.
-    """
-    # SOE result, with the same number of Triplets, but random
-    t_r, r_r = make_random_triplets(
-        data.xs, "list-boolean", size=num_triplets)
-    soe_kmeans = SoeKmeans(embedding_dimension=2,
-                           n_clusters=3, seed=seed)
-
-    # maybe we havent sampled enough points
-    ys_soe = zero_pad_end_like(
-        soe_kmeans.fit_predict(t_r, r_r), data.ys)
-
-    nmi_soe = normalized_mutual_info_score(ys_soe, data.ys)
-    ars_soe = adjusted_rand_score(ys_soe, data.ys)
-
-    return pd.DataFrame(dict(method="SOE-RANDOM",
-                             nmi=nmi_soe, ars=ars_soe), index=[0])
 
 
 def simulation_lowering_density_gauss_small(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataFrame:
@@ -304,7 +318,7 @@ def simulation_adding_noise_gauss(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataF
 
 def simulation_majority_cuts(debug: bool, n_runs=RUNS_AVERAGED) -> pd.DataFrame:
     """
-    Outputs how the majority cuts would look like and their clustering 
+    Outputs how the majority cuts would look like and their clustering
     against number of triplets.
     """
     if debug:
