@@ -2,7 +2,7 @@ from sklearn.metrics import normalized_mutual_info_score
 from comparison_hc import ComparisonHC
 from data_generation import generate_gmm_data_fixed_means, generate_planted_hierarchy
 from estimators import LandmarkTangles, MajorityTangles, OrdinalTangles
-from hierarchies import HierarchyList
+from hierarchies import HierarchyList, aari
 from triplets import reduce_triplets
 from cblearn.datasets import make_random_triplets
 from estimators import SoeKmeans
@@ -87,13 +87,13 @@ def test_estimator_same_as_tangles_impl():
     assert np.all(tangles.labels_ == get_hard_predictions(q.values, 5))
 
 
-def test_tangles_predict_hierarchy():
+def test_tangles_predict_gauss_hierarchy_exact_reconstruction():
     data = Dataset.get(Dataset.GAUSS_SMALL, seed=0)
     q = Questionnaire.from_metric(data.xs)
     tangles = OrdinalTangles(agreement=5, verbose=False)
     tangles.fit(q.values)
-    assert tangles.predict_hierarchy(
-    ) == [[list(range(20)), list(range(20, 40))], list(range(40, 60))]
+    assert tangles.hierarchy_ == [
+        [list(range(20)), list(range(20, 40))], list(range(40, 60))]
 
 
 def between(a, b):
@@ -122,3 +122,16 @@ def test_comparison_hc_gauss_clustering_performance():
                         result_format="list-boolean", size=5000, random_state=seed))
     y_chc = chc.fit_predict(t)
     assert normalized_mutual_info_score(y_chc, data.ys) > 0.99
+
+
+def test_tangles_predict_planted_hierarchy_performance():
+    data = generate_planted_hierarchy(2, 10, 0.8, 2.0, 0)
+    q = Questionnaire.from_precomputed(data.xs, density=0.1)
+    t, r = q.to_bool_array()
+    tangles = OrdinalTangles(agreement=4, verbose=False)
+    tangles.fit(q.values)
+    assert normalized_mutual_info_score(tangles.labels_, data.ys) > 0.99
+    hierarchy_truth_list = [[between(0, 10), between(10, 20)], [
+        between(20, 30), between(30, 40)]]
+    assert aari(HierarchyList(hierarchy_truth_list),
+                HierarchyList(tangles.hierarchy_)) == 1.0
