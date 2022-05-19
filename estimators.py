@@ -90,20 +90,20 @@ class OrdinalTangles(BaseEstimator):
         self.tangles_tree_ = tangles_tree
         self.cuts_ = cuts
         self.labels_ = ys_predicted
+        self.hierarchy_ = self._calculate_hierarchy()
 
         return self
 
-    def predict_hierarchy(self) -> list:
+    def _calculate_hierarchy(self) -> list:
         """
         Returns the predicted hierarchy as a nested list of contiguous,
         unique integers (corresponding to the labels of the elements).
+
         See HierarchyList for more information, which can also aid in 
         usage.
         """
         check_is_fitted(
             self, ["contracted_tangles_tree_", "labels_", "tangles_tree_"])
-        ys_hard, _ = compute_hard_predictions(
-            self.contracted_tangles_tree_, verbose=self.verbose)
         node_labels = dict(
             map(swap, enumerate(self.contracted_tangles_tree_.maximals)))
 
@@ -114,7 +114,7 @@ class OrdinalTangles(BaseEstimator):
                 return [helper(node.left_child), helper(node.right_child)]
         label_hierarchy = helper(self.contracted_tangles_tree_.root)
         return hierarchy_list_map(
-            label_hierarchy, lambda x: list(np.nonzero(ys_hard == x)[0]))
+            label_hierarchy, lambda x: list(np.nonzero(self.labels_ == x)[0]))
 
     def predict_proba(self, X):
         raise NotImplementedError(
