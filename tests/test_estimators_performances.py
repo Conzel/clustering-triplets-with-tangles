@@ -2,6 +2,8 @@ from sklearn.metrics import normalized_mutual_info_score
 from comparison_hc import ComparisonHC
 from data_generation import generate_gmm_data_fixed_means, generate_planted_hierarchy
 from estimators import LandmarkTangles, MajorityTangles, OrdinalTangles
+from hierarchies import HierarchyList
+from triplets import reduce_triplets
 from cblearn.datasets import make_random_triplets
 from estimators import SoeKmeans
 import numpy as np
@@ -94,11 +96,29 @@ def test_tangles_predict_hierarchy():
     ) == [[list(range(20)), list(range(20, 40))], list(range(40, 60))]
 
 
-def test_comparison_hc_performance():
-    data = generate_planted_hierarchy(3, 10, 0.8, 2.0, 0)
-    q = Questionnaire.from_precomputed(data.xs, density=0.1)
+def between(a, b):
+    return list(range(a, b))
+
+
+def test_comparison_hc_planted_hierarchy_performance():
+    data = generate_planted_hierarchy(2, 5, 0.8, 2.0, 0)
+    q = Questionnaire.from_precomputed(data.xs, density=1.0)
     t, r = q.to_bool_array()
     chc = ComparisonHC(4)
     ys = chc.fit_predict(t, r)
     score = normalized_mutual_info_score(ys, data.ys)
     assert score > 0.99
+    hierarchy_truth_list = [[between(0, 5), between(5, 10)], [
+        between(10, 15), between(15, 20)]]
+    assert chc.aari(HierarchyList(hierarchy_truth_list)) == 1.0
+
+
+def test_comparison_hc_gauss_clustering_performance():
+    seed = 2
+    data = generate_gmm_data_fixed_means(
+        10, np.array([[1, 0], [-1, 0]]), 0.2, seed)
+    chc = ComparisonHC(2)
+    t = reduce_triplets(*make_random_triplets(data.xs,
+                        result_format="list-boolean", size=5000, random_state=seed))
+    y_chc = chc.fit_predict(t)
+    assert normalized_mutual_info_score(y_chc, data.ys) > 0.99

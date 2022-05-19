@@ -1,20 +1,5 @@
-from sklearn.metrics import normalized_mutual_info_score
-from comparison_hc import ComparisonHC, triplets_to_quadruplets
-from data_generation import generate_gmm_data_fixed_means
+from comparison_hc import triplets_to_quadruplets
 import numpy as np
-from triplets import reduce_triplets
-from cblearn.datasets import make_random_triplets
-
-
-def test_chc_performance():
-    seed = 2
-    data = generate_gmm_data_fixed_means(
-        10, np.array([[1, 0], [-1, 0]]), 0.2, seed)
-    chc = ComparisonHC(2)
-    t = reduce_triplets(*make_random_triplets(data.xs,
-                        result_format="list-boolean", size=5000, random_state=seed))
-    y_chc = chc.fit_predict(t)
-    assert normalized_mutual_info_score(y_chc, data.ys) > 0.99
 
 
 def test_quadruplet_generation():
@@ -43,3 +28,21 @@ def test_quadruplet_generation():
     assert (quad_no_responses == 1).sum() == 3
     assert (quad_no_responses == -1).sum() == 3
     assert quad_no_responses.sum() == 0
+
+
+def test_quadruplets_symmetric():
+    triplets = np.array([[0, 1, 2]])
+    q = triplets_to_quadruplets(triplets, responses=None, symmetry=True)
+    assert q[0, 1, 0, 2] == 1
+    assert q[0, 1, 2, 0] == 1
+    assert q[1, 0, 2, 0] == 1
+    assert q[1, 0, 0, 2] == 1
+
+    assert q[0, 2, 0, 1] == -1
+    assert q[2, 0, 0, 1] == -1
+    assert q[2, 0, 1, 0] == -1
+    assert q[0, 2, 1, 0] == -1
+
+    assert q.sum() == 0
+    assert (q == 1).sum() == 4
+    assert (q == -1).sum() == 4
