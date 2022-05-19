@@ -2,13 +2,12 @@
 Module for generating hierarchical models to cluster.
 """
 from __future__ import annotations
-from multiprocessing.sharedctypes import Value
 from typing import Optional
 from copy import deepcopy
 from ete3 import Tree
 from sklearn.metrics import adjusted_rand_score
 import numpy as np
-from utils import index_cluster_list, flatten
+from utils import index_cluster_list
 
 
 class HierarchyNode:

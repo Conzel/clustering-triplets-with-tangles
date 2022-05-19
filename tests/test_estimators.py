@@ -1,5 +1,6 @@
 from sklearn.metrics import normalized_mutual_info_score
-from data_generation import generate_gmm_data_fixed_means
+from comparison_hc import ComparisonHC
+from data_generation import generate_gmm_data_fixed_means, generate_planted_hierarchy
 from estimators import LandmarkTangles, MajorityTangles, OrdinalTangles
 from cblearn.datasets import make_random_triplets
 from estimators import SoeKmeans
@@ -91,3 +92,13 @@ def test_tangles_predict_hierarchy():
     tangles.fit(q.values)
     assert tangles.predict_hierarchy(
     ) == [[list(range(20)), list(range(20, 40))], list(range(40, 60))]
+
+
+def test_comparison_hc_performance():
+    data = generate_planted_hierarchy(3, 10, 0.8, 2.0, 0)
+    q = Questionnaire.from_precomputed(data.xs, density=0.1)
+    t, r = q.to_bool_array()
+    chc = ComparisonHC(4)
+    ys = chc.fit_predict(t, r)
+    score = normalized_mutual_info_score(ys, data.ys)
+    assert score > 0.99

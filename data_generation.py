@@ -78,7 +78,7 @@ def clean_bipartitions(xs: np.ndarray) -> np.ndarray:
     return res
 
 
-def generate_gmm_data_fixed_means(n: Union[int, list[int]], means: np.ndarray, std: float, seed: int) -> Data:
+def generate_gmm_data_fixed_means(n: Union[int, list[int]], means: np.ndarray, std: float, seed: Optional[int]) -> Data:
     if isinstance(n, list):
         xs = []
         ys = []
@@ -151,7 +151,7 @@ def get_usps(shuffle: bool = True, seed: Optional[int] = None, subset: Optional[
     return Data(im_arr, label_arr)
 
 
-def _generate_gmm_data(n, means: np.ndarray, std: float, seed: int):
+def _generate_gmm_data(n, means: np.ndarray, std: float, seed: Optional[int]):
     stds = std * np.ones(means.shape)
     num_clusters = len(means)
 

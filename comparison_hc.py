@@ -6,18 +6,19 @@ from typing import Optional
 from comparisonhc import ComparisonHC as ComparisonHC_
 from comparisonhc.oracle import OracleComparisons
 from comparisonhc.linkage import OrdinalLinkageAverage
-from sklearn.metrics import normalized_mutual_info_score
+from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from hierarchies import HierarchyList
 from triplets import reduce_triplets
-from utils import flatten
+from utils import flatten, index_cluster_list
 
 
 def triplets_to_quadruplets(triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
     """
     Transforms an array of triplets (with responses) to an array of quadruplets.
 
-    Assumes triplets, responses to be in list-boolean form, e.g. 
+    Assumes triplets, responses to be in list-boolean form, e.g.
 
-    responses[i] is True if triplets[i][0] is closer to triplets[i][1] than to 
+    responses[i] is True if triplets[i][0] is closer to triplets[i][1] than to
     triplets[i][2].
 
     If responses is None, we assume that all responses are true (e.g. it is always triplets[i][1] closer).
@@ -61,6 +62,7 @@ def triplets_to_quadruplets(triplets: np.ndarray, responses: Optional[np.ndarray
 class ComparisonHC():
     def __init__(self, num_clusters: int) -> None:
         self.num_clusters = num_clusters
+        self._comparison_hc_original = None
 
     def fit_predict(self, triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
         """
@@ -84,7 +86,40 @@ class ComparisonHC():
         for lab, pos in zip(labels_in_order, flatten(clusters)):
             labels_for_original[pos] = lab
         assert -1 not in labels_for_original
-        return np.array(labels_for_original)
+        self._comparison_hc_original = chc
+        self.labels_ = np.array(labels_for_original)
+        return self.labels_
 
     def score(self, triplets: np.ndarray, responses: Optional[np.ndarray], ys: np.ndarray):
         return normalized_mutual_info_score(ys, self.fit_predict(triplets, responses))
+
+    def aari(self, hierarchy: HierarchyList) -> float:
+        """
+        Returns the similarity between the two hierarchies according to the
+        Average Adjusted Rand Index (see the appendix Ghoshdastidar et al., 2019
+        for a more thorough definition).
+
+        One argument is a hierarachy list, the other one is a dendrogram contained in an
+        instance of the ComparisonHC class.
+        For more, see https://github.com/mperrot/ComparisonHC/blob/3bed0d9d445c2c5a89fe0f9fb22047aa7b23960c/comparisonhc/core.py.
+        """
+        aris = []
+        chc = self._comparison_hc_original
+        assert chc is not None
+        for l in range(1, hierarchy.depth + 1):
+            clusters_left = hierarchy.clusters_at_level(l)
+            if len(clusters_left) != 2**l:
+                raise ValueError(
+                    f"Hierarchy has {len(clusters_left)} clusters at level {l}, but should have {2**l}.")
+            clusters_right = chc._get_k_clusters(
+                chc.dendrogram, chc.clusters, 2**l)
+            aris.append(adjusted_rand_score(index_cluster_list(
+                clusters_left), index_cluster_list(clusters_right)))
+        return np.mean(aris)
+
+
+if __name__ == "__main__":
+    from datasets import toy_gauss_triplets
+    t, r, ys = toy_gauss_triplets(0.05)
+    chc = ComparisonHC(7)
+    chc.fit_predict(t, r)

@@ -50,10 +50,3 @@ def test_raises_non_unique_elements():
 def test_raises_non_integers():
     with pytest.raises(ValueError):
         HierarchyList([[1, 2, 3.0, [1, 2]]])
-
-
-def test_aari():
-    assert aari(HierarchyList(get_level_2_hierarchy()),
-                HierarchyList(get_level_2_hierarchy())) == 1.0
-    assert aari(HierarchyList(
-        [[[0, 1], [2, 3]], [[4, 5], [6, 7]]]), HierarchyList(get_level_2_hierarchy())) == 0.4166666666666667  # regression test
