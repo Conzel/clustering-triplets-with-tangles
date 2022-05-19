@@ -135,7 +135,7 @@ class HierarchyList():
         and that the integers are contigous, starting with 0.
         """
         for element in self.elements:
-            if not isinstance(element, int):
+            if not isinstance(element, (np.integer, int)):
                 raise ValueError(f"Element {element} is not an integer.")
         if not len(np.unique(self.elements)) == len(self.elements):
             raise ValueError(f"Elements are not unique: {self.elements}")
@@ -195,7 +195,7 @@ class HierarchyList():
         for el in hierarchy:
             if isinstance(el, list):
                 depths.append(1 + HierarchyList._determine_depth(el))
-            elif isinstance(el, int):
+            elif isinstance(el, (int, np.integer)):
                 depths.append(0)
             else:
                 raise ValueError(f"Unrecognized type: {type(el)}")
