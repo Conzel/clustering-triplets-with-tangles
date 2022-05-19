@@ -329,6 +329,12 @@ def reduce_triplets_mostcentral(triplets: np.ndarray, responses: Optional[np.nda
 
 
 def reduce_triplets(triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
+    """
+    Reduces a set of triplets by removing duplicates and deciding conflicting triplets
+    by a majority vote. 
+
+    Returns reduced triplet set.
+    """
     triplets = unify_triplet_order(triplets, responses)
     reduced_triplets = []
     for t in triplets:

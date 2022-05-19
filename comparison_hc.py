@@ -5,14 +5,14 @@ import numpy as np
 from typing import Optional
 from comparisonhc import ComparisonHC as ComparisonHC_
 from comparisonhc.oracle import OracleComparisons
-from comparisonhc.linkage import OrdinalLinkageAverage
+from comparisonhc.linkage import OrdinalLinkageAverage, OrdinalLinkageKernel
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from hierarchies import HierarchyList
 from triplets import reduce_triplets
 from utils import flatten, index_cluster_list
 
 
-def triplets_to_quadruplets(triplets: np.ndarray, responses: Optional[np.ndarray] = None) -> np.ndarray:
+def triplets_to_quadruplets(triplets: np.ndarray, responses: Optional[np.ndarray] = None, symmetry: bool = False) -> np.ndarray:
     """
     Transforms an array of triplets (with responses) to an array of quadruplets.
 
@@ -51,11 +51,20 @@ def triplets_to_quadruplets(triplets: np.ndarray, responses: Optional[np.ndarray
         else:
             a, b, c = t[0], t[2], t[1]
 
-        # if q[a, b, a, c] != 0 or q[a, c, a, b] != 0:
-        #     raise ValueError(
-        #         f"Unreduced triplets found (or responses): {t, r, i}")
+        # symmetries have been assumed in the original implementation of ComparisonHC, but
+        # this may be inaccurate in some settings.
+        # (https://github.com/mperrot/ComparisonHC/blob/3bed0d9d445c2c5a89fe0f9fb22047aa7b23960c/examples/car.ipynb)
         q[a, b, a, c] = 1
         q[a, c, a, b] = -1
+        if symmetry:
+            q[b, a, a, c] = 1
+            q[a, b, c, a] = 1
+            q[b, a, c, a] = 1
+
+            q[a, c, b, a] = -1
+            q[c, a, a, b] = -1
+            q[c, a, b, a] = -1
+
     return q
 
 
@@ -69,11 +78,11 @@ class ComparisonHC():
         """
         # fit
         triplets = reduce_triplets(triplets, responses)
-        quads = triplets_to_quadruplets(triplets)
+        quads = triplets_to_quadruplets(triplets, symmetry=True)
         n = quads.shape[0]
         assert quads.shape == (n, n, n, n)
         oracle = OracleComparisons(quads)
-        linkage = OrdinalLinkageAverage(oracle)
+        linkage = OrdinalLinkageKernel(oracle)
         chc = ComparisonHC_(linkage)
         chc.fit([[i] for i in range(n)])
 
