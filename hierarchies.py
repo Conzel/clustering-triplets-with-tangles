@@ -127,7 +127,7 @@ class BinaryClusterTree():
         def fill_helper(node, level):
             if level == 0:
                 return
-            if node.children is None:
+            if node.children is None or node.children == []:
                 value = node.value
                 node.value = None
                 node.children = [
@@ -199,22 +199,33 @@ class BinaryHierarchyTree(BinaryClusterTree, DendrogramLike):
         Returns all clusters at the given level. Assumes that
         the tree is filled.
 
+        If level > depth, appends empty lists to the cluster 
+        result until we have 2**level clusters.
+
         Examples:
         [[[0,1], [2,3]], [[4,5], [6,7]]] 
             level 0 -> [[0,1,2,3,4,5,6,7]]
             level 1 -> [[0,1,2,3], [4,5,6,7]]
             level 2 -> [[0,1], [2,3], [4,5], [6,7]]
         """
-        if level < 0 or level > self.depth:
+        if level < 0:
             raise ValueError(
                 f"Level {level} is not in the range of the hierarchy: {self.depth}")
+        if level > self.depth:
+            lists_to_fill = level - self.depth
+            level = self.depth
+        else:
+            lists_to_fill = 0
 
         def helper(node, level):
             if level == 0:
                 return [node.elements_flat()]
             return sum([helper(child, level - 1) for child in node.children], [])
 
-        return helper(self.root, level)
+        res = helper(self.root, level)
+        # extending to the necessary level, if needed
+        res.extend([[]] * 2**lists_to_fill)
+        return res
 
     def check_labels(self):
         """
