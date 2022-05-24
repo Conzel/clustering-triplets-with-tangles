@@ -46,7 +46,17 @@ def test_raises_non_integers():
     with pytest.raises(ValueError):
         BinaryHierarchyTree([[1, 2, 3.0, [1, 2]]])
 
-# add tests for fills
+
+def test_unbalanced_hierarchy():
+    hier1 = [[[0, 1], [2, 3]], 4, 5, 6]
+    tree = BinaryHierarchyTree(hier1)
+    none_node = tree.root.children[1].children[1]  # type: ignore
+    value_node = tree.root.children[1].children[0]  # type: ignore
+    assert none_node.children == None
+    assert none_node.value == None
+    assert value_node.value == [4, 5, 6]
+    assert tree.clusters_at_level(2) == [[0, 1], [2, 3], [4, 5, 6], []]
+    assert tree.clusters_at_level(1) == [[0, 1, 2, 3], [4, 5, 6]]
 
 
 def test_aari():
