@@ -3,7 +3,6 @@ File containing functions and class definitions for working with triplets in que
 """
 from __future__ import annotations
 import math
-from hierarchies import HierarchyTree
 from imputation import MISSING_VALUE, ImputationMethod
 import random
 from typing import Optional
@@ -146,16 +145,6 @@ class Questionnaire():
         """
         distances = nx.floyd_warshall_numpy(data)
         return _generate_questionnaire(distances, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise)
-
-    @staticmethod
-    def from_hierarchy(hierarchy: HierarchyTree, labels: np.ndarray, randomize_ties: bool = False, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False) -> Questionnaire:
-        similarities = np.zeros((labels.shape[0], labels.shape[0]))
-        for i in range(labels.shape[0]):
-            for j in range(i, labels.shape[0]):
-                similarities[i, j] = hierarchy.closest_ancestor_level(
-                    labels[i], labels[j])
-        similarities = similarities + similarities.T
-        return _generate_questionnaire(similarities, noise, density, verbose, seed, soft_threshhold, imputation_method, flip_noise, randomize_ties=randomize_ties, similarity=True)
 
     @staticmethod
     def from_most_central_triplets(triplets: np.ndarray, responses: np.ndarray, randomize_ties: bool = False, noise=0.0, density=1.0, verbose=True, seed=None, soft_threshhold: float = None, imputation_method: str = None, flip_noise: bool = False, normalize: bool = False) -> Questionnaire:

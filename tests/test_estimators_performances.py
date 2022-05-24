@@ -2,7 +2,7 @@ from sklearn.metrics import normalized_mutual_info_score
 from comparison_hc import ComparisonHC
 from data_generation import generate_gmm_data_fixed_means, generate_planted_hierarchy
 from estimators import LandmarkTangles, MajorityTangles, OrdinalTangles
-from hierarchies import HierarchyList, aari
+from hierarchies import BinaryHierarchyTree, aari
 from triplets import reduce_triplets
 from cblearn.datasets import make_random_triplets
 from estimators import SoeKmeans
@@ -110,7 +110,7 @@ def test_comparison_hc_planted_hierarchy_performance():
     assert score > 0.99
     hierarchy_truth_list = [[between(0, 5), between(5, 10)], [
         between(10, 15), between(15, 20)]]
-    assert chc.aari(HierarchyList(hierarchy_truth_list)) == 1.0
+    assert aari(chc, BinaryHierarchyTree(hierarchy_truth_list), 2) == 1.0
 
 
 def test_comparison_hc_gauss_clustering_performance():
@@ -133,5 +133,5 @@ def test_tangles_predict_planted_hierarchy_performance():
     assert normalized_mutual_info_score(tangles.labels_, data.ys) > 0.99
     hierarchy_truth_list = [[between(0, 10), between(10, 20)], [
         between(20, 30), between(30, 40)]]
-    assert aari(HierarchyList(hierarchy_truth_list),
-                HierarchyList(tangles.hierarchy_)) == 1.0
+    assert aari(BinaryHierarchyTree(hierarchy_truth_list),
+                BinaryHierarchyTree(tangles.hierarchy_), 2) == 1.0

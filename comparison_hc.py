@@ -7,7 +7,7 @@ from comparisonhc import ComparisonHC as ComparisonHC_
 from comparisonhc.oracle import OracleComparisons
 from comparisonhc.linkage import OrdinalLinkageAverage, OrdinalLinkageKernel
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
-from hierarchies import HierarchyList
+from hierarchies import DendrogramLike
 from triplets import reduce_triplets
 from utils import flatten, index_cluster_list
 
@@ -68,7 +68,7 @@ def triplets_to_quadruplets(triplets: np.ndarray, responses: Optional[np.ndarray
     return q
 
 
-class ComparisonHC():
+class ComparisonHC(DendrogramLike):
     def __init__(self, num_clusters: int) -> None:
         self.num_clusters = num_clusters
         self._comparison_hc_original = None
@@ -102,29 +102,19 @@ class ComparisonHC():
     def score(self, triplets: np.ndarray, responses: Optional[np.ndarray], ys: np.ndarray):
         return normalized_mutual_info_score(ys, self.fit_predict(triplets, responses))
 
-    def aari(self, hierarchy: HierarchyList) -> float:
+    def clusters_at_level(self, level: int) -> list[list[int]]:
         """
-        Returns the similarity between the two hierarchies according to the
-        Average Adjusted Rand Index (see the appendix Ghoshdastidar et al., 2019
-        for a more thorough definition).
-
-        One argument is a hierarachy list, the other one is a dendrogram contained in an
-        instance of the ComparisonHC class.
-        For more, see https://github.com/mperrot/ComparisonHC/blob/3bed0d9d445c2c5a89fe0f9fb22047aa7b23960c/comparisonhc/core.py.
+        Returns the cluster at the level of the hierarchy given. We assume
+        hierarchies that double the amount of clusters at every level. 
+        For more information, see the setup used in, Ghoshdastidar et al., 2019
+        (calculation of AARI in the appendix).
         """
-        aris = []
         chc = self._comparison_hc_original
-        assert chc is not None
-        for l in range(1, hierarchy.depth + 1):
-            clusters_left = hierarchy.clusters_at_level(l)
-            if len(clusters_left) != 2**l:
-                raise ValueError(
-                    f"Hierarchy has {len(clusters_left)} clusters at level {l}, but should have {2**l}.")
-            clusters_right = chc._get_k_clusters(
-                chc.dendrogram, chc.clusters, 2**l)
-            aris.append(adjusted_rand_score(index_cluster_list(
-                clusters_left), index_cluster_list(clusters_right)))
-        return np.mean(aris)
+        if chc is None:
+            raise ValueError(
+                "Must fit ComparisonHC before calling clusters_at_level")
+        return chc._get_k_clusters(
+            chc.dendrogram, chc.clusters, 2**level)
 
 
 if __name__ == "__main__":

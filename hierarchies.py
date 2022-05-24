@@ -2,7 +2,8 @@
 Module for generating hierarchical models to cluster.
 """
 from __future__ import annotations
-from typing import Optional
+from abc import ABC, abstractmethod
+from typing import Optional, Union
 from copy import deepcopy
 from ete3 import Tree
 from sklearn.metrics import adjusted_rand_score
@@ -10,124 +11,210 @@ import numpy as np
 from utils import index_cluster_list
 
 
-class HierarchyNode:
-    def __init__(self, value: set[int], parent: Optional[HierarchyNode]):
-        self.value = value
-        self.parent = parent
-        self.children = []
-        self.level = 0
+class DendrogramLike(ABC):
+    """
+    Interface for a class that behaves like a Dendrogram: 
+    We can cut off the class at some point and get the clusters of the current level.
+    """
+    @abstractmethod
+    def clusters_at_level(self, level: int) -> list[list[int]]:
+        pass
 
-    def __str__(self):
-        return str(self.value)
+
+class BinaryClusterTree():
+    """
+    A simple binary tree that serves as helper structure for 
+    other trees used for clustering. 
+    Values are stored in the leaves and represented by lists of integers.
+
+
+    """
+    class Node:
+        """The class that we use to represent the nodes of the tree with. """
+
+        def __init__(self, value: Optional[list[int]], parent: Optional[BinaryClusterTree.Node], children: Optional[list[BinaryClusterTree.Node]]) -> None:
+            self.value = value
+            self.children: Union[list[BinaryClusterTree.Node], None] = children
+            self.parent = parent
+
+        def __str__(self) -> str:
+            if self.value is not None or self.children is None:
+                return str(self.value)
+            else:
+                return "[" + ",".join([str(child) for child in self.children]) + "]"
+
+        def __repr__(self) -> str:
+            return str(self)
+
+        def depth(self):
+            """Returns 1 + maximum depth of the subtrees that this node contains."""
+            if self.children is None or len(self.children) == 0:
+                return 0
+            else:
+                return 1 + max([child.depth() for child in self.children])
+
+        def elements_flat(self) -> list[int]:
+            """Returns a list of all the elements that this node and its children hold."""
+            def helper(node):
+                res = []
+                if node.children is None or node.children == []:
+                    if node.value is None:
+                        return []
+                    else:
+                        return node.value
+                for child in node.children:
+                    child_flat = helper(child)
+                    res.extend(child_flat)
+                return res
+            return helper(self)
+
+    def __init__(self, tree_list: list):
+        """
+        Builds the tree from a nested list
+        Args: 
+            tree_list: Nested list that represents the tree.
+            Example: [[[1,2], [3,4]], 5,6] is parsed to the following tree:
+
+                | -- [5,6]
+                1   
+                |     | -- [1,2]
+                | -- 
+                      | -- [3,4]
+        """
+        self.root = self.Node(None, None, None)
+        self.root.children = self._build_tree(tree_list, self.root)
+        self._recalculate_properties()
+
+    @staticmethod
+    def _build_tree(tree_list: list, parent: BinaryClusterTree.Node) -> list[BinaryClusterTree.Node]:
+        """
+        Builds up a tree from a nested list with the given parent. Returns
+        list of nodes, these have to be set to the children of the given
+        parent manually.
+        """
+        loose_elements = []
+        lists = []
+        for el in tree_list:
+            if isinstance(el, (np.integer, int)):
+                loose_elements.append(el)
+            if isinstance(el, list):
+                lists.append(el)
+        nodes = []
+        if len(lists) > 2:
+            raise ValueError("Tree is not binary.")
+        # add all lists as new nodes
+        for l in lists:
+            temp_node = BinaryClusterTree.Node(None, parent, [])
+            temp_node.children = BinaryClusterTree._build_tree(l, temp_node)
+            nodes.append(temp_node)
+        if len(lists) == 0:
+            # make parent cluster a leaf
+            parent.value = loose_elements
+            parent.children = None
+        elif len(loose_elements) > 0:  # add loose elements as separate leaf
+            nodes.append(BinaryClusterTree.Node(loose_elements, parent, None))
+        return nodes
+
+    def fill(self):
+        """
+        Fills the tree with nodes such that every level is completely filled.
+
+        Mutates the tree. Node values are transferred to leftmost child 
+        for nodes not on the bottom level.
+        """
+        target_level = self.root.depth()
+
+        def fill_helper(node, level):
+            if level == 0:
+                return
+            if node.children is None:
+                value = node.value
+                node.value = None
+                node.children = [
+                    self.Node(value, node, None), self.Node(None, node, None)]
+            if len(node.children) == 1:
+                node.children.append(self.Node(None, node, None))
+            # fallthrough to here is by done on purpose
+            for child in node.children:
+                fill_helper(child, level - 1)
+        fill_helper(self.root, target_level)
+        self._recalculate_properties()
+
+    def _recalculate_properties(self):
+        """
+        Internal method that needs to be called when the tree is mutated.
+        """
+        self._elements = self.root.elements_flat()
+        self._num_elements = len(self.elements)
+        self._depth = self.root.depth()
+
+    @property
+    def elements(self) -> list[int]:
+        """All the elements contained in this tree in a flattened list."""
+        return self._elements
+
+    @property
+    def num_elements(self) -> int:
+        """Number of elements that this tree holds."""
+        return self._num_elements
+
+    @property
+    def depth(self) -> int:
+        """Maximum depth of the tree (if unbalanced)."""
+        return self._depth
+
+    def __str__(self) -> str:
+        return "HierarchyTree(" + str(self.root) + ")"
 
     def __repr__(self) -> str:
-        return str(self.value)
-
-    def update_levels(self):
-        """
-        Recursively updates levels of this node and all its children. 
-        """
-        if self.parent is None:
-            self.level = 0
-        else:
-            self.level = self.parent.level + 1
-        for child in self.children:
-            child.update_levels()
-
-    def add_children(self, children: list[HierarchyNode]):
-        for child in children:
-            child.parent = self
-            self.children.append(child)
-
-    def _newick_tree(self) -> str:
-        if self.children == []:
-            if len(self.value) == 1:
-                return str(next(iter(self.value)))
-            else:
-                raise ValueError(f"Leaf has not only one value: {self.value}")
-        else:
-            s = "(" + ",".join([child._newick_tree()
-                                for child in self.children]) + ")"
-            if self.parent is None:
-                return s + ";"
-            else:
-                return s
+        return str(self.root)
 
 
-def merge_nodes(nodes: list[HierarchyNode]) -> HierarchyNode:
+class BinaryHierarchyTree(BinaryClusterTree, DendrogramLike):
     """
-    Builds a new node from a list of previous nodes.
-    """
-    nodes = [deepcopy(node) for node in nodes]
-    new_node = HierarchyNode(set.union(*[node.value for node in nodes]), None)
-    new_node.add_children(nodes)
-    new_node.update_levels()
-    return new_node
+    A tree that represents a hierarchy of clusterings in binary format.
+    Each leaf is a cluster, and each internal node represents one level 
+    of splitting the clusters. The tree is built from a nested list
+    and filled with nodes such that every level is completely filled. 
+    For details, see the fill method in the BinaryClusterTree class.
 
-
-class HierarchyTree:
-    def __init__(self, root: HierarchyNode):
-        self.root = root
-        root.update_levels()
-        assert root.parent == None
-        assert root.level == 0
-
-    def closest_ancestor_level(self, a: int, b: int) -> int:
-        """
-        Returns the level of the closest ancestor of both a and b.
-
-        Note that if this number is lower, then a and b are further away
-        from each other.
-        """
-        if not (a in self.root.value and b in self.root.value):
-            raise ValueError(
-                f"Tree does not contain nodes {a} and {b}. Stored labels: {self.root.value}")
-        current_node = self.root
-        while True:
-            eligible_children = []
-            for child in current_node.children:
-                if a in child.value and b in child.value:
-                    eligible_children.append(child)
-            if len(eligible_children) == 0:
-                return current_node.level
-            if len(eligible_children) == 1:
-                current_node = eligible_children[0]
-                continue
-            if len(eligible_children) > 1:
-                raise ValueError("Erroneous hierarchy, hierarchies overlap.")
-
-    def draw(self):
-        newick = self.root._newick_tree()
-        print(Tree(newick))
-
-
-def get_primitives(elements: list[int]):
-    return [HierarchyNode(set([element]), None) for element in elements]
-
-
-class HierarchyList():
-    """Hierarchy that is described as a nested list, like so:
-    [[0,1], [2,3]].
     The hierarchy is assumed to save a set of unique, contigous integers
     which can be used as labels or indices for more complex objects.
     The class enforces this constraint in the constructor.
-
-    Properties:
-    elements: list of all elements in the hierarchy, flattened
-    hierarchy: raw hierarchy as nested list.
     """
 
-    def __init__(self, hierarchy: list) -> None:
+    def __init__(self, hierarchy: list):
         """
         Args:
         hierarchy: nested list of elements, with each nesting representing
             one layer. Example: [[0,1], [2,3]]
             Each element has to be an integer and unique in the whole list.
         """
-        self._depth = HierarchyList._determine_depth(hierarchy)
-        self.elements = HierarchyList._elements_flat(hierarchy)
-        self.hierarchy = hierarchy
+        super().__init__(hierarchy)
         self.check_labels()
+        self.fill()
+
+    def clusters_at_level(self, level: int) -> list[list[int]]:
+        """
+        Returns all clusters at the given level. Assumes that
+        the tree is filled.
+
+        Examples:
+        [[[0,1], [2,3]], [[4,5], [6,7]]] 
+            level 0 -> [[0,1,2,3,4,5,6,7]]
+            level 1 -> [[0,1,2,3], [4,5,6,7]]
+            level 2 -> [[0,1], [2,3], [4,5], [6,7]]
+        """
+        if level < 0 or level > self.depth:
+            raise ValueError(
+                f"Level {level} is not in the range of the hierarchy: {self.depth}")
+
+        def helper(node, level):
+            if level == 0:
+                return [node.elements_flat()]
+            return sum([helper(child, level - 1) for child in node.children], [])
+
+        return helper(self.root, level)
 
     def check_labels(self):
         """
@@ -142,89 +229,23 @@ class HierarchyList():
         if not (min(self.elements) == 0 and max(self.elements) == len(self.elements) - 1):
             raise ValueError(f"Elements are not contigous: {self.elements}")
 
-    @property
-    def depth(self) -> int:
-        """
-        Returns depth of the hierarchy. All subtrees of the hierarchy 
-        have the same depth.
-        """
-        return self._depth
 
-    @property
-    def num_elements(self) -> int:
-        """
-        Returns the total number of elements in the hierarchy (flattened).
-        """
-        return len(self.elements)
-
-    def clusters_at_level(self, l: int) -> list[list[int]]:
-        """
-        Returns all clusters at level l.
-
-        Examples:
-        [[[0,1], [2,3]], [[4,5], [6,7]]] 
-            level 0 -> [[0,1,2,3,4,5,6,7]]
-            level 1 -> [[0,1,2,3], [4,5,6,7]]
-            level 2 -> [[0,1], [2,3], [4,5], [6,7]]
-        """
-        if l < 0 or l > self.depth:
-            raise ValueError(
-                f"Level {l} is not in the range of the hierarchy: {self.depth}")
-
-        def helper(l: int, hierarchy: list):
-            if l == 0:
-                return [HierarchyList._elements_flat(hierarchy)]
-            else:
-                return sum([(helper(l - 1, child)) for child in hierarchy], [])
-
-        return helper(l, self.hierarchy)
-
-    @staticmethod
-    def _elements_flat(hierarchy) -> list:
-        res = []
-        for el in hierarchy:
-            if isinstance(el, list):
-                res.extend(HierarchyList._elements_flat(el))
-            else:
-                res.append(el)
-        return res
-
-    @staticmethod
-    def _determine_depth(hierarchy) -> int:
-        depths = []
-        for el in hierarchy:
-            if isinstance(el, list):
-                depths.append(1 + HierarchyList._determine_depth(el))
-            elif isinstance(el, (int, np.integer)):
-                depths.append(0)
-            else:
-                raise ValueError(f"Unrecognized type: {type(el)}")
-        for d in depths:
-            if d != depths[0]:
-                raise ValueError(
-                    f"Passed hierarchy {hierarchy} has different depths, currently not supported.")
-        return depths[0]
-
-    def __str__(self) -> str:
-        return "Hierarchy(" + str(self.hierarchy) + ")"
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-
-def aari(hierarchy_left: HierarchyList, hierarchy_right: HierarchyList) -> float:
+def aari(hierarchy_left: DendrogramLike, hierarchy_right: DendrogramLike, depth: int) -> float:
     """
     Returns the similarity between the two hierarchies according to the 
     Average Adjusted Rand Index (see the appendix Ghoshdastidar et al., 2019
     for a more thorough definition).
     """
-    if hierarchy_left.depth != hierarchy_right.depth:
-        raise ValueError(
-            f"Hierarchies have different depths: {hierarchy_left.depth} and {hierarchy_right.depth}")
     aris = []
-    for l in range(1, hierarchy_left.depth + 1):
+    for l in range(1, depth + 1):
         clusters_left = index_cluster_list(hierarchy_left.clusters_at_level(l))
         clusters_right = index_cluster_list(
             hierarchy_right.clusters_at_level(l))
         aris.append(adjusted_rand_score(clusters_left, clusters_right))
     return np.mean(aris)
+
+
+if __name__ == "__main__":
+    b = BinaryClusterTree([[[0, 1], [2, 3]], 4, 5, 6])
+    b.fill()
+    b.root.elements_flat()

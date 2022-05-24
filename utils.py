@@ -59,6 +59,8 @@ def hierarchy_list_map(l: list, f: Callable):
     Maps over a hierarchy list and turns every item a into f(a)
     """
     transformed = []
+    if not isinstance(l, list):
+        return f(l)
     for el in l:
         if isinstance(el, list):
             transformed.append(hierarchy_list_map(el, f))
