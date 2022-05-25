@@ -150,8 +150,9 @@ class ThesisPlotter:
     """
     Contains all the functions for plotting the figures in the thesis.
     """
-    def __init__(self, results_folder: Optional[Path] = None) -> None:
+    def __init__(self, results_folder: Optional[Path] = None, methods_plotted: Optional[set[str]] = None) -> None:
         self.results_folder = results_folder
+        self.methods_plotted = methods_plotted
 
     def labels_to_colors(self, xs: np.ndarray) -> list[tuple]:
         cmap = get_cmap("tab10")
@@ -174,12 +175,15 @@ class ThesisPlotter:
         plt.figure()
         df = df.groupby(["method", x]).mean().reset_index()
         methods = set(df.method.unique())
+        if methods_to_use is None:
+            methods_to_use = self.methods_plotted
         if methods_to_use is not None:
-            methods = methods ^ methods_to_use
+            methods = methods & methods_to_use
         for method in methods:
             x_arr = df[df.method == method][x]
             y_arr = df[df.method == method][y]
-            plt.plot(x_arr, y_arr, "--o", label=f"{method}")
+            if x_arr.size != 0 and y_arr.size != 0:
+                plt.plot(x_arr, y_arr, "--o", label=f"{method}")
         plt.legend()
         plt.xlabel(x)
         plt.ylabel(y)
@@ -219,5 +223,10 @@ class ThesisPlotter:
             plt.savefig(f"{name}.pgf")
             plt.savefig(f"{name}.png")
             plt.savefig(f"{name}.pdf")
+    
+def save_all(folder_name, figure_name):
+    plt.savefig(Path(folder_name) / f"{figure_name}.pgf")
+    plt.savefig(Path(folder_name) / f"{figure_name}.pdf")
+    plt.savefig(Path(folder_name) / f"{figure_name}.png")
     
     

@@ -13,8 +13,6 @@ class Dataset(Enum):
     """Dataset with three clusters, 20 points each."""
     GAUSS_LARGE = 2
     """Dataset with three clusters, 200 points each."""
-    GAUSS_MASSIVE = 3
-    """NOT IMPLEMENTED"""
 
     @ staticmethod
     def get(en: int, seed: Optional[int]) -> Union[Data, tuple[np.ndarray, np.ndarray]]:
