@@ -721,8 +721,6 @@ FUNCTION {article}
       if$
     }
   if$
-  format.issn output
-  format.doi output
   format.url output
   new.block
   note output
@@ -758,8 +756,6 @@ FUNCTION {book}
   if$
   format.edition output
   format.date "year" output.check
-  format.isbn output
-  format.doi output
   format.url output
   new.block
   note output
@@ -776,8 +772,6 @@ FUNCTION {booklet}
   howpublished output
   address output
   format.date output
-  format.isbn output
-  format.doi output
   format.url output
   new.block
   note output
@@ -815,8 +809,6 @@ FUNCTION {inbook}
   if$
   format.edition output
   format.date "year" output.check
-  format.isbn output
-  format.doi output
   format.url output
   new.block
   note output
@@ -845,11 +837,8 @@ FUNCTION {incollection}
       format.chapter.pages output
     }
   if$
-  format.isbn output
-  format.doi output
   format.url output
   new.block
-  note output
   fin.entry
 }
 
@@ -860,31 +849,9 @@ FUNCTION {inproceedings}
   new.block
   format.title "title" output.check
   new.block
-  crossref missing$
-    { format.in.ed.booktitle "booktitle" output.check
-      format.bvolume output
-      format.number.series output
-      format.pages output
-      address empty$
-        { organization publisher new.sentence.checkb
-          organization output
-          publisher output
-          format.date "year" output.check
-        }
-        { address output.nonnull
-          format.date "year" output.check
-          new.sentence
-          organization output
-          publisher output
-        }
-      if$
-    }
-    { format.incoll.inproc.crossref output.nonnull
-      format.pages output
-    }
-  if$
+  format.in.ed.booktitle "booktitle" output.check
+  format.date "year" output.check
   new.block
-  note output
   fin.entry
 }
 
@@ -903,7 +870,6 @@ FUNCTION {manual}
   format.date output
   format.url output
   new.block
-  note output
   fin.entry
 }
 
@@ -920,7 +886,6 @@ FUNCTION {mastersthesis}
   format.date "year" output.check
   format.url output
   new.block
-  note output
   fin.entry
 }
 
@@ -937,7 +902,6 @@ FUNCTION {misc}
   format.issn output
   format.url output
   new.block
-  note output
   fin.entry
   empty.misc.check
 }
@@ -955,7 +919,6 @@ FUNCTION {phdthesis}
   format.date "year" output.check
   format.url output
   new.block
-  note output
   fin.entry
 }
 
@@ -974,7 +937,6 @@ FUNCTION {proceedings}
   publisher output
   format.url output
   new.block
-  note output
   fin.entry
 }
 
@@ -991,7 +953,6 @@ FUNCTION {techreport}
   format.date "year" output.check
   format.url output
   new.block
-  note output
   fin.entry
 }
 
@@ -1002,7 +963,6 @@ FUNCTION {unpublished}
   new.block
   format.title "title" output.check
   new.block
-  note "note" output.check
   format.date output
   format.url output
   fin.entry
