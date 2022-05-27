@@ -6,6 +6,7 @@
 %%% allgemeine Einstellungen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 \documentclass[twoside,12pt,a4paper]{report}
 %\usepackage{reportpage}
 \usepackage{epsf}
@@ -19,6 +20,12 @@
 \usepackage{amssymb}
 \usepackage{placeins}
 \usepackage{hyperref}
+\usepackage{pgf}
+
+% bib settings
+\usepackage[round,comma]{natbib}\bibliographystyle{thesis}
+
+
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\C}{\mathbb{C}}
 \newcommand{\N}{\mathbb{N}}
@@ -230,9 +237,7 @@ Nummer & Datum \\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \addcontentsline{toc}{chapter}{Bibliography}
-
-\bibliographystyle{alpha}
-\bibliography{masterthesis}
+\bibliography{Masterthesis}
 %% Obige Anweisung legt fest, dass BibTeX-Datei `mylit.bib' verwendet
 %% wird. Hier koennen mehrere Dateinamen mit Kommata getrennt aufgelistet
 %% werden.
