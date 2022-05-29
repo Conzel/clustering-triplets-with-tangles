@@ -23,26 +23,27 @@ complement of $A$ with respect to $V$. \\
 
 For such a bipartition to be useful in clustering, we expect it to hold some degree of information about the cluster 
 structure of our data. This means that a good bipartition should not separate groups of data that are tightly coupled.
-If we imagine a graph data structure, a good bipartition $P = \{A, \overline{A}\}$ might be a separation of the set of nodes $V$ such that there 
-are only a few edges between $A$ and $\overline{A}$. How useful a cut might be for our clustering will be quantified through a \textbf{cost function} 
-$c: \mathcal{P}(V) \to \R$, with $\mathcal{P}(V)$ denoting the power set of V. One is free to choose this cost function and it might be dependent on the problem at hand. 
+If we imagine a graph data structure, a good bipartition $P = \{A, \overline{A}\}$ might separate the set of nodes $V$ such that there 
+are only a few edges between $A$ and $\overline{A}$. A \textbf{cost function} 
+$c: \mathcal{P}(V) \to \R$, quantifies how useful a cut is, with $\mathcal{P}(V)$ denoting the power set of V. One is free to choose this cost function and it depends on the problem at hand. 
 %TODO: Figure of bipartiion
 %TODO: insert cost function used?
 \\
-Assume that for a set of elements $V$ that we are equipped with a set of bipartitions $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \} $ on $V$.
-Coupled with the cost function, this set of bipartitions should tell us a lot about the cluster structure of the data:
-we know for all bipartitions, how much they do or don't separate dense regions in $V$. The task of the Tangles framework is to aggregate
-the information present in the bipartitions and bring it into a useable form. For this, we process $\mathcal{B}$ to a set of so-called \textbf{Tangles}, which
-correspond to specific ways of orienting the cuts in a consistent way such that they point to cohesive structures in the data. 
+Assume that for a set of elements $V$ we have a set of bipartitions $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \} $ on $V$.
+Together with the cost function, this set of bipartitions should tell us a lot about the cluster structure of the data:
+for all bipartitions, we know how much they do or don't separate dense regions in $V$. The Tangles framework aggregates
+this information in the bipartitions and brings it into a useable form. For this, we process $\mathcal{B}$ to a set of so-called \textbf{Tangles}. These
+correspond to specific ways of orienting the cuts such that they point to cohesive structures in the data. 
 Orienting here means that we pick one specific side of a bipartition. An \textbf{Orientation} of $\mathcal{B}$ is then a set $O = \{o_1, o_2, \ldots o_n\}$, where $o_i$ 
 corresponds to either the partition $A_i$ (oriented \textit{left}) or $\overline{A_i}$ (oriented \textit{right}). A consistent orientation (which we also call a Tangle) is an orientation for which:
 
 \begin{align}
     \forall A,B,C \in O: \left| A \cap B \cap B \right| \ge a
 .\end{align}
-for some fixed parameter $a \in \N$, which we refer to as \textbf{agreement} parameter. This point is also where we need the cost function: Without it, a lot
-of reasonably sized sets of bipartitions wouldn't allow for any tangles, as there are simply too many of them to consistently orient. Imagine if our set of bipartitions would 
-contain a few random bipartitions: on average, each of these cuts our set of points in half, so we can at most consistently orient on the order of $O(\log(n))$ many of them.
+
+for some fixed parameter $a \in \N$, which we refer to as \textbf{agreement} parameter. Here we need the cost function: Without it, a lot
+sets of bipartitions wouldn't allow for any tangles, as there are too many cuts to consistently orient them. Imagine if our set of bipartitions would 
+contain a few random ones. On average, each of these cut our set of points in half, so we can at most orient on the order of $O(\log(n))$ many random bipartitions consistently.
 Using the cost function, we can simply restrict our tangles to a set of low-cost (and thus very insightful) cuts $P_{\psi}$, using a threshhold $\psi \in \R$ such that
 $P_{\psi} = \{ P c(P) \le \psi \}$. A tangle on $P_{\psi}$ is then said to have order $\psi$.
 
@@ -50,7 +51,7 @@ $P_{\psi} = \{ P c(P) \le \psi \}$. A tangle on $P_{\psi}$ is then said to have 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/tangles-example.pdf}
-    \caption{An example of how a simple tangle might look like, if we assume a reasonably sized agreement (say $a = 3$). The red lines represent simple cuts, which divide the sets of points into a bipartition.
+    \caption{An example of how a simple tangle might look like if we assume a reasonably sized agreement (say $a = 3$). The red lines represent simple cuts which divide the sets of points into a bipartition.
     A tangle on this set of bipartitions might orient all bipartitions to the left side (indicated by the arrow), so that they point to the dense structure there. Another 
 possible tangle might orient all cuts to the left. Notice that a tangle on this set of bipartitions can only either point all bipartitions to the left or to the right, else
 the consistency criterion is violated. This might already give a good intuition on why tangles are able to find dense structures in data.}
@@ -59,7 +60,7 @@ the consistency criterion is violated. This might already give a good intuition 
 \FloatBarrier
 
 \subsection{Processing Tangles to a clustering}
-As we have seen in \autoref{fig:tangles-example}, a tangle might correspond directly to a cluster. But, a given set of bipartitions usually allows for a wide 
+As we have seen in \autoref{fig:tangles-example}, a tangle might correspond directly to a cluster. But, a set of bipartitions usually allows for a wide 
 variety of possible tangles, some of them pointing to different or overlapping clusters. We now have to process this set of tangles into a useable clustering.
 This step is a bit involved and we aim to only give a rough, intuitional overview here. \\
 
