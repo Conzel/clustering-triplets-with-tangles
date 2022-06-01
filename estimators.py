@@ -16,7 +16,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score
 from sklearn.utils.validation import check_is_fitted
 from sklearn.base import ClusterMixin
-from cblearn.embedding import SOE
+from cblearn.embedding import SOE, TSTE
 from questionnaire import Questionnaire
 
 from tangles.cost_functions import BipartitionSimilarity
@@ -71,7 +71,10 @@ class OrdinalTangles(BaseEstimator):
                                           )
 
         contracted = ContractedTangleTree(tangles_tree)
-        contracted.prune(1, verbose=self.verbose)
+
+        if cuts.values.shape[0] > 3:
+            # doesnt make sense to prune if we don't have enough cuts
+            contracted.prune(1, verbose=self.verbose)
 
         contracted.calculate_setP()
 
@@ -131,12 +134,9 @@ class TripletClusterMixin:
         ys = self.fit_predict(triplets, responses)
         return normalized_mutual_info_score(y, ys)
 
-    # def predict_hierarchy(self, triplets: np.ndarray, responses: Optional[np.ndarray]):
-    #    return
 
-
-class SoeKmeans(BaseEstimator):
-    def __init__(self, embedding_dimension, n_clusters, seed=None, k_max=20):
+class EmbedderKmeans(BaseEstimator):
+    def __init__(self, embedder, n_clusters, seed, k_max=20):
         """
         Initializes a classifier that uses a combination of SOE and kMeans
         to predict labels of given triplets.
@@ -150,11 +150,9 @@ class SoeKmeans(BaseEstimator):
 
         Input is triplets, responses as in the detailed in cblearn.
         """
-        self.embedding_dimension = embedding_dimension
+        self._embedder = embedder
         self.n_clusters = n_clusters
         self.seed = seed
-        self._soe = SOE(n_components=self.embedding_dimension,
-                        random_state=self.seed)
         if n_clusters is None:
             self._kmeans = None
             self._k_max = k_max
@@ -196,7 +194,7 @@ class SoeKmeans(BaseEstimator):
         """
         Performs SOE-kMeans to predict labels of given triplets.
         """
-        self._embedding = self._soe.fit_transform(triplets, responses)
+        self._embedding = self._embedder.fit_transform(triplets, responses)
         if self._kmeans is None:
             k = find_k_silhouette(self.embedding_, k_max=self._k_max)
             self._k = k
@@ -211,6 +209,14 @@ class SoeKmeans(BaseEstimator):
         """
         y_pred = self.fit_predict(triplets, responses)
         return normalized_mutual_info_score(y, y_pred)
+
+
+def SoeKmeans(embedding_dimension, n_clusters, seed=None, k_max=20):
+    return EmbedderKmeans(SOE(embedding_dimension, random_state=seed), n_clusters, k_max)
+
+
+def TsteKmeans(embedding_dimension, n_clusters, seed=None, k_max=20):
+    return EmbedderKmeans(TSTE(embedding_dimension), n_clusters, seed, k_max)
 
 
 def find_k_silhouette(xs: np.ndarray, k_max: int = 20) -> int:
