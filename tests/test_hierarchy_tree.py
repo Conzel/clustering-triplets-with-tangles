@@ -54,6 +54,8 @@ def test_unbalanced_hierarchy():
         assert none_node.children == None
         assert none_node.value == None
         assert value_node.value == [4, 5, 6]
+        assert tree.clusters_at_level(3) == [[0, 1], [2, 3], [
+            4, 5, 6], [], [], [], [], []]
         assert tree.clusters_at_level(2) == [[0, 1], [2, 3], [4, 5, 6], []]
         assert tree.clusters_at_level(1) == [[0, 1, 2, 3], [4, 5, 6]]
     tree1 = BinaryHierarchyTree([[[0, 1], [2, 3]], 4, 5, 6])

@@ -212,7 +212,7 @@ class BinaryHierarchyTree(BinaryClusterTree, DendrogramLike):
             raise ValueError(
                 f"Level {level} is not in the range of the hierarchy: {self.depth}")
         if level > self.depth:
-            lists_to_fill = level - self.depth
+            lists_to_fill = 2**level - 2**self.depth 
             level = self.depth
         else:
             lists_to_fill = 0
@@ -224,7 +224,7 @@ class BinaryHierarchyTree(BinaryClusterTree, DendrogramLike):
 
         res = helper(self.root, level)
         # extending to the necessary level, if needed
-        res.extend([[]] * 2**lists_to_fill)
+        res.extend([[]] * lists_to_fill)
         return res
 
     def check_labels(self):
