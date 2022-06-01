@@ -8,6 +8,47 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import normalized_mutual_info_score
 
+CB_COLOR_CYCLE = ["#006BA4", "#FF800E", "#ABABAB", "#595959", "#5F9ED1", "#C85200", "#898989", "#A2C8EC", "#FFBC79", "#CFCFCF"]
+LINE_STYLES = ["-o", "-^", "-s", 
+               "-*", "-D", 
+               "--o", "--^", "--s", "--*"]
+SYMBOLS = ["o", "^", "s", "*", "D"]
+MARKER_SIZES = [7,7,7, 
+                9,7,7,
+                7,7,9]
+
+class ThesisStyleCycler:
+    """
+    Cycles through a list of plotting styles suitable for a thesis 
+    (as we have a colorblind color scheme and line-styles that
+    are suitable for a black-grey printer).
+
+    It is already initialized with a valid style and color.
+    Access is through the respective properties.
+    """
+    def __init__(self) -> None:
+        self._state = 0
+        self._color = CB_COLOR_CYCLE[0]
+        self._line_style = LINE_STYLES[0]
+        self._marker_size = MARKER_SIZES[0]
+
+    def next(self):
+        self._state += 1
+        self._color = CB_COLOR_CYCLE[self._state % len(CB_COLOR_CYCLE)]
+        self._line_style = LINE_STYLES[self._state % len(LINE_STYLES)]
+        self._marker_size = MARKER_SIZES[self._state % len(MARKER_SIZES)]
+    
+    @property
+    def color(self) -> str:
+        return self._color
+    
+    @property
+    def line_style(self) -> str:
+        return self._line_style
+
+    @property
+    def marker_size(self) -> int:
+        return self._marker_size
 
 class Plotter():
     def __init__(self, results_folder=None):
@@ -150,23 +191,37 @@ class ThesisPlotter:
     """
     Contains all the functions for plotting the figures in the thesis.
     """
-    def __init__(self, results_folder: Optional[Path] = None, methods_plotted: Optional[set[str]] = None) -> None:
+    def __init__(self, results_folder: Optional[Path] = None, methods_plotted: Optional[set[str]] = None, style_dict: Optional[dict[str, tuple[str, str, int]]] = None) -> None:
         self.results_folder = results_folder
         self.methods_plotted = methods_plotted
+        self.style_dict = style_dict
 
     def labels_to_colors(self, xs: np.ndarray) -> list[tuple]:
         cmap = get_cmap("tab10")
         return [cmap(x) for x in xs]
     
     
-    def assignments(self, xs: np.ndarray, ys: np.ndarray):
+    def assignments(self, xs: np.ndarray, ys: np.ndarray, alternative_symbols: bool = False):
         """
         Assumes contiguous labels y.
         """
         plt.figure()
         for i in range(np.max(ys.astype(int)) + 1):
             mask = (ys == i)
-            plt.plot(xs[:, 0][mask], xs[:, 1][mask], ".", label="Cluster " + str(i))
+            if alternative_symbols:
+                symbol = SYMBOLS[i % 5]
+            else:
+                symbol = "."
+            plt.plot(xs[:, 0][mask], xs[:, 1][mask], symbol, label="Cluster " + str(i + 1))
+        plt.xlabel("x")
+        plt.ylabel("y")
+    
+    def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray):
+        plt.figure()
+
+        for i in range(np.max(ys.astype(int)) + 1):
+            mask = (ys == i)
+            plt.plot(xs[:, 0][mask], xs[:, 1][mask], SYMBOLS[i % 5], c=CB_COLOR_CYCLE[i] label="Cluster " + str(i + 1))
         plt.xlabel("x")
         plt.ylabel("y")
     
@@ -179,11 +234,18 @@ class ThesisPlotter:
             methods_to_use = self.methods_plotted
         if methods_to_use is not None:
             methods = methods & methods_to_use
+        
+        style_cycler = ThesisStyleCycler()
         for method in methods:
+            if self.style_dict is not None:
+                line_style, color, marker_size = self.style_dict[method]
+            else:
+                line_style, color, marker_size = style_cycler.line_style, style_cycler.color, style_cycler.marker_size
+                style_cycler.next()
             x_arr = df[df.method == method][x]
             y_arr = df[df.method == method][y]
             if x_arr.size != 0 and y_arr.size != 0:
-                plt.plot(x_arr, y_arr, "--o", label=f"{method}")
+                plt.plot(x_arr, y_arr, line_style, c=color, markersize=marker_size, label=f"{method}")
         plt.legend()
         plt.xlabel(x)
         plt.ylabel(y)
