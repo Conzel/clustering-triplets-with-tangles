@@ -1,6 +1,7 @@
 """
 A file that is made for handling triplet data.
 """
+import math
 import numpy as np
 import random
 from typing import Optional
@@ -175,7 +176,22 @@ class LensMetric():
         return in_lens.sum()
 
 
-def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=DistanceMetric.get_metric('euclidean'), return_mostcentral: bool = False, noise: Optional[float] = None, seed: int = None) -> tuple[np.ndarray, np.ndarray]:
+def make_all_indices(num_datapoints: int) -> np.ndarray:
+    """
+    Creates a list of all triplet indices in the array.
+    """
+    all_count = math.comb(num_datapoints, 2) * num_datapoints
+    all_indices = np.zeros((all_count, 3), dtype=np.int32)
+    i = 0
+    for a in range(0, num_datapoints):
+        for b in range(0, num_datapoints):
+            for c in range(b+1, num_datapoints):
+                all_indices[i, :] = a, b, c
+                i += 1
+    return all_indices
+
+
+def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=DistanceMetric.get_metric('euclidean'), return_mostcentral: bool = False, noise: Optional[float] = None, seed: int = None, no_redraw: bool = False) -> tuple[np.ndarray, np.ndarray]:
     """
     Returns a triplet-response array with a certain number of triplets in it.
 
@@ -197,13 +213,19 @@ def subsample_triplets(data: np.ndarray, number_of_triplets: int, metric=Distanc
     else:
         responses = np.zeros(number_of_triplets, dtype=bool)
     dists = metric.pairwise(data)
+    if no_redraw is True:
+        all_indices = make_all_indices(data.shape[0])
+        choices = random.sample(range(0, all_indices.shape[0]), number_of_triplets)
     for i in range(number_of_triplets):
-        while True:
-            # drawing indices
-            a, b, c = random.randint(0, data.shape[0] - 1), random.randint(
-                0, data.shape[0] - 1), random.randint(0, data.shape[0] - 1)
-            if a != b and a != c and b != c:
-                break
+        if no_redraw is True:
+            a,b,c = all_indices[choices[i], :] # type: ignore
+        else:
+            while True:
+                # drawing indices
+                a, b, c = random.randint(0, data.shape[0] - 1), random.randint(
+                    0, data.shape[0] - 1), random.randint(0, data.shape[0] - 1)
+                if a != b and a != c and b != c:
+                    break
         triplets[i, 0] = a
         triplets[i, 1] = b
         triplets[i, 2] = c
