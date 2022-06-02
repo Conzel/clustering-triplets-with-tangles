@@ -13,9 +13,9 @@ LINE_STYLES = ["-o", "-^", "-s",
                "-*", "-D", 
                "--o", "--^", "--s", "--*"]
 SYMBOLS = ["o", "^", "s", "*", "D"]
-MARKER_SIZES = [7,7,7, 
-                9,7,7,
-                7,7,9]
+MARKER_SIZES = [6,6,6, 
+                8,6,6,
+                6,6,8]
 
 class ThesisStyleCycler:
     """
@@ -218,15 +218,14 @@ class ThesisPlotter:
     
     def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray):
         plt.figure()
-
         for i in range(np.max(ys.astype(int)) + 1):
             mask = (ys == i)
-            plt.plot(xs[:, 0][mask], xs[:, 1][mask], SYMBOLS[i % 5], c=CB_COLOR_CYCLE[i] label="Cluster " + str(i + 1))
+            plt.plot(xs[:, 0][mask], xs[:, 1][mask], SYMBOLS[i % 5], c=CB_COLOR_CYCLE[i], label="Cluster " + str(i + 1))
         plt.xlabel("x")
         plt.ylabel("y")
     
     
-    def line(self, df, x: str, y: str, methods_to_use: Optional[set[str]] = None):
+    def line(self, df, x: str, y: str, methods_to_use: Optional[set[str]] = None, use_style_dict: bool = True):
         plt.figure()
         df = df.groupby(["method", x]).mean().reset_index()
         methods = set(df.method.unique())
@@ -237,7 +236,7 @@ class ThesisPlotter:
         
         style_cycler = ThesisStyleCycler()
         for method in methods:
-            if self.style_dict is not None:
+            if self.style_dict is not None and use_style_dict:
                 line_style, color, marker_size = self.style_dict[method]
             else:
                 line_style, color, marker_size = style_cycler.line_style, style_cycler.color, style_cycler.marker_size
