@@ -1,6 +1,6 @@
 from data_generation import generate_gmm_data_fixed_means
 from questionnaire import Questionnaire, generate_k_subsets, generate_question_set
-from triplets import _most_central, majority_neighbours_count_matrix, remove_outliers, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
+from triplets import _most_central, majority_neighbours_count_matrix, make_all_indices, remove_outliers, triplets_to_majority_neighbour_cuts, subsample_triplets, unify_triplet_order, is_triplet
 from sklearn.neighbors import DistanceMetric
 from cblearn.datasets import make_random_triplets, make_all_triplets
 from cblearn.utils import check_query_response
@@ -88,11 +88,21 @@ def test_to_from_bool_array():
 
 
 def test_to_from_bool_array_low_density():
-    data = generate_gmm_data_fixed_means(n=3, means=np.array([[-1, 0], [1, 0]]), std=0.5, seed=1)
+    data = generate_gmm_data_fixed_means(
+        n=3, means=np.array([[-1, 0], [1, 0]]), std=0.5, seed=1)
     q = Questionnaire.from_metric(data.xs, density=0.1)
     t, r = q.to_bool_array()
     q_ = Questionnaire.from_bool_array(t, r)
     assert q.equivalent(q_)
+
+
+def test_make_all_indices():
+    t = make_all_indices(3)
+    assert np.all(t == np.array([
+        [0, 0, 1], [0, 0, 2], [0, 1, 2], 
+        [1, 0, 1], [1, 0, 2], [1, 1, 2], 
+        [2, 0, 1], [2, 0, 2], [2, 1, 2] 
+    ]))
 
 
 def test_to_from_bool_array_low_density_manual():
