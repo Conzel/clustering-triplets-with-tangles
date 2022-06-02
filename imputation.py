@@ -55,7 +55,6 @@ class ImputationMethod():
         Imputes missing values with the mean value of the k nearest neighbours. 
         Coinflip decides on 0.5.
         """
-        print("Imputing via knn")
         imputer = KNNImputer(n_neighbors=k, missing_values=MISSING_VALUE)
         imputed_data = imputer.fit_transform(data)
         # removing the 0.5 values with random values
