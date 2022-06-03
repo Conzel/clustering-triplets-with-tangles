@@ -1,10 +1,11 @@
 from sklearn.metrics import normalized_mutual_info_score
 from comparison_hc import ComparisonHC
 from data_generation import generate_gmm_data_fixed_means, generate_planted_hierarchy
-from estimators import LandmarkTangles, MajorityTangles, OrdinalTangles
+from estimators import EmbedderHierarchicalClustering, LandmarkTangles, MajorityTangles, OrdinalTangles
 from hierarchies import BinaryHierarchyTree, aari
 from triplets import reduce_triplets
 from cblearn.datasets import make_random_triplets
+from cblearn.embedding import SOE
 from estimators import SoeKmeans
 import numpy as np
 from questionnaire import Questionnaire
@@ -102,7 +103,8 @@ def between(a, b):
 
 def test_comparison_hc_planted_hierarchy_performance():
     data = generate_planted_hierarchy(2, 5, 0.8, 2.0, 0)
-    q = Questionnaire.from_precomputed(data.xs, density=1.0)
+    q = Questionnaire.from_precomputed(
+        data.xs, density=1.0, use_similarities=True)
     t, r = q.to_bool_array()
     chc = ComparisonHC(4)
     ys = chc.fit_predict(t, r)
@@ -111,6 +113,22 @@ def test_comparison_hc_planted_hierarchy_performance():
     hierarchy_truth_list = [[between(0, 5), between(5, 10)], [
         between(10, 15), between(15, 20)]]
     assert aari(chc, BinaryHierarchyTree(hierarchy_truth_list), 2) == 1.0
+
+
+def test_soe_al_planted_hierarchy_performance():
+    data = generate_planted_hierarchy(2, 5, 5, 1, 0)
+    q = Questionnaire.from_precomputed(
+        data.xs, density=1.0, use_similarities=True)
+    t, r = q.to_bool_array()
+    soe_al = EmbedderHierarchicalClustering(
+        SOE(2, random_state=0), 4, linkage="average")
+    ys = soe_al.fit_predict(t, r)
+    score = normalized_mutual_info_score(ys, data.ys)
+    assert score > 0.95
+    hierarchy_truth_list = [[between(0, 5), between(5, 10)], [
+        between(10, 15), between(15, 20)]]
+    assert aari(soe_al, BinaryHierarchyTree(
+        hierarchy_truth_list), 2) >= 0.5  # its bad
 
 
 def test_comparison_hc_gauss_clustering_performance():

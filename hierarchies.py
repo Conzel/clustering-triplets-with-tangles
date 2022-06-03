@@ -15,6 +15,8 @@ class DendrogramLike(ABC):
     """
     Interface for a class that behaves like a Dendrogram: 
     We can cut off the class at some point and get the clusters of the current level.
+
+    We can calculate the AARI for classes that implement this interface.
     """
     @abstractmethod
     def clusters_at_level(self, level: int) -> list[list[int]]:

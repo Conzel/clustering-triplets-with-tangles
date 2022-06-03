@@ -5,14 +5,16 @@ https://scikit-learn.org/stable/developers/develop.html
 """
 
 from cProfile import label
+from tabnanny import check
+from hierarchies import DendrogramLike
 from utils import hierarchy_list_map, swap
 from random import random
-from typing import Optional
+from typing import Optional, Union
 import numpy as np
 from imputation import MISSING_VALUE
 from triplets import check_triplet_response_shapes, triplets_to_majority_neighbour_cuts, unify_triplet_order
 from sklearn.base import BaseEstimator
-from sklearn.cluster import KMeans
+from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score
 from sklearn.utils.validation import check_is_fitted
 from sklearn.base import ClusterMixin
@@ -217,6 +219,74 @@ def SoeKmeans(embedding_dimension, n_clusters, seed=None, k_max=20):
 
 def TsteKmeans(embedding_dimension, n_clusters, seed=None, k_max=20):
     return EmbedderKmeans(TSTE(embedding_dimension), n_clusters, seed, k_max)
+
+
+class EmbedderHierarchicalClustering(BaseEstimator, DendrogramLike):
+    def __init__(self, embedder, n_clusters, linkage="average"):
+        """
+        Initializes a classifier that uses a combination of the given embedder and
+        hierarchical clustering to predict labels of given triplets.
+
+        Input is triplets, responses as in the detailed in cblearn.
+        """
+        self._embedder = embedder
+        self.n_clusters = n_clusters
+        self.linkage = linkage
+        self.clusterer_ = None
+        self.embedding_ = None
+    @property 
+    def embedder(self):
+        return self._embedder
+
+    def fit(self, triplets, responses, y=None):
+        """
+        """
+        self.clusterer_ = AgglomerativeClustering(
+            self.n_clusters, linkage=self.linkage)
+        self.embedding_ = self._embedder.fit_transform(triplets, responses)
+        self.clusterer_.fit(self.embedding_)
+        return self
+
+    def predict(self, triplets, responses):
+        """
+        Use fit_predict directly.
+        """
+        check_is_fitted(self, ["clusterer_", "embedding_"])
+        assert self.clusterer_ is not None
+        return np.array(self.clusterer_.labels_)
+
+    def get_k_clusters(self, k: int) -> list[list[int]]:
+        """
+        Returns k clusters from the dendrogram. Must be fit before.
+        """
+        check_is_fitted(self, ["clusterer_", "embedding_"])
+        assert self.embedding_ is not None
+        assert self.clusterer_ is not None
+        n_points = self.embedding_.shape[0]
+        dendrogram = self.clusterer_.children_
+        n_iterations = n_points - k
+        if n_iterations < 0:
+            raise ValueError(
+                "Tried to get more clusters than we have objects.")
+        clusters = [{i} for i in range(n_points)]
+        is_merged = [False] * n_points
+        for i in range(n_iterations):
+            child1, child2 = dendrogram[i]
+            clusters.append(clusters[child1].union(clusters[child2]))
+            is_merged.append(False)
+            is_merged[child1] = True
+            is_merged[child2] = True
+        return [list(c) for c, is_merged in zip(clusters, is_merged) if not is_merged]
+
+    def clusters_at_level(self, level: int) -> list[list[int]]:
+        return self.get_k_clusters(level**2)
+
+    def fit_predict(self, triplets, responses, y=None) -> np.ndarray:
+        """
+        TODO 
+        """
+        self.fit(triplets, responses, y)
+        return self.predict(triplets, responses)
 
 
 def find_k_silhouette(xs: np.ndarray, k_max: int = 20) -> int:
