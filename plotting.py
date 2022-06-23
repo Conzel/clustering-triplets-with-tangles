@@ -7,11 +7,14 @@ from matplotlib.cm import get_cmap
 import numpy as np
 import pandas as pd
 from sklearn.metrics import normalized_mutual_info_score
+from torch import isin
 
-CB_COLOR_CYCLE = ["#006BA4", "#FF800E", "#ABABAB", "#595959", "#5F9ED1", "#C85200", "#898989", "#A2C8EC", "#FFBC79", "#CFCFCF"]
+#CB_COLOR_CYCLE = ["#006BA4", "#FF800E", "#ABABAB", "#595959", "#5F9ED1", "#C85200", "#898989", "#A2C8EC", "#FFBC79", "#CFCFCF",]
+# repeated cycle
+CB_COLOR_CYCLE = ["#006BA4", "#FF800E", "#ABABAB", "#595959", "#5F9ED1", "#006BA4", "#FF800E", "#ABABAB", "#595959", "#5F9ED1"]
 LINE_STYLES = ["-o", "-^", "-s", 
                "-*", "-D", 
-               "--o", "--^", "--s", "--*"]
+               "--o", "--^", "--s", "--*", "--D"]
 SYMBOLS = ["o", "^", "s", "*", "D"]
 MARKER_SIZES = [6,6,6, 
                 8,6,6,
@@ -216,11 +219,13 @@ class ThesisPlotter:
         plt.xlabel("x")
         plt.ylabel("y")
     
-    def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray):
+    def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray, markersize=8):
         plt.figure()
-        for i in range(np.max(ys.astype(int)) + 1):
-            mask = (ys == i)
-            plt.plot(xs[:, 0][mask], xs[:, 1][mask], SYMBOLS[i % 5], c=CB_COLOR_CYCLE[i], label="Cluster " + str(i + 1))
+        for i, label in enumerate(np.unique(ys)):
+            mask = (ys == label)
+            if isinstance(label, (np.integer, int)):
+                label = "Cluster " + str(label + 1)
+            plt.plot(xs[:, 0][mask], xs[:, 1][mask], SYMBOLS[i % 5], c=CB_COLOR_CYCLE[i], markersize=markersize, label=label)
         plt.xlabel("x")
         plt.ylabel("y")
     

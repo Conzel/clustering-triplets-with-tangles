@@ -14,7 +14,7 @@ from sklearn.pipeline import Pipeline
 from cblearn.embedding import SOE, CKL, GNMDS, FORTE, TSTE, MLDS
 from hierarchies import BinaryHierarchyTree, aari
 from questionnaire import Questionnaire
-from estimators import LandmarkTangles, MajorityTangles, SoeKmeans, TsteKmeans
+from estimators import EmbedderHierarchicalClustering, LandmarkTangles, MajorityTangles, SoeKmeans, TsteKmeans
 import pandas as pd
 from data_generation import generate_planted_hierarchy
 
@@ -166,7 +166,7 @@ def eval_hierarchical(noise=0.0, density=0.1, hier_noise=0.0, n_runs=1):
     Evaluates a simple hierarchical block matrix and returns the mean of the results
     (landmark, soe, majority, comparison, hierarchical landmarks, hierarchical comparisonhc)
     """
-    l, s, m, c, tste, hl, hc, hm = [], [], [], [], [], [], [], []
+    l, s, m, c, tste, hl, hc, hm, hs = [], [], [], [], [], [], [], [], []
     true_hierarchy = BinaryHierarchyTree([[list(range(0, 10)), list(range(10, 20))], [
                                          list(range(20, 30)), list(range(30, 40))]])
     for _ in range(n_runs):
@@ -174,6 +174,8 @@ def eval_hierarchical(noise=0.0, density=0.1, hier_noise=0.0, n_runs=1):
         q = Questionnaire.from_precomputed(
             data.xs, density=density, use_similarities=True, noise=noise, verbose=False).impute("random")
         t, r = q.to_bool_array()
+        soe_al = EmbedderHierarchicalClustering(SOE(4), 4, linkage="average")
+        soe_al.fit(t, r)
         chc = ComparisonHC(4)
         y_chc = chc.fit_predict(t, r)
         lt = LandmarkTangles(4).fit(t, r, data.ys)
@@ -186,5 +188,6 @@ def eval_hierarchical(noise=0.0, density=0.1, hier_noise=0.0, n_runs=1):
         hl.append(aari(true_hierarchy, BinaryHierarchyTree(lt.hierarchy_), 2))
         hc.append(aari(true_hierarchy, chc, 2))
         hm.append(aari(true_hierarchy, BinaryHierarchyTree(mt.hierarchy_), 2))
+        hs.append(aari(true_hierarchy, soe_al, 2))
 
-    return np.mean(l), np.mean(s), np.mean(m), np.mean(c), np.mean(hl), np.mean(hc), np.mean(hm)
+    return np.mean(l), np.mean(s), np.mean(m), np.mean(c), np.mean(hl), np.mean(hc), np.mean(hm), np.mean(hs)
