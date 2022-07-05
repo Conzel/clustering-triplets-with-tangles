@@ -25,10 +25,11 @@ similar to the NMI, to compare hierarchies. In AARI, we calculate the ARI over a
 To generate the triplets, we first take the data and calculate a (dis)similarity on it, for example the euclidean distance between two data points. This allows
 us to determine whether $(a,b,c)$ or $(a,c,b)$.
 Then, we can use two approaches of drawing triplets. The first one is sampling triplets randomly and uniformly from the set of all triplets. The second one is a landmark approach:
-we fix two randomly sampled points $a,b$, with $a \neq b$, sample all triplet that have the form $(x,a,b)$ (or equivalently $(x,b,a)$.  For the Landmark Tangles, only the 
+we fix two randomly sampled points $a,b$, with $a \neq b$ and sample all triplet that have the form $(x,a,b)$ or $(x,b,a)$.  For the Landmark Tangles, only the 
 second kind of triplets are useable, as discussed in \autoref{methods}, thus we will mostly stick to this format. 
-We now have to differ between two possible ways of altering the triplets. We can add \textit{noise}
-to the triplets. If we have a noise level of $p$, then every triplet is flipped with probability $p$, $(a,b,c)$ would be turned into $(a,c,b)$. We can also reduce
+
+We now have to differ between two possible ways of altering the triplets. First, we can add \textit{noise}
+to the triplets. If we have a noise level of $p$, then every triplet is flipped with probability $p$, meaning that $(a,b,c)$ would be turned into $(a,c,b)$. We can also reduce
 the \textit{density}, meaning that instead of sampling all triplets, we sample only a fraction $d$ of all triplets. In this section, when we use the term density, we
 will refer to triplets sampled in a landmark approach, while when explicitly using the number of drawn triplets, we refer to a uniform sampling.
 
@@ -36,53 +37,55 @@ As a baseline, we will be using a combination of ordinal embedding together with
 We first use an ordinal embedding algorithm to get an embedding of the triplet data. This approach has also been used in \cite{kleindessnerLensDepthFunction2017}. 
 It has the advantage of also working with triplet data as opposed to clustering on the data directly, giving a more fair baseline, while still being very straightforward.
 Afterwards, we use a standard clustering algorithm for euclidean data on the obtained embedding.  
-There exist numerous algorithms for ordinal embedding (see \cite{vankadaraInsightsOrdinalEmbedding2021} for an overview) and for clustering.
+There exist numerous algorithms for ordinal embeddings (see \cite{vankadaraInsightsOrdinalEmbedding2021} for an overview) and for clustering.
 
 For the ordinal embeddings, we have used Soft Ordinal Embedding (SOE \cite{teradaLocalOrdinalEmbedding2014}), as this has been identified by \cite{vankadaraInsightsOrdinalEmbedding2021} as one of the 
 top-performing ordinal embedding algorithm for a variety of use cases. When testing out different baselines, we have also found SOE to consistently have top performance among 
 all tested ordinal embedding algorithms. Additionally, we have included T-Stochatic Triplet Embedding (T-STE \cite{laurensvandermaatenStochasticTripletEmbedding2012}) 
-to have a second baseline. For the clustering, have decided to go with k-Means, as one of the most basic clustering algorithms with usually good performance.
+to have a second baseline. For the clustering, have decided to go with k-Means \citep{lloydLeastSquaresQuantization1982}, as one of the most basic clustering algorithms with usually good performance.
 
-Additionally, we have included ComparisonHC \citep{ghoshdastidarFoundationsComparisonBasedHierarchical2019} as another baseline. This is another algorithm that doesn't
+Additionally, we have included ComparisonHC \citep{ghoshdastidarFoundationsComparisonBasedHierarchical2019} as another baseline. This is also an algorithm that doesn't
 construct an embedding before clustering, and thus might allow for a more fair comparison to the tangles algorithm. Especially in the setting of a mixture of gaussians, 
 the fact ordinal embedding algorithms aim to reconstruct a euclidean embedding seems to already introduce some bias that might benefit the ordinal embedding algorithms.
 Normally, ComparisonHC is a hierachical clustering algorithm, which produces a dendrogram as its output. To use it as a baseline for clustering, we simply
 cut the dendrogram off such that it produces the desired amount of clusters.
 
-In the experiment figures, we will  use the abbreviations L-Tangles for Landmark Tangles, and M-Tangles for Majority Tangles.
+In the experiment figures and discussions, we will  use the abbreviations L-Tangles for Landmark Tangles, and M-Tangles for Majority Tangles.
 
 \section{Gaussian data}\label{sec:gaussian_data}
 \subsection{Experimental setup}
 We generate a mixture of gaussians as follows: We draw a number of points $n$ each from $k$ different gaussian distributions with means $\mu_1, \mu_2, \ldots \mu_k$ and 
 variances $\nu_1, \nu_2, \ldots \nu_k$. Each point gets assigned a label $y_i$ that corresponds to the number $i$ of the gaussian distribution it was drawn from.
 For all of the experiments, unless mentioned otherwise, we use $n=20$, $k=3$, fixed means $\mu_1 = \begin{bmatrix} -6.0 & 3.0 \end{bmatrix}, 
-\mu_2 = \begin{bmatrix} -6.0 & -3.0 \end{bmatrix},  \mu_2 = \begin{bmatrix} 6.0 & 3.0 \end{bmatrix}$ and a constant variance for all distributions of $\nu = I$, 
+\mu_2 = \begin{bmatrix} -6.0 & -3.0 \end{bmatrix},  \mu_3 = \begin{bmatrix} 6.0 & 3.0 \end{bmatrix}$ and a constant variance for all distributions of $\nu = I$, 
 with $I$ as the identity matrix. A plot of the data set can be seen in \autoref{fig:dataset-gauss}. We generate the triplets via the euclidean distance between the points, so that
 the triplet $(a,b,c)$ implies that $\|a - b\| < \|a - c\|$. For the Tangles algorithms, we use an agreement of $a=7$ (around 1/3 the size of the smallest
 clusters we want to detect, in accordance with \cite{klepperClusteringTanglesAlgorithmic2021}), and a radius of $r=\frac{1}{3}$, for the majority
 tangles, such that the cuts roughly have the diameter of the clusters.
 
-\begin{figure}[h]
+All results are the average of $50$ runs, where we re-draw both the data points from the gaussian as well as as triplets randomly. 
+
+\begin{figure}[ht]
     \centering
     \resizebox{0.8\textwidth}{!}{\input{figures/results/gaussian_small_tangles_clustering.pgf}}
-    \label{fig:dataset-gauss}
     \caption{An example draw of the gaussian mixture used for our experiments.}
+    \label{fig:dataset-gauss}
 \end{figure}
 
-\subsection{Lowering density}\label{lower_density}
+\subsection{Lowering density}\label{sec:lower-density}
 First, we want to observe how our methods behave under different numbers of triplets present. As the number of triplet grows on the order of $O(N^3)$, it is only feasible to obtain
 all triplets for very small datasets. Even with $N = n \cdot k = 60$, as in our case, there are already $106200$ triplets possible. If we imagine that the triplets have to be obtained 
 through experiments with real people (such as in psychophysics settings), we might be able to get a few thouand triplets at most. If an algorithm performs better with a lower amount
 of triplets, this can quickly translate into really large time, labor and money savings. To test this, we have drawn an increasing amount of triplets from our dataset in a landmark format.
-We have plotted the results in \autoref{fig:lower_density_small}. We have also repeated this experiment for a larger number of datapoints, as this is a particularly interesting case. 
-Usually, the larger the dataset, the smaller the percentage of all triplets we use, as it grows with $O(N^3)$. However, ordinal embedding algorithms empirically perform well with a lot
+We have plotted the results in \autoref{fig:density-change}. We have also repeated this experiment for a larger number of datapoints, as this is a particularly interesting case. 
+Usually, the larger the dataset, the smaller the percentage of all triplets we use, as the number of triplets grows with $O(N^3)$. However, ordinal embedding algorithms empirically perform well with a lot
 less triplets (for example requiring on the order of $O(n d \log(n))$ for euclidean data \citep{jainFiniteSamplePrediction2016}). 
-Ideally, we would like for the Tangles algorithm to behave similarly. To test this, we have repeated the experiment with $n=200$ in \autoref{fig:density-change}, and lowered densities.
+Ideally, we would like for the Tangles algorithm to behave similarly. To test this, we have repeated the experiment with $n=200$, $a=70$ and lower overall densities in \autoref{fig:density-change}.
 All other parameters were kept the same.
 
-When looking at the plots, we can see that L-Tangles is performing at least as well as SOE, and even significantly better for a lot of densities in the case of $n=200$. 
-As we would have expected, T-STE performs about as well as SOE, albeit a bit worse (and interestingly a lot worse for the larger dataset). ComparisonHC and M-Tangles
-perform about the same level, but both stay far behind L-Tangles and SOE. With the larger dataset, we couldn't test ComparisonHC, as our obtained implementation requires 
+When looking at the plots, we can see that L-Tangles is performing at least as well as SOE, and even significantly better for a wide range of densities in the case of $n=200$. 
+As we would have expected, T-STE performs slightly worse than SOE on the small dataset, but interestingly a lot worse for the larger dataset. ComparisonHC and M-Tangles
+perform about the same level, but both stay far behind L-Tangles and SOE. With the larger dataset, we could not test ComparisonHC, as our obtained implementation requires 
 constructing a $n^4$ matrix during the training step (this could possibly be remedied using a different implementation).
 
 \onecolumn
@@ -96,9 +99,9 @@ constructing a $n^4$ matrix during the training step (this could possibly be rem
     }
     \caption{
         We plot the NMI of different clustering method against the percentage of the triplets generated from a draw of a gaussian mixture with $3$ clusters. 
-        We draw $20$ data points from each cluster for the left plot, and $200$ data points for the right plot 
+        We draw $20$ data points from each cluster for the left plot, and $200$ data points for the right plot.
         On the x-axis we have the density, where a density of $0.1$ means that we only use 10\% of the total number of triplets. The embedding methods (SOE, T-STE) are 
-        followed by k-Means. The Tangles methods (L-Tangles, M-Tangles), are applied with $a=7$. ComparisonHC was left out of the right plot due to computational issues.}
+        followed by k-Means. The Tangles methods (L-Tangles, M-Tangles), are applied with $a=7$ for $n=20$ and $a=70$ for $n=200$. ComparisonHC was left out of the right plot due to computational issues.}
     \label{fig:density-change}
 \end{figure}
 
@@ -106,30 +109,29 @@ constructing a $n^4$ matrix during the training step (this could possibly be rem
 \subsection{Adding noise}\label{sec:adding-noise}
 Next, we want to observe how our algorithm behaves under added noise. This is an important model: most applications of triplet data use triplets that are generated from
 real humans. They might disagree on which objects are closer and which are not, which can be modelled as noise on the responses of our triplets. The higher the noise, 
-the more disagreement is there about the similarities of objects, so it would matter more about which person you ask than which objects you present them. 
+the more disagreement there is about the similarities of objects, so it would matter more about which person you ask than which objects you present them. 
 %TODO M-Tangles ComparisonHC
 We have plotted our results in \autoref{fig:adding-noise}. 
 We observe that L-Tangles falls off a lot quicker in performance than SOE, and falls off a bit harder than T-STE, but they are in the same area. We observe however, that until
 relatively large noise levels ($>0.1$), all algorithms performs the same, meaning that L-Tangles can still perform well with low to medium levels of noise.
 
-\begin{figure}[h]
+\begin{figure}[ht]
     \centering
     \resizebox{0.7\textwidth}{!}{\input{figures/results/adding_noise_small.pgf}}
-    \label{fig:adding-noise}
     \caption{
         We plot the NMI of our chosen clustering methods against the noise that we introduce on the triplets.  We use $3$ clusters and $20$ data points per cluster, sampling all possible triplets. On a noise level of $0.1$, this means that we flip 10\% of the triplets around (turning for example $(a,b,c)$ to $(a,c,b)$). 
     }
+    \label{fig:adding-noise}
 \end{figure}
 
 \subsection{Adding noise and lowering density}
-In this experiment, we compare \autoref{sec:lowering-density} and \autoref{sec:adding-noise}. We have seen that L-Tangles can perform well with a low
+In this experiment, we will merge \autoref{sec:lower-density} and \autoref{sec:adding-noise}. We have seen that L-Tangles can perform well with a low
 amount of triplets (a bit better than SOE), and have reasonable performance for noisy triplets (worse than SOE). We are now interested to see how large the area is
 where L-Tangles can still outperform SOE when we consider both a low density and noisy triplets, as these two factors are probably the most interesting variables
 when choosing an algorithm to evaluate triplet data. We have generated two heatmaps, which can be found in \autoref{fig:noise-density-heatmaps}. 
 There we can see that L-Tangles outperforms SOE in quite a large region in the low-noise , low-density regime. We would imagine this effect to be even larger
 for a $n=200$ setup, but found this computationally too intensive. On the contrary, SOE performs better in the high-density, high-noise regions, with about similar performance
 for the cases of low-noise high-density (perfect clustering) and high-noise low-density (random clustering).
-% TODO: Repeat for n=200
 % TODO: green border around the parts where L-Tangles outperforms?
 
 \onecolumn
@@ -143,10 +145,10 @@ for the cases of low-noise high-density (perfect clustering) and high-noise low-
         \resizebox{0.5\textwidth}{!}{\includegraphics{figures/results/gaussian_small_lower_density_noise_heatmap_l_tangles.pdf}}
     }
     \caption{
-        We plot a heatmap of the NMI of SOE and L-Tangles over changing noise and the density of our the triplets. 
+        We plot a heatmap of the NMI of SOE and L-Tangles over noise (y-axis) and density (x-axis) of our the triplets. 
         The regions with a darker shade of blue indicate better performance of the algorithm. 
         Note that the noise increases as we move down, and the
-        density decreases as we move right.  We use $3$ clusters and $20$ data points per cluster, sampling all possible triplets. 
+        density decreases as we move right.  We use $3$ clusters and $20$ data points per cluster.
     }
     \label{fig:noise-density-heatmaps}
 \end{figure}
@@ -154,12 +156,12 @@ for the cases of low-noise high-density (perfect clustering) and high-noise low-
 \subsection{Missing triplets}
 % TODO
 In this experiment, we will use the small gaussian data set and gradually sample an increasing number of triplets for it. 
-This is very similar to the setup in \autoref{lower_density}, but this time we sample triplets uniformly at random without replacement
+This is very similar to the setup in \autoref{sec:lower-density}, but this time we sample triplets uniformly at random without replacement
 from the set of all triplets. In this setup, we will not be able to use Landmark Tangles as is, as there will be missing values in the cuts. 
 
 A direct idea would be to impute the missing triplets for the cuts.  For, this we just build up our landmark cuts as we did before,
 but we mark the information as missing for which we don't have triplet information. These missing values can then be imputed via different methods.
-We have used random, $k$-nearest neighbour ($k$-NN) and mean. Random simply sets all missing values to 0 or 1 with equal probability, $k$-NN imputes
+We have used random, $k$-nearest neighbour ($k$-NN) and mean imputation. Random simply sets all missing values to 0 or 1 with equal probability, $k$-NN imputes
 a missing entry in a landmark cut with the value that the most similar cut has in that position (closeness being calculated via the manhattan distance), and mean 
 imputes the value with the mean of all other cuts in that position. 
 We have shown the results for our imputation method in \autoref{fig:missing-triplet-imputations}.  One can see that $k$-NN performs quite reasonably, and $k=1$ even achieves the best performance.
@@ -214,12 +216,14 @@ under both noise models, as well as under a lowered density.
 
 When evaluating, we compare both the final clustering (the lowest level of the hierarchical block matrix) as well as the obtained hierarchy to each other. 
 To produce a hierarchy with SOE, we have applied an agglomerative clustering algorithm with average linkage (AL) on the obtained embedding.
+
+As in the gaussian setting, all results are the average of $50$ runs, where we re-draw both the data points as well as the triplets randomly. 
 % TODO: Explain more about the AARI?
 %As Tangles does not produce a dendrogram, we might have a problem obtaining the desired amount of clusters in a certain level. In this case, we simply fill up 
 %#For comparing the hierarchy, we can only use Tangles and ComparisonHC, as the embedding methods do not 
 
 \subsection{Lowering density}
-As in the gaussian setup, we investigate how our algorithms perform under a lowered density, similar to \autoref{lower_density}. We draw the cuts in a landmark-format. The results can be seen in 
+As in the gaussian setup, we investigate how our algorithms perform under a lowered density, similar to \autoref{sec:lower-density}. We draw the cuts in a landmark-format. The results can be seen in 
 \autoref{fig:hierarchy-lowering-density}. L-Tangles performs about on-par with SOE in the final clustering case (not taking the hierarchy into account), and greatly outperforms all the other 
 algorithms, while M-Tangles and ComparisonHC perform about equally well, wtih ComparisonHC getting better results in the high triplet case.
 
@@ -240,11 +244,11 @@ algorithms, while M-Tangles and ComparisonHC perform about equally well, wtih Co
         we plot the AARI of our methods against the density, where we take the whole hierarchy into account. To obtain a hierarchy for SOE
         we have applied agglomerative clustering with average linkage to the obtained embedding instead of k-Means.
     }
-    \label{fig:hierarchy-add-triplet-noise}
+    \label{fig:hierarchy-lowering-density}
 \end{figure}
 
 \subsection{Adding triplet noise}\label{sec:h-triplet-noise}
-Similar to the gaussian setup in \autoref{sec:adding_noise}, we have simply increased the noise on the sampled triplets and have evaluated the performance of our algorithms. The results
+Similar to the gaussian setup in \autoref{sec:adding-noise}, we have simply increased the noise on the sampled triplets and have evaluated the performance of our algorithms. The results
 can be seen in \autoref{fig:hierarchy-add-triplet-noise}. We have have repeated the setup under two different densities, with 100\% and with 10\% to see if the density had influence
 on the noise suspectibility of the algorithms.
 %TODO: Describe the plot

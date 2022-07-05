@@ -4,53 +4,63 @@ If we have obtained a set of triplet data, we are now faced with the task of pro
 methods for this which we call \textit{landmark cuts} and \textit{majority cuts}. We will elaborate on the methods and intuitions in the following sections.
 
 \section{Landmark cuts}\label{theory:landmark_cuts}
-In recent years, there have been algorithms that hope to speed up ordinal embedding by focussing on so-called \textit{landmarks}\cite{ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}, which are objects in the dataset that for which we know all (or all relevant) triplet comparisons.
-The definitions of what constitutes landmarks varies a bit, but we will use one that is used in \cite{haghiriComparisonBasedFrameworkPsychophysics2019}.
+In recent years, there have been algorithms that hope to speed up ordinal embedding by focussing on so-called \textit{landmarks} \citep{ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}, 
+which are objects in the dataset that for which we know all (or all relevant) triplet comparisons.
+
+The definitions of what constitutes landmarks varies a bit, but we will use the one that is used in \cite{haghiriComparisonBasedFrameworkPsychophysics2019}.
 Assume we have a set of objects $D$, as well as a set of $T$ triplet constraints of the form $(a,b,c)$, indicating that $d(a,b) < d(a,c)$. In a landmark setting, we have a set 
-of $m$ objects $L \subset D$, for which $\forall l_1, l_2 \in L \forall x \in D: (x, l_1, l_2) \in T \vee (x, l_2, l_1) \in T$. This admits to a very natural notion of bipartitions: 
+of $m$ objects $L \subset D$, for which 
+\begin{align*}
+\forall l_1, l_2 \in L \; \forall x \in D: (x, l_1, l_2) \in T \vee (x, l_2, l_1) \in T. 
+\end{align*}
+
+This admits to a very natural notion of bipartitions: 
 for each combination of landmarks $l_1, l_2$, we can make a bipartition $P = \{A, \overline{A}\}$ by assigning all points closer to $l_1$ to $A$ and all 
-those closer to $l_2$ to $\overline{A}$. Thus we can define $A_{12} = \{ x \in D \mid \left( x, l_1, l_2 \right) \in T \}$, denoting as $P_L = \{A_ij  \mid i, j \in 1\ldots m\}, i < j\}$ 
-all such bipartitions on $L$. These bipartitions are then called \textit{landmark cuts}.
+those closer to $l_2$ to $\overline{A}$. Thus we can define the bipartition between landmark points $l_1, l_2$ as $A_{12} = \{ x \in D \mid \left( x, l_1, l_2 \right) \in T \}$, 
+denoting as $P_L = \{A_{ij}  \mid i, j \in \{1\ldots m\}\, i < j\}$ all such possible bipartitions on $L$. 
+These bipartitions are then called \textit{landmark cuts}.
 Later in the simulations, as tangles is not reliant on having all triplet constraints for all landmark objects, we will simply sample a subset $P'_{L} \subset P_L$ of bipartitions,
 which corresponds to repeatedly picking some objects $a, b$ and sampling all triplet comparisons to all other objects $x \in D$. \\
 
 These landmark cuts intuitively capture a cluster structure: the more close $x$ is to $l_1$ according to $d$, the more likely that $A_{12}$ will contain $x$. In the end, $A_{12}$ will
-consist of the points that are in some sense close to $l_1$. In the euclidean space, this notion is very easily captured: A landmark cut between $l_1, l_2$ is
+consist of the points that are in some sense close to $l_1$ (how strong this closeness is depends on how close $l_1$ and $l_2$ are). 
+In the euclidean space, this notion is very easily captured: A landmark cut between $l_1, l_2$ is
 simply a linear cut between the two points, as illustrated in \autoref{theory:landmark_cuts}.
 
     \begin{figure}[ht]
         \centering
         \includegraphics[width=0.8\textwidth]{figures/landmark_cut.png}
-        \caption{Example of a simple landmark cut, with the two triangles being the landmarks $l_1, l_2$, where all red items (left of the line) 
-        would be assigned to $A$, all blue items to $\overline{A}$ (or equivalently the other way around).}
+        \caption{Example of a simple landmark cut, with the two triangles being the landmarks $l_1, l_2$, where all blue items (left of the line) 
+        would be assigned to $A$, all red items to $\overline{A}$ (or equivalently the other way around).}
         \label{fig:landmark_cut}
     \end{figure}
 
 The landmark approach is a quite unusual way of sampling triplet questions.
-In most triplet experiments, the triplets to sample are chosen randomly \cite{kleindessnerLensDepthFunction2017, haghiriEstimationPerceptualScales2020} 
-or according to some metric (f.e. maximizing some measure of gained information) \cite{roadsEnrichingImageNetHuman2021}. 
+In most triplet experiments, the triplets to sample are chosen randomly \citep{kleindessnerLensDepthFunction2017, haghiriEstimationPerceptualScales2020} 
+or according to some metric, for example maximizing some measure of gained information \citep{roadsEnrichingImageNetHuman2021}. 
 There was no experimental dataset available which is sampled according to a landmark approach, where the objects exhibit a cluster structure, thus we rely on simulations
 for testing our methods.
 
 \section{Majority cuts}
 As explained in \autoref{theory:landmark_cuts}, sampling triplet data in a landmark-fashion is not very widely used in current practice. Due to this, we aimed
 to also develop a more general approach to processing tangles to cuts that can be applied to any set of triplet comparisons $T$ regardless of the sampling method.
-For this, we again use the intuition that triplets tell us something about the closeness of data point, and thus about the cluster structure. Assume again
-that we have a set of objects $D$ and a set of triplet comparisons $T$. We fix two points $a,b \in D$. Assume that $a,b$ are close and we and sample a random point $x$,
+For this, we again use the intuition that triplets tell us something about the closeness of data points, and thus about the cluster structure. 
+
+Assume again that we have a set of objects $D$ and a set of triplet comparisons $T$. We fix two points $a,b \in D$. Assume that $a,b$ are close and we and sample a random point $x$,
 then, with high probability, it will be that $d(a,b) < d(a,x)$. The reverse holds, if $a,b$ are far away. Now we can take this the other way around: 
 if we observe a triplet $(a,b,c) \in D$, then we can more reasonably assume that $a,b$ are close than $a,c$ being close. This leads us to the following method of defining
 a set of close points of $a$: Let $L_x = \{t \in T | t = (x, b,c), b,c \in D\}$ be the set of all available triplets where $a$ is in the left position, and equivalently $M_x$ and $R_x$ 
 for set of triplets where $x$ is in the middle and right position, respectively. Then we define: $P_a := \{x \in D \mid \left|   L_a \cap M_x\right| < \left| L_a \cap R_x \right| \}$
-which is the set of all points that are more often closer to $a$ than they are farther away. We refer to these bipartitions as \textit{majority cuts}. Again, they capture
+which is the set of all points that are more often closer to $a$ than they are farther away. We refer to these bipartitions as \textit{majority cuts}, and to the point $a$ that
+as the \textit{anchor point} of the cut $P_a$. These majority cuts capture
 some cluster structure by assigning points that are close together to the same bipartition. We can be more flexible by including a ratio $r$ that controls the size of the cuts. We then define
 $P_a(r) := \{x \in D \mid \left|   L_a \cap M_x\right| < r \cdot \left| L_a \cap R_x \right| \}$ and call $r$ the \textit{radius} of the cut. The definition given before is then simply the 
 case $r = 1$. \\
 
-%TODO: Examining the quality of the cuts
 Next, we want to gain some intuition about the form of the majority cuts. What we would expect, assuming that we had all triplets, is that each cut
 $P_a(r)$ is a ball around $a$ that contains the $n \cdot \frac{r}{r+1}$ points that are closest to $a$ according to the distance measure $d$ that defined the triplets. In a euclidean setting for 
-$r = 1$ we thus expect $P_a(1)$ to be a median-sized-ball around $a$ that contains $\frac{n}{2}$ points that are closest to $a$. We plot the majority cuts on a simple mixture of gaussians
-in \autoref{majority_cut}. As the amount of triplets increases, we can see that we get closer to the ideal form of a ball around $a$ (the point marked with a cross) with radius $\frac{n}{3}$. 
+$r = 0.5$ we thus expect $P_a(1)$ to be a ball around $a$ that contains the $\frac{n}{3}$ points that are closest to $a$. To test this, We plot a majority cut with a fixed anchor point on a simple mixture of gaussians
+in \autoref{fig:majority_cut}. As the amount of triplets increases, we can see that we get closer to the ideal form of a ball around $a$ (the point marked with a cross) with radius $\frac{n}{3}$. 
 If we have fewer than all triplets, we introduce some noise into our cuts in the form of points that are in the cut together with $a$, but are outside of the $\frac{n}{3}$ ball around $a$
 (and might in fact be very far away).\\
 
@@ -71,11 +81,11 @@ the cuts. On the contrary, we are safe if we pick a radius that is a bit larger,
     \hfill
     \subfloat[20000 triplets]{%
       \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-20000.pgf}}}
-    \subfloat[All triplets]{%
+    \subfloat[All (106200) triplets]{%
       \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-106200.pgf}}}
     \caption{Rendering of how the majority cuts look like on a simple mixture of gaussians. We plot just one bipartition $P_a$ with radius $r=0.5$, which was generated
-        according to the above procedure for an increasing amount of triplets. The big X marks the point $a$
-    that was used to generate the bipartition. The orange triangles are inside the bipartition together with $a$ (so are twice as often closer to $a$ than they are not), 
+        according to the above procedure for an increasing amount of triplets. The big X marks the anchor point $a$. 
+        The orange triangles are inside the bipartition together with $a$ (so are twice as often closer to $a$ than they are not), 
     while the blue points are on the other side of the bipartition.}
     \label{fig:majority_cut}
 \end{figure}

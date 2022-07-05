@@ -1,22 +1,23 @@
 \chapter{Theoretical Background}\label{theory}
-Here we write about the theoretical background.
+In this chapter we will give a brief introduction about the theoretical concepts that are used in this work. In particular, we will
+give an explanation about tangles and how they can be processed to a clustering, about triplet data and different formats, and lastly about
+current methods of clustering triplet data.
 
 \section{Tangles}\label{theory:tangles}
 % What are Tangles? How are they used? What advantages do they
 % prove?
-% TODO: How to cite correctly here?
-Tangles have been a tool in mathematical graph theory, introduced originally by \cite{robertsonGraphMinorsObstructions1991} 
-with a diverse range of application %TODO: Citations from Solveig. \\
+Tangles have been a tool in mathematical graph theory, introduced originally by \cite{robertsonGraphMinorsObstructions1991}. 
+Tangles are a flexible tool, with possible areas of application in sociology, psychology, economics, political science and others \citep{diestelTanglesSocialSciences2019}.
 
 In recent times, through the work of \cite{klepperClusteringTanglesAlgorithmic2021}, they have been successfully applied
 to solve problems of clustering. The mentioned work delivers an algorithmic framework and theoretical guarantees for basic problem settings.
-Additionally, it delivers simplified notations, adapted to the domain of computer science. When talking about Tangles,
+Additionally, it delivers simplified notations, adapted to the domain of computer science. When talking about tangles,
 we will exclusively use the definitions introduced there, not those that might be common in mathematics. \\
 
-In this section, we will now deliver a very brief recap of the basic notions, theory and applications of Tangles in a clustering context.
+In this section, we will now deliver a very brief recap of the basic notions, theory and applications of tangles in a clustering context.
 For more in-depth explanations of the algorithms and exact procedures, refer to \cite{klepperClusteringTanglesAlgorithmic2021}.
 \subsection{What is a Tangle?}
-The central object in Tangles Theory is a \textbf{bipartition} (which we also refer to as a cut). 
+The central object in tangles theory is a \textbf{bipartition} (which we also refer to as a cut). 
 A bipartition is simply a way of dividing a set of elements $V =  \{ v_1, v_2, \ldots \}$ into two distinct subsets $A, B \subset V$, such that
 $A \cap B = \O$ and $A \cup B = V$. We can also write a bipartition as $P = \{A, \overline{A}\}$, with $A \subset V$ and $\overline{A}$ being the
 complement of $A$ with respect to $V$. \\
@@ -25,79 +26,79 @@ For such a bipartition to be useful in clustering, we expect it to hold some deg
 structure of our data. This means that a good bipartition should not separate groups of data that are tightly coupled.
 If we imagine a graph data structure, a good bipartition $P = \{A, \overline{A}\}$ might separate the set of nodes $V$ such that there 
 are only a few edges between $A$ and $\overline{A}$. A \textbf{cost function} 
-$c: \mathcal{P}(V) \to \R$, quantifies how useful a cut is, with $\mathcal{P}(V)$ denoting the power set of V. One is free to choose this cost function and it depends on the problem at hand. 
-%TODO: Figure of bipartiion
-%TODO: insert cost function used?
+$c: \mathcal{P}(V) \to \R$ quantifies how useful a cut is, with $\mathcal{P}(V)$ denoting the power set of V. One is free to choose this cost function and the performance of tangles will also depend on
+how well cost function and problem setting fit together. \\
 \\
-Assume that for a set of elements $V$ we have a set of bipartitions $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \} $ on $V$.
+Next assume that for a set of elements $V$ we have a set of bipartitions $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \} $ on $V$.
 Together with the cost function, this set of bipartitions should tell us a lot about the cluster structure of the data:
-for all bipartitions, we know how much they do or don't separate dense regions in $V$. The Tangles framework aggregates
-this information in the bipartitions and brings it into a useable form. For this, we process $\mathcal{B}$ to a set of so-called \textbf{Tangles}. These
+for all bipartitions, we know how much they do or don't separate dense regions in $V$. The tangles framework aggregates
+this information in the bipartitions and brings it into a useable form. For this, we process $\mathcal{B}$ to a set of so-called \textbf{tangles}. These
 correspond to specific ways of orienting the cuts such that they point to cohesive structures in the data. 
 Orienting here means that we pick one specific side of a bipartition. An \textbf{Orientation} of $\mathcal{B}$ is then a set $O = \{o_1, o_2, \ldots o_n\}$, where $o_i$ 
-corresponds to either the partition $A_i$ (oriented \textit{left}) or $\overline{A_i}$ (oriented \textit{right}). A consistent orientation (which we also call a Tangle) is an orientation for which:
+corresponds to either the partition $A_i$ (oriented \textit{left}) or $\overline{A_i}$ (oriented \textit{right}). A consistent orientation (which we then call a \textbf{tangle}) is an orientation for which:
 
 \begin{align}
     \forall A,B,C \in O: \left| A \cap B \cap B \right| \ge a
-.\end{align}
+\end{align}
 
-for some fixed parameter $a \in \N$, which we refer to as \textbf{agreement} parameter. Here we need the cost function: Without it, a lot
-sets of bipartitions wouldn't allow for any tangles, as there are too many cuts to consistently orient them. Imagine if our set of bipartitions would 
+for some fixed parameter $a \in \N$, which we refer to as \textbf{agreement} parameter. Here we need the cost function: Without it, a lot of
+sets of bipartitions wouldn't allow for any tangles, as there are too many cuts to consistently orient them. Imagine that our set of bipartitions would 
 contain a few random ones. On average, each of these cut our set of points in half, so we can at most orient on the order of $O(\log(n))$ many random bipartitions consistently.
 Using the cost function, we can simply restrict our tangles to a set of low-cost (and thus very insightful) cuts $P_{\psi}$, using a threshhold $\psi \in \R$ such that
-$P_{\psi} = \{ P c(P) \le \psi \}$. A tangle on $P_{\psi}$ is then said to have order $\psi$.
+$P_{\psi} = \{ c(P) \le \psi \}$. A tangle on $P_{\psi}$ is then said to have order $\psi$. We have included a schematic drawing of a tangle on a simple data set in \autoref{fig:tangles-example}.
 
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/tangles-example.pdf}
     \caption{An example of how a simple tangle might look like if we assume a reasonably sized agreement (say $a = 3$). The red lines represent simple cuts which divide the sets of points into a bipartition.
-    A tangle on this set of bipartitions might orient all bipartitions to the left side (indicated by the arrow), so that they point to the dense structure there. Another 
+    The simple tangle on this set of bipartitions that is depicted here might orient all bipartitions to the left side (indicated by the arrow), so that they point to the dense structure on the left. Another 
 possible tangle might orient all cuts to the left. Notice that a tangle on this set of bipartitions can only either point all bipartitions to the left or to the right, else
 the consistency criterion is violated. This might already give a good intuition on why tangles are able to find dense structures in data.}
     \label{fig:tangles-example}
 \end{figure}
 \FloatBarrier
 
-\subsection{Processing Tangles to a clustering}
+\subsection{Processing tangles to a clustering}
 As we have seen in \autoref{fig:tangles-example}, a tangle might correspond directly to a cluster. But, a set of bipartitions usually allows for a wide 
-variety of possible tangles, some of them pointing to different or overlapping clusters. We now have to process this set of tangles into a useable clustering.
+variety of possible tangles, some of them pointing to different or overlapping clusters. We now have to process this set of tangles into a useable set of clusters.
 This step is a bit involved and we aim to only give a rough, intuitional overview here. \\
 
 Given a set of bipartitions $\mathcal{B} = \{b_1, b_2, \ldots b_n\} $, we first want to determine for all possible orders $\psi$ the sets of all tangles of order $\psi$ on $\mathcal{B}$ 
-according to a given cost function $c$. Inuitively, the order of the set of tangles determines how coarse the clustering is they define:
-If we only use bipartitions with a low cost (so in the case of small $\psi$), then the bipartitions cut only very loosely connected structures. 
+according to a given cost function $c$. Intuitively, this order on the set of tangles determines how coarse the clustering is they define:
+If we only use bipartitions with a low cost (so in the case of small $\psi$), then the bipartitions cut only through very loosely connected structures. 
 If the cost is higher, the bipartitions are allowed to cut through more dense regions. This directly induces a sort of hierarchy, where we go from coarse cluster
 structures to fine ones with increasing $\psi$. \\
-To better handle this procedure computationally, we build a tree structure on the set of tangles, called the \textbf{Tangle Search Tree}. In the tangles search tree, 
-one node represents a possible tangle. Every level of the tree contains all possible tangles of a certain threshhold $\psi_i$ which directly corresponds to the cost of bipartition $b_i$. 
+To better handle this procedure computationally, we build a tree structure on the set of tangles, called the \textbf{tangle search tree}. In the tangles search tree, 
+one node represents a tangle. Every level of the tree contains all possible tangles of a certain threshhold $\psi_i$ which directly corresponds to the cost of bipartition $b_i$. 
 The exact makeup of the tangle is determined by walking the path from the root to the node, and adding bipartition $b_i$ to the tangle in a left-oriented way, if it is a left child and
-in a right-oriented way if it is a right child. An exemplary tangle search tree is illustrated in \autoref{fig:tangles-tree-example}.
+in a right-oriented way if it is a right child. An exemplary tangle search tree is illustrated in \autoref{fig:tangles-tree-example}. As an example, if we would now want to determine
+the makeup of the node in level 3, we just walk from the root to it and add the bipartitions in the direction indicated by the tree. We end up with $T = \{\overline{A_1}, \overline{A_2}, A_3\}$. 
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/tangles-tree-example.png}
     \caption{An example of a possible tangles search tree for a set of bipartitions $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \{A_2, \overline{A_2}\}, \{A_3, \overline{A_3}\} \}$. 
-        Each level corresponds to the tangles of the order given by the bipartition $P_i$ that is indicated to the left of it.
-        Let us take a look at the sole node in level 3. If we would want to find out, which orientations the corresponding tangle $T$ consists of, we just walk from
-        the root to it and add the bipartitions in the direction indicated by the tree. We end up with $T = \{\overline{A_1}, \overline{A_2}, A_3\}$. 
+        Each level corresponds to the tangles of the order given by the bipartition $P_i$ that is written on the dashed line to the left of it.
         Figure taken with permission from \cite{klepperClusteringTanglesAlgorithmic2021}.}
     \label{fig:tangles-tree-example}
 \end{figure}
 
-We can now obtain a soft, hierarchical clustering from this tangle search tree. For this, the interesting nodes are those
+We can now obtain a soft, hierarchical clustering from this tangle search tree. \textit{Soft} means that every data point is assigned
+a probability of belonging to each cluster. \textit{Hierarchical} means that we have a hierarchy on the resulting clusters, which arises naturally
+from the form of the tangles search tree. For the clustering, the interesting nodes are those
 where the tree splits up (as this represents a new clustering) and the leaves (which correspond to the clusters). 
-For each of the \textit{splitting nodes}, we determine the set of \textit{characterizing cuts}.
+For each of these \textit{splitting nodes}, we determine the set of \textit{characterizing cuts}.
 A cut belongs to this set, if it is both oriented the same way inside the subtrees, and if it is oriented in a different way between the two subtrees.
 To illustrate this, we take a look at the exemplary tree in \autoref{fig:tangles-tree-example}. Here, for the root node, $P_1$ is a characterizing cut (pretty trivially),
 while $P_2$ is not: below the node $A_1$, the bipartition is both oriented to the left and to to the right, violating the requirement that the cuts are always oriented
 the same way inside the subtrees. 
 
-The characterizing cuts express some kind of agreement on how to align the bipartitions in the subtrees of the node, which we can leverage 
+The characterizing cuts express some kind of consensus on how to align the bipartitions in the subtrees of the node, which we can leverage 
 for a soft clustering. If we now want to determine, with what probability a point $a$ belongs to a cluster $C$ represented by a leaf in the tree, we simply walk down 
-the tree from the root, and count at every splitting node how many characterizing cuts contain the point $a$, and how many don't. Normalized by the total amount of
+the tree from the root, and count at every splitting node how many characterizing cuts contain the point $a$, and how many do not. Normalized by the total amount of
 characterizing cuts, we can interpret this as a probability to walk down either the left or the right path. To get a total probability that $a$ belongs to $C$, 
-we simply multiply the probabilities that we obtain on the path to $C$ at every splitting node. The corresponding hard clustering is obtained by assigning each
+we simply multiply the probabilities that we obtain on the path to $C$ at every splitting node. The corresponding \textit{hard} clustering is obtained by assigning each
 node to the cluster it belongs to with the highest probability.
     
 % Given a set of bipartitions $\mathcal{B}$, we first sort the bipartitions according to their costs given by the cost function $c$. 
@@ -107,43 +108,42 @@ node to the cluster it belongs to with the highest probability.
 \section{Ordinal Constraints}
 A dataset of ordinal constraints consists of object for which we don't know their exact attributes or features, but only how they relate to other objects
 in the form of comparisons such as \textit{item $i$ is closer to item $j$ than to item $k$}. Formally, we assume that $i, j, k$ are from 
-a set $D$ where we can define a dissimilarity function $d: D \times D \to \R$. Note that $d$ which can be a metric on $D$, but does not have to be.
-We can then express our above constraint as $d(i, j) < d(i, k)$. \\
+a set $D$ where we can define a dissimilarity function $d: D \times D \to \R$. Note that $d$ can be a metric on $D$, but does not have to be.
+Using d, we can express our above constraint as $d(i, j) < d(i, k)$. \\
 
-Such data often appears when humans are asked to judge objects, as they are often naturally perform better on comparing objects
-than on accurately placing them on an abstract scale \cite{stewartAbsoluteIdentificationRelative2005}. Applications are for example estimation of perceptual scales in psychophysics 
-\cite{haghiriEstimationPerceptualScales2020} or crowd-sourcing clustering algorithms \cite{ukkonenCrowdsourcedCorrelationClustering2017}. 
+Such data often appears when humans are asked to judge objects, as they often naturally perform better on comparing objects
+than on accurately placing them on an abstract scale \citep{stewartAbsoluteIdentificationRelative2005}. Applications are for example estimation of perceptual scales in psychophysics 
+\citep{haghiriEstimationPerceptualScales2020} or crowd-sourcing clustering algorithms \citep{ukkonenCrowdsourcedCorrelationClustering2017}. 
 We want to keep our focus here mainly the realm of psychophysics.
 
 
 \subsection{Formats of Ordinal Constraints}
-%TODO: Explain d as metric
-Ordinal data usually takes two possible forms. 
+Ordinal constraints take one of two possible forms. 
 The more general form of an ordinal data constraint is the quadruplet form, for example used in \cite{ghoshdastidarFoundationsComparisonBasedHierarchical2019}. 
 Here, we have constraints such as $\text{d}(a,b) < \text{d}(c,d)$. A more commonly encountered form is the triplet form, which is simply a quadruplet where $a = c$, such as
 $\text{d}(a,b) < \text{d}(a,d)$, used for example in \cite{vankadaraInsightsOrdinalEmbedding2021,haghiriComparisonBasedFrameworkPsychophysics2019}. We refer to datasets
 consisting of triplet comparisons as \textit{triplet data}.
 To obtain such triplet data, one might present to human participants three images $a, b, d$, with image $a$ as anchor point and ask them, which of the images $b,d$ are closer to $a$. \\
 
-The way that participants are questioned is often varied on the context of the experiment (and might also influence their answers). An
+The way that participants are questioned varies on the context of the experiment (and might also influence their answers). An
 example is presenting the participant with three images, and asking \textit{which is the most central image?}, or \textit{which is the odd one out?},
-but the results are then always transformed back to triplet format for further prcoessing. For example, if $a$ is the \textit{odd-one-out} of the three elements $a,b,c$, 
+but the results can then always transformed back to triplet format for further prcoessing. For example, if $a$ is the \textit{odd-one-out} of the three elements $a,b,c$, 
 then we know that $d(b,c) < d(b,a)$ and $d(c, b) < d(c,a)$. 
 
 \subsection{Ordinal embeddings}
-One of the most central problems consists of finding a so called \textit{ordinal embedding} of the data. If we have a set of triplet comparisons $T = \{t_1, t_2, \ldots t_n\}$, 
+One of the most central problems when dealing with triplet data consists of finding a so called \textit{ordinal embedding} of the data. If we have a set of triplet comparisons $T = \{t_1, t_2, \ldots t_n\}$, 
 of the form $t_i = \left( a,b,c \right)$, encoding that $d(a,b) < d(a,c)$, 
-we want to find a set of points $y_1, y_2, \ldots y_n \in \R^{m}$, such that they uphold the most of the original triplet constraints in $\R^{m}$ with the euclidean distance
-as metric. More formally, we want to minimize \cite{vankadaraInsightsOrdinalEmbedding2021}:
-\[
+we want to find a set of points $y_1, y_2, \ldots y_n \in \R^{m}$, such that they uphold most of the original triplet constraints in $\R^{m}$ with the euclidean distance
+as metric. More formally, we want to minimize \citep{vankadaraInsightsOrdinalEmbedding2021}
+\begin{align*}
     \min_{y_1, \ldots y_n \in \R^{m}} \sum_{t=\left( i,j,k \right)  \in T} \mathbbm{1}_{ \|y_i - y_j\| < \|y_i - y_k\| }
-.\] 
-This problem is difficult to optimize and thus various algorithms have been propose that solve a relaxed or modified version of this objective function. 
-These include Soft Ordinal Embedding (SOE) \cite{teradaLocalOrdinalEmbedding2014}, Generalized Non-Metric Multidimensional Scaling (GNDMS) \cite{agarwalGeneralizedNonmetricMultidimensional2007}, 
-Crowd Kernel Learning (CKL) \cite{tamuzAdaptivelyLearningCrowd2011}, Fast Ordinal Triplets Embedding (FORTE) \cite{jainFiniteSamplePrediction2016},
-T-Stochatic Triplet Embedding (T-STE) \cite{laurensvandermaatenStochasticTripletEmbedding2012} and various others. \\
+.\end{align*}
+This problem is difficult to optimize and thus various algorithms have been proposed that solve a relaxed or modified version of this objective function. 
+These include Soft Ordinal Embedding  (SOE, \cite{teradaLocalOrdinalEmbedding2014}), Generalized Non-Metric Multidimensional Scaling (GNDMS, \cite{agarwalGeneralizedNonmetricMultidimensional2007}), 
+Crowd Kernel Learning (CKL, \cite{tamuzAdaptivelyLearningCrowd2011}), Fast Ordinal Triplets Embedding (FORTE, \cite{jainFiniteSamplePrediction2016}),
+T-Stochatic Triplet Embedding (T-STE, \cite{laurensvandermaatenStochasticTripletEmbedding2012}) and various others. \\
 
-It has been proven that if the original points come from the space $\R^{m}$, one can recover the points (up to scaling and orthogonal transformations) with $O(mn\log(n)$ triplet comparisons
-\cite{jainFiniteSamplePrediction2016}. On this basis, an ordinal embedding can be used together with more classical machine learning algorithms, such as support vector machines or k-Means,
-for other machine learning tasks. This approach has for example been used for classification \cite{tamuzAdaptivelyLearningCrowd2011, kleindessnerLensDepthFunction2017} and for clustering \cite{kleindessnerLensDepthFunction2017} on ordinal data. \\
+It has been proven that if the original points come from the space $\R^{m}$, one can recover the points (up to scaling and orthogonal transformations) with $O(mn\log(n))$ many triplet comparisons
+\citep{jainFiniteSamplePrediction2016}. On this basis, an ordinal embedding can be used together with more classical machine learning algorithms, such as support vector machines or k-Means,
+for other machine learning tasks. Examples tasks are classification \citep{tamuzAdaptivelyLearningCrowd2011, kleindessnerLensDepthFunction2017} or clustering \citep{kleindessnerLensDepthFunction2017}.
 

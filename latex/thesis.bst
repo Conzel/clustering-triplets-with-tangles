@@ -913,9 +913,8 @@ FUNCTION {phdthesis}
   new.block
   format.btitle "title" output.check
   new.block
-  "PhD thesis" format.thesis.type output.nonnull
+  "Bachelor thesis" format.thesis.type output.nonnull
   school "school" output.check
-  address output
   format.date "year" output.check
   format.url output
   new.block

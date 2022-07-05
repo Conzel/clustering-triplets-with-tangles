@@ -1,10 +1,10 @@
-\chapter{Case study: data from psychophysics}\label{simulations}
+\chapter{Case study: data from psychophysics}\label{real}
 In this chapter, we want to use the tangles algorithm for real world data. 
 It aims to not only show the viability of tangles as a data evaluation tool, but also to serve as an 
 instructive application how a researcher might use tangles for their own experiments. We will use the data
-from the bachelor thesis of Inés Schönmann 
+from the thesis of \cite{inesschonmannSimilarityJudgementsNatural2021}
 %TODO: Cite)
-and will re-do some of her analysis using tangles. This could be used to gain some more insight about the
+and will complement some of her analysis using tangles. This could be used to gain some more insight about the
 data and their relations.
 
 \section{Data background}
@@ -112,7 +112,7 @@ highlighting a possible strength of tangles.
 \begin{figure}[ht]
     \centering
     %TODO: Make this plot readable
-    \resizebox{0.6\textwidth}{!}{\input{figures/results/tangle-nodes-tree.pgf}}
+    \resizebox{0.7\textwidth}{!}{\includegraphics{figures/results/tangle-nodes-tree.png}}
     \caption{
         Here, we have plotted the hierarchy we receive from the tangles algorithm. The hierarchy starts at the root and each other node represents a splitting cut, which
         separates the data further.  The label of the node is the number of the cut that caused the split to happen, together with the orientation (T means we have the cut in
@@ -156,17 +156,17 @@ why does a particular image belong to the kitchen or barn cluster? For this, we 
 these are the ones that are always oriented in the same direction in the left subtree and in the other direction in the right subtree. 
 
 We have visualised the characterising cuts in \autoref{fig:characterising_cuts}, together with the images that induced the particular cuts. As our cuts are interpretable (a majority cut 
-that is induced by a point $a$ contains points that are in some sense close to $a$), we can directly use this interpretation for our clustering. As we can see in \autoref{fig:characterising_cuts_a}, 
+with anchor point $a$ contains points that are in some sense close to $a$), we can directly use this interpretation for our clustering. As we can see in \autoref{fig:characterising_cuts_a}, 
 the items that are in the barn cluster have landed there because they are similar to the two straw/hay images that we have plotted in \autoref{fig:characterising_cuts_b}. This is similar to our intuition, straw and hay intuitively belong 
 in a barn setting and definitely not in a kitchen, while the pitchforks might be a bit more ambiguous.
 
 Our interpretation is that the items that have landed in the cluster of other kitchen items are there because they are similar to
 the dishwashers we have plotted in \autoref{fig:characterising_cuts_d}. This also makes sense, as we would interpret the dishwashers to very clearly belong into a kitchen environment, while the forks might be more ambiguous.
 
-Overall, there is some small caveat to our explanation: In a majority cut, we only have a satisfying explanation in one direction: We know that if a point $b$ is in the majority cut that is induced by
-$a$, that $b$ is close to $a$. However, the reverse direction might be a bit unsatisfying: If a point $c$ is not in the majority cut, we know that it is not close to $a$. If we want to know how the cluster
+Overall, there is some small caveat to our explanation: In a majority cut, we only have a satisfying explanation in one direction: We know that if a point $b$ is in the majority cut that has anchor point $a$, 
+then $b$ is close to $a$. However, the reverse direction might be a bit unsatisfying: If a point $c$ is not in the majority cut, we know that it is not close to $a$. If we want to know how the cluster
 of forks and pitchforks formed, saying that they are dissimilar to the dishwashers plotted in \autoref{fig:characterising_cuts_d} is not really satisfying, we would rather prefer to know that they are maybe
-similar to a certain other item. To remedy this, we might want to use more interpretable cuts: if we would have sampled the data in a landmark format, we would have been able say something like: $a$ is in a certain cluster
+similar to a certain other item. To remedy this, we might want to use more interpretable cuts. If we would have sampled the data in a landmark format, we would have been able say something like: $a$ is in a certain cluster
 because it is closer to $b$ than to $c$.
 
 
@@ -211,8 +211,9 @@ because it is closer to $b$ than to $c$.
 Next, we are going to repeat some of the basic evaluations for another person that participated in the experiment to show that the last evaluation wasn't just a particular edge case.
 We have selected the odd triplets and the thematic image set for person 3 and expect to see a similar behaviour. In \autoref{fig:ines-embedding-vp3} we have plotted the embedding
 from Schönmann again together with the tangles clustering. This time, we see three clusters (hay-straw, pitchforks and dishwashers-forks). These clusters coincide nicely
-with our classes, aside from one fork being clustered together with the pitchforks. We note that this is not the fork from \autoref{} that was clustered together with the pitchforks, 
-so this might be a missclassification. If we look at the hierarchy (not plotted for space reasons) this time, we see that the pitchforks first get split off, and then the straw-hay from the kitchen dishwashers-forks cluster.
+with our classes, aside from one fork being clustered together with the pitchforks. We note that this is not the fork from \autoref{fig:thematic-images-forks-a} that was clustered together 
+with the pitchforks, so this might be a missclassification. 
+If we look at the hierarchy (not plotted for space reasons) this time, we see that the pitchforks first get split off, and then the straw-hay from the kitchen dishwashers-forks cluster.
 This could again lead to interesting conclusions, which should probably be discussed by someone with more expert knowledge in the field, possibly using other evaluation data.
 
 \onecolumn
