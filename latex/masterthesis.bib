@@ -39,23 +39,6 @@
   file = {/Users/almico/Zotero/storage/EE8YUTXE/Balakrishnan et al. - 2011 - Noise Thresholds for Spectral Clustering.pdf}
 }
 
-@misc{dasguptaExplainableMeansMedians2020,
-  title = {Explainable \$k\$-{{Means}} and \$k\$-{{Medians Clustering}}},
-  author = {Dasgupta, Sanjoy and Frost, Nave and Moshkovitz, Michal and Rashtchian, Cyrus},
-  year = {2020},
-  month = sep,
-  number = {arXiv:2002.12538},
-  eprint = {2002.12538},
-  eprinttype = {arxiv},
-  primaryclass = {cs, stat},
-  institution = {{arXiv}},
-  doi = {10.48550/arXiv.2002.12538},
-  abstract = {Clustering is a popular form of unsupervised learning for geometric data. Unfortunately, many clustering algorithms lead to cluster assignments that are hard to explain, partially because they depend on all the features of the data in a complicated way. To improve interpretability, we consider using a small decision tree to partition a data set into clusters, so that clusters can be characterized in a straightforward manner. We study this problem from a theoretical viewpoint, measuring cluster quality by the \$k\$-means and \$k\$-medians objectives: Must there exist a tree-induced clustering whose cost is comparable to that of the best unconstrained clustering, and if so, how can it be found? In terms of negative results, we show, first, that popular top-down decision tree algorithms may lead to clusterings with arbitrarily large cost, and second, that any tree-induced clustering must in general incur an \$\textbackslash Omega(\textbackslash log k)\$ approximation factor compared to the optimal clustering. On the positive side, we design an efficient algorithm that produces explainable clusters using a tree with \$k\$ leaves. For two means/medians, we show that a single threshold cut suffices to achieve a constant factor approximation, and we give nearly-matching lower bounds. For general \$k \textbackslash geq 2\$, our algorithm is an \$O(k)\$ approximation to the optimal \$k\$-medians and an \$O(k\^2)\$ approximation to the optimal \$k\$-means. Prior to our work, no algorithms were known with provable guarantees independent of dimension and input size.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Computational Geometry,Computer Science - Data Structures and Algorithms,Computer Science - Machine Learning,Statistics - Machine Learning},
-  file = {/Users/almico/Zotero/storage/IZDE7R6Z/Dasgupta et al. - 2020 - Explainable $k$-Means and $k$-Medians Clustering.pdf;/Users/almico/Zotero/storage/G8H9CXIT/2002.html}
-}
-
 @article{diestelAbstractSeparationSystems2018,
   title = {Abstract {{Separation Systems}}},
   author = {Diestel, Reinhard},
@@ -151,7 +134,7 @@
 
 @phdthesis{inesschonmannSimilarityJudgementsNatural2021,
   title = {Similarity {{Judgements}} of {{Natural Images}}: {{Instructions Affect Observers}}' {{Decision Criteria}} and {{Consistency}}},
-  author = {{In\'es Sch\"onmann}},
+  author = {Sch{\"o}nmann, In{\'e}s},
   year = {2021},
   month = sep,
   address = {{T\"ubingen}},
@@ -192,7 +175,7 @@
   file = {/Users/almico/Zotero/storage/K54XZVCL/Kleindessner and Luxburg - 2017 - Lens Depth Function and k-Relative Neighborhood Gr.pdf}
 }
 
-@misc{klepperClusteringTanglesAlgorithmic2021,
+@misc{klepperClusteringTanglesAlgorithmic2020,
   title = {Clustering with {{Tangles}}: {{Algorithmic Framework}} and {{Theoretical Guarantees}}},
   shorttitle = {Clustering with {{Tangles}}},
   author = {Klepper, Solveig and Elbracht, Christian and Fioravanti, Diego and Kneip, Jakob and Rendsburg, Luca and Teegen, Maximilian and {von Luxburg}, Ulrike},
@@ -236,6 +219,20 @@
   file = {/Users/almico/Zotero/storage/WAUQEET9/Lloyd - 1982 - Least squares quantization in PCM.pdf;/Users/almico/Zotero/storage/RJ6JSA85/1056489.html}
 }
 
+@inproceedings{moshkovitzExplainableKMeansKMedians2020,
+  title = {Explainable K-{{Means}} and k-{{Medians Clustering}}},
+  booktitle = {International {{Conference}} on {{Machine Learning}} ({{ICML}})},
+  author = {Moshkovitz, Michal and Dasgupta, Sanjoy and Rashtchian, Cyrus and Frost, Nave},
+  year = {2020},
+  month = nov,
+  pages = {7055--7065},
+  publisher = {{PMLR}},
+  issn = {2640-3498},
+  abstract = {Many clustering algorithms lead to cluster assignments that are hard to explain, partially because they depend on all the features of the data in a complicated way. To improve interpretability, we consider using a small decision tree to partition a data set into clusters, so that clusters can be characterized in a straightforward manner. We study this problem from a theoretical viewpoint, measuring cluster quality by the k-means and k-medians objectives. In terms of negative results, we show that popular top-down decision tree algorithms may lead to clusterings with arbitrarily large cost, and any clustering based on a tree with k leaves must incur an Omega(log k) approximation factor compared to the optimal clustering. On the positive side, for two means/medians, we show that a single threshold cut can achieve a constant factor approximation, and we give nearly-matching lower bounds; for general k {$>$} 2, we design an efficient algorithm that leads to an O(k) approximation to the optimal k-medians and an O(k\^2) approximation to the optimal k-means. Prior to our work, no algorithms were known with provable guarantees independent of dimension and input size.},
+  langid = {english},
+  file = {/Users/almico/Zotero/storage/KGMYSHVC/Moshkovitz et al. - 2020 - Explainable k-Means and k-Medians Clustering.pdf;/Users/almico/Zotero/storage/PEWGQPRW/Moshkovitz et al. - 2020 - Explainable k-Means and k-Medians Clustering.pdf}
+}
+
 @inproceedings{roadsEnrichingImageNetHuman2021,
   title = {Enriching {{ImageNet}} with {{Human Similarity Judgments}} and {{Psychological Embeddings}}},
   booktitle = {Conference on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
@@ -260,6 +257,19 @@
   abstract = {Roughly, a graph has small ``tree-width'' if it can be constructed by piecing small graphs together in a tree structure. Here we study the obstructions to the existence of such a tree structure. We find, for instance: 1.(i) a minimax formula relating tree-width with the largest such obstructions2.(ii) an association between such obstructions and large grid minors of the graph3.(iii) a ``tree-decomposition'' of the graph into pieces corresponding with the obstructions. These results will be of use in later papers.},
   langid = {english},
   file = {/Users/almico/Zotero/storage/TJIXLF3X/Robertson and Seymour - 1991 - Graph minors. X. Obstructions to tree-decompositio.pdf;/Users/almico/Zotero/storage/SZVF968X/009589569190061N.html}
+}
+
+@article{selbstMeaningfulInformationRight2017,
+  title = {Meaningful Information and the Right to Explanation},
+  author = {Selbst, Andrew D and Powles, Julia},
+  year = {2017},
+  month = nov,
+  journal = {International Data Privacy Law},
+  volume = {7},
+  number = {4},
+  pages = {233--242},
+  issn = {2044-3994},
+  doi = {10.1093/idpl/ipx022}
 }
 
 @article{semenovaStudyRashomonCurves2021,
@@ -300,7 +310,7 @@
   author = {Stewart, Neil and Brown, Gordon D. A. and Chater, Nick},
   year = {2005},
   month = oct,
-  journal = {Psychological Review},
+  journal = {Psychol Rev},
   volume = {112},
   number = {4},
   pages = {881--911},
@@ -351,7 +361,7 @@
   file = {/Users/almico/Zotero/storage/VPX5GIHN/footnotes.html}
 }
 
-@article{vankadaraInsightsOrdinalEmbedding2021,
+@article{vankadaraInsightsOrdinalEmbedding2019,
   title = {Insights into {{Ordinal Embedding Algorithms}}: {{A Systematic Evaluation}}},
   shorttitle = {Insights into {{Ordinal Embedding Algorithms}}},
   author = {Vankadara, Leena Chennuru and Haghiri, Siavash and Lohaus, Michael and Wahab, Faiz Ul and {von Luxburg}, Ulrike},

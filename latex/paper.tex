@@ -27,6 +27,7 @@
 \usepackage{pgf}
 \usepackage{hyperref}
 \usepackage{csquotes}
+\newcommand{\subfigureautorefname}{\figureautorefname}
 
 % continuous equation numbers throughout chapter
 \usepackage{chngcntr}
@@ -110,8 +111,18 @@ Thesis period: 04/2022-10/2022
 
 
 \section*{Abstract}
+We investigate a new algorithm for clustering triplet data (comparison-based data 
+without absolute distance information). This new approach is based on the tangles framework,
+a tool previously used to finde dense structures in graphs, which 
+we extend to work on triplet data. Current work focusses
+on embedding triplet data into a euclidean space, resulting possibly in distortions of our data,
+and then following up with a classical clustering algorithm. In contrast, our proposed method
+does not construct an intermediate embedding, potentially introducing less distortions
+on our data and achieving a higher clustering accuracy. Additionally to being
+competitive in performance, our approach provides both explainability as well as a cluster 
+hierarchy on top with no added cost. We validate the tangles algorithm both on synthetic data 
+under a diverse range of external influences as well as experimental data from the realm of psychophysics.
 
-Write here your abstract.
 \newpage
 \section*{Zusammenfassung}
 
@@ -171,36 +182,36 @@ Write here your acknowledgements.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Appendix
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\appendix
-
-%\setcounter{secnumdepth}{-1}
-%\section{Tables}\label{chap:App}
-\chapter{Further Tables and Figures}\label{chap:App}
-Viele Arbeiten haben einen Appendix. Besondere Sorgfalt muss beim Nummerieren der Tabellen und Abbildungen gewährleistet sein.
-\begin{table}[htb]
-\begin{tabular}{cc}
-Nummer & Datum \\
-\hline
-1 & 1.1.80\\
-2 & 1.1.90 \\
-\end{tabular}
-\caption{Erste Appendix-Tabelle}\label{tab:app1}
-\end{table}
-
-%\chapter{Figures}\label{chap:App2}
-
-\begin{table}[htb]
-\begin{tabular}{cc}
-Nummer & Datum \\
-\hline
-1 & 1.1.80\\
-2 & 1.1.90 \\
-\end{tabular}
-\caption{Zweite Appendix-Tabelle}\label{tab:app2}
-\end{table}
-%\end{appendices)
-
-\cleardoublepage
+%\appendix
+%
+%%\setcounter{secnumdepth}{-1}
+%%\section{Tables}\label{chap:App}
+%\chapter{Further Tables and Figures}\label{chap:App}
+%Viele Arbeiten haben einen Appendix. Besondere Sorgfalt muss beim Nummerieren der Tabellen und Abbildungen gewährleistet sein.
+%\begin{table}[htb]
+%\begin{tabular}{cc}
+%Nummer & Datum \\
+%\hline
+%1 & 1.1.80\\
+%2 & 1.1.90 \\
+%\end{tabular}
+%\caption{Erste Appendix-Tabelle}\label{tab:app1}
+%\end{table}
+%
+%%\chapter{Figures}\label{chap:App2}
+%
+%\begin{table}[htb]
+%\begin{tabular}{cc}
+%Nummer & Datum \\
+%\hline
+%1 & 1.1.80\\
+%2 & 1.1.90 \\
+%\end{tabular}
+%\caption{Zweite Appendix-Tabelle}\label{tab:app2}
+%\end{table}
+%%\end{appendices)
+%
+%\cleardoublepage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Bibliographie
