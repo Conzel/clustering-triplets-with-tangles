@@ -16,9 +16,9 @@ LINE_STYLES = ["-o", "-^", "-s",
                "-*", "-D", 
                "--o", "--^", "--s", "--*", "--D"]
 SYMBOLS = ["o", "^", "s", "*", "D"]
-MARKER_SIZES = [6,6,6, 
-                8,6,6,
-                6,6,8]
+MARKER_SIZES = [8,8,8, 
+                10,8,8,
+                8,8,10]
 
 class ThesisStyleCycler:
     """
@@ -220,7 +220,7 @@ class ThesisPlotter:
         plt.ylabel("y")
     
     def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray, markersize=8):
-        plt.figure()
+        plt.figure(figsize=(4.2,3.2))
         for i, label in enumerate(np.unique(ys)):
             mask = (ys == label)
             if isinstance(label, (np.integer, int)):
@@ -231,7 +231,7 @@ class ThesisPlotter:
     
     
     def line(self, df, x: str, y: str, methods_to_use: Optional[set[str]] = None, use_style_dict: bool = True):
-        plt.figure()
+        plt.figure(figsize=(5,4))
         df = df.groupby(["method", x]).mean().reset_index()
         methods = set(df.method.unique())
         if methods_to_use is None:
@@ -255,8 +255,8 @@ class ThesisPlotter:
         plt.ylabel(y)
     
     
-    def heatmap(self, df, x1: str, x2: str, y: str, method: str):
-        plt.figure()
+    def heatmap(self, df, x1: str, x2: str, y: str, method: str, title=""):
+        plt.figure(figsize=(6,4))
         df = df[df.method == method].groupby(
             [x1, x2]).mean().reset_index().sort_values([x1, x2])
         x1v, x2v = np.meshgrid(df[x1].unique(), df[x2].unique(), indexing="ij")
@@ -265,8 +265,9 @@ class ThesisPlotter:
             for j in range(x1v.shape[1]):
                 yv[i, j] = df[(df[x1] == x1v[i, j]) & (df[x2] == x2v[i, j])][y]
         plt.pcolormesh(x1v, x2v, yv, cmap="Blues")
-        plt.colorbar()
         plt.clim(0.0, 1.0)
+        clb = plt.colorbar()
+        clb.ax.set_title(title, fontsize=12)
         plt.xlabel(x1)
         plt.ylabel(x2)
         plt.xlim([x1v.min(), x1v.max()])
