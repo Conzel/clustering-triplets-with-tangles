@@ -1,29 +1,71 @@
 \chapter{Introduction}\label{Introduction}
-\textit{Is item i closer to item j or item k?} is the central question in a triplet setting. As humans have problems ordering 
-most things on absolute scales (what would be values of the features \textit{pop, rock, metal} of Rihanna?), a research community has formed
-to investigate how to work with comparison or triplet data. Here, humans are only asked to rate the similarity of objects, instead
-of their absolute values, which is intuitively easier (Rihanna being more similar to Britney Spears than to Metallica seems logical). 
-Human perception is another interesting venue for triplet questions: purple and red might be very far removed in terms of their wavelength,
-but we actually perceive them as very similar \citep{shepardAnalysisProximitiesMultidimensional1962}. Insights like these can be uncovered through triplet data 
-with appropriate data analysis methods. 
+We consider the task of clustering data $X = \{x_1, x_2, \ldots x_n \}$ for which neither 
+explicit features nor concrete distances between the data points are known to us. 
+The only form of information we have on the data is in the form of so-called 
+\textit{triplet comparisons} or \textit{triplets} for short. A triplet 
+on $X$ is a triple $(x_i, x_j, x_k)$ which tells us that $x_i$ is closer to $x_j$ than to $x_k$. 
+This problem setting often arises when one works with data from human observers. 
+An example, investigated among others by \citep{shepardAnalysisProximitiesMultidimensional1962}, 
+is human color perception. It would be hard for human observers to accurately rate colors in 
+terms of features, let alone define sensible features in the first place.  It would also be hard to rate colors in terms of concrete distances to each other.
+Additionally, the experiment designer would have to deal with uniting differing internal scales of different observers during data evaluation. 
+A preferred approach might be to gather triplets on the data. 
+To obtain these triplets, the experiment designer can repeatedly draw
+three different colors, which are presented to a human observer, together with a 
+suitable question. For example, we might draw the colors violet, red, yellow,
+and ask the the observer \textit{is violet more similar to red or to yellow?} These questions
+are comparatively easy to answer for human observers. 
+What remains is the question of how to evaluate the obtained triplet data.
 
-Most of the research community has dealt with ordinal embeddings \citep{agarwalGeneralizedNonmetricMultidimensional2007, tamuzAdaptivelyLearningCrowd2011,
-laurensvandermaatenStochasticTripletEmbedding2012,   teradaLocalOrdinalEmbedding2014, jainFiniteSamplePrediction2016, ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}, which 
-are algorithms that try to embed the original data points into a euclidean space from the given triplet comparisons. An ordinal embedding aims to place the points in such a way
-that they respect as many original triplet comparisons as possible, with regards to the euclidean distance. 
-However, the euclidean distance is a proper metric, so it is symmetrical and has to obey the triangle inequality, limiting its flexibility. 
-This means that the approach is not always perfect: the objects might have complex similarity values to each other that simply cannot be captured by euclidean distances alone. 
+A small research community has formed around the task of dealing with triplets.
+Most of this community focusses on ordinal embeddings
+\citep{agarwalGeneralizedNonmetricMultidimensional2007, tamuzAdaptivelyLearningCrowd2011,
+laurensvandermaatenStochasticTripletEmbedding2012,   teradaLocalOrdinalEmbedding2014, jainFiniteSamplePrediction2016, ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}.
+An ordinal embedding is an algorithm that aims to place the data points into a euclidean space
+such that the euclidean distances between the embedded points respects as many of the original triplet comparisons as possible. 
+However, this approach is not always perfect: we often cannot satisfy all triplet 
+comparisons, no matter the dimension of the embedding space or how the points are placed in it.
+% maybe leave this out?
+This is because the euclidean distance is a proper metric, so it is symmetrical and has to obey the triangle inequality, limiting its flexibility. 
 
-With an ordinal embedding, the triplet data is brought into a more common format and accessible for further tasks, such as clustering or classification with classical methods \citep{kleindessnerLensDepthFunction2017}. However, this approach seems a bit lacking: if we already know that an ordinal embedding might introduce distortions in our data, why not try to solve the end tasks on
-the triplet data directly? This approach has shown promising results in 
-\citep{kleindessnerLensDepthFunction2017, kleindessnerKernelFunctionsBased2017, ghoshdastidarFoundationsComparisonBasedHierarchical2019} for clustering, classification and hierarchy reconstruction. 
+A big advantage of ordinal embeddings however is precisely that we obtain a euclidean representation of the data. For euclidean data, there are many good, readily available algorithms for almost all tasks. 
+Thus, clustering on triplet data can be tackled by getting a euclidean representation of the data
+from an ordinal embedding and applying a classical clustering algorithm (such as k-Means) on 
+this representation. This approach was for example demonstrated as a baseline in \citep{kleindessnerLensDepthFunction2017}. However, as mentioned before, an ordinal embedding 
+often cannot satisfy all triplet comparisons on the original data, and is therefore not 
+necessarily a faithful representation. 
+An alternative approach is devising an algorithm to solve the desired task directly 
+using the triplets, which has shown promising results.
+\citep{kleindessnerLensDepthFunction2017} estimated the lens-depth function
+of the data using triplets (of a slightly altered format) and used this for 
+medoid estimation, outlier identification, clustering and classification. 
+\citep{kleindessnerKernelFunctionsBased2017} constructed a kernel function from
+the triplets, which they demonstrated to work well with 
+different kernel-based clustering algorithms.
+\citep{ghoshdastidarFoundationsComparisonBasedHierarchical2019} used the 
+triplets to estimate a similarity function between the data points and applied 
+a linkage algorithm to obtain a hierarchical clustering from the data.
 
-In this thesis, we want to use the tangles framework on clustering by \cite{klepperClusteringTanglesAlgorithmic2021} and extend it to an algorithm that is capable of clustering and reconstructing
-hierarchies on triplet data. First, in \autoref{theory}, we will give an introduction to tangles and ordinal data aimed at the unfamiliar reader, which lays
-the necessary foundations for the rest of the thesis. 
-In \autoref{methods}, we will present our two extensions of the tangles framework, which we have named \textit{landmark tangles} and \textit{majority tangles}.
-We will use simulated data in \autoref{simulations} to show the performance of our algorithms under different environmental factors, such as the noise of the triplets on simulations or how many triplets are available. 
-In \autoref{real} we will showcase an example evaluation with real data from the domain of psychophysics, to establish tangles as a practical tool on triplet data.
-There we will also highlight the inherent explainability of the tangles framework. 
+In a recent work, \cite{klepperClusteringTanglesAlgorithmic2021} proposed a novel framework
+for clustering based on tangles, which are a mathematical tool originating from graph theory 
+\citep{robertsonGraphMinorsObstructions1991}. The tangles algorithm has been shown to have 
+interesting properties, such as inherent explainability (under certain conditions) and being suitable for hierarchical clustering.
+One of the central objects in this framework are bipartions, ways of dividing a set into
+two distinct, non-overlapping subsets. To cluster data using the tangles framework, we first
+need to obtain a set of bipartitions on the data. We additionally require that these bipartitions
+hold a little bit of information about the cluster structure of the data. The 
+tangles framework can then aggregate the information contained in these bipartitions to a
+clustering. 
 
-In the end, we will have shown that tangles can make a viable alternative for clustering triplet data and will have identified use cases where it performs especially well.
+In this work, we present two novel methods to generate bipartitions suitable for the
+tangles algorithm, using only triplets. Using these methods, we 
+demonstrate that the tangles algorithm can be successfully applied to (hierarchically) cluster data for which we only know triplets without creating an intermediate ordinal embedding. 
+We evaluate our approach by simulated and experimental data and show that it is competitive 
+in performance to ordinal embedding based approaches, while providing explainable results. 
+
+This thesis is organized as follows: In \autoref{theory}, we give an introduction to tangles and ordinal data, which lays the necessary foundations for the rest of the thesis. 
+In \autoref{methods}, we present our two extensions of the tangles framework, named \textit{landmark tangles} and \textit{majority tangles}.
+We use simulated data in \autoref{simulations} to show the performance of our algorithms under different circumstances, such as the noise level or availability of the triplets. 
+In \autoref{real} we showcase an example evaluation with real data from the domain of psychophysics, to establish tangles as a practical tool on triplet data.
+Doing so, we also highlight the inherent explainability of the clustering produced by 
+the tangles algorithm. 

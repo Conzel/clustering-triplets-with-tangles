@@ -1,24 +1,36 @@
 \chapter{Theoretical Background}\label{theory}
-In this chapter we will give a brief introduction about the theoretical concepts that are used in this work. 
-In particular, we will give an in-depth explanation about tangles, triplet data, and current methods of clustering triplet data.
+% chapter is not capitalized here, as it is not a title: https://academia.stackexchange.com/questions/9454/capitalisation-of-section-and-chapter-in-a-ph-d-thesis
+In this chapter we will a brief introduction to the theoretical concepts used in this work. 
+In particular, we will give an in-depth explanation about tangles, triplet data, and state-of-the-art methods of clustering triplet data.
 % This explanation should suffice to understand the rest of this work.
 
 \section{Tangles}\label{theory:tangles}
 % What are Tangles? How are they used? What advantages do they
 % prove?
-Tangles have been a tool in mathematical graph theory, introduced originally by \cite{robertsonGraphMinorsObstructions1991}. 
-They are quite flexible, with possible areas of application in sociology, psychology, economics, political science and others \citep{diestelTanglesSocialSciences2019}.
-In recent times, through the work of \cite{klepperClusteringTanglesAlgorithmic2021}, they have been successfully applied
-to solve problems of clustering. The mentioned work delivers an algorithmic framework and theoretical guarantees for basic problem settings.
-Additionally, it delivers simplified notations, adapted to the domain of computer science. When talking about tangles,
-we will exclusively use the definitions introduced there, not those that might be common in mathematics. 
+Tangles have been used in mathematical graph theory to study highly cohesive structures, 
+introduced originally by \cite{robertsonGraphMinorsObstructions1991}. 
+Recently, interesting areas of application have been proposed:
+\cite{diestelTanglesMonaLisa2017} makes a proof of concept that tangles could 
+be used in image analysis.
+\cite{diestelTanglesSocialSciences2019} describes how tangles can be used in social sciences, for 
+example to identify different mindsets in people answering questionnaires.
+\citep{fluckTanglesSingleLinkage2019} shows that, under specific circumstances, tangles can be
+used to reconstruct the dendrogram in a hierarchical clustering setting. 
 
-In this section, we will now deliver a very brief recap of the basic notions, theory and applications of tangles in a clustering context.
-For more in-depth explanations of the algorithms and exact procedures, refer to \cite{klepperClusteringTanglesAlgorithmic2021}.
+In recent times, \cite{klepperClusteringTanglesAlgorithmic2021} describes a very flexible setup,
+where tangles are successfully applied to solve problems of clustering. 
+The mentioned work develops an algorithmic framework and gives theoretical guarantees for 
+basic problem settings.
+Additionally, it introduces simplified notations, adapted to the domain of computer science. 
+When talking about tangles, we will use the definitions introduced therein. 
+
+In this section, we now give a very brief introduction to the basic notions, theory and applications of tangles in a clustering context.
+For in-depth explanations of the algorithms and exact procedures, refer to 
+\cite{klepperClusteringTanglesAlgorithmic2021}.
 
 
 \subsection{What is a Tangle?}
-The central object in tangles theory is a \textit{bipartition} (which we also refer to as a cut). 
+The central object in tangles theory is a \textit{bipartition}. 
 A bipartition is simply a way of dividing a set of elements $V =  \{ v_1, v_2, \ldots \}$ into two distinct subsets $A, B \subset V$, such that
 $A \cap B = \O$ and $A \cup B = V$. We can also write a bipartition as $P = \{A, \overline{A}\}$, with $A \subset V$ and $\overline{A}$ being the
 complement of $A$ with respect to $V$. For such a bipartition to be useful in clustering, we expect it to hold some degree of information about the cluster 
