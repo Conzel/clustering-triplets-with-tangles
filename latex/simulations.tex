@@ -359,7 +359,7 @@ thus the bottom-left and top-left clusters are correctly separated by the cut. A
 the bottom-left cluster will be in the left set, all cuts from the top-left cluster will in the right set.
 Let now $c$ be a point from the bottom-right or top-right cluster. Then, $d(c,a) = d(c,b)$. 
 If we don't have noise on the hierarchy, this does not pose a problem: in our landmark cut implementation, we decided to break ties deterministically, ruling $c$ is in the 
-$\text{Land_{ab}} $ only if $d(c,a) < d(c,b)$. Thus, $c$ will not be contained in $(a,b)$. As a result, the set $\text{Land_{ab}} $ will contain 
+$\text{Land}_{ab}$ only if $d(c,a) < d(c,b)$. Thus, $c$ will not be contained in $(a,b)$. As a result, the set $\text{Land}_{ab}$ will contain 
 only the bottom-left cluster and no other points.
 However, when we add even the tiniest amount of noise to the hierarchical model, then for all points $c'$ from on of the right clusters 
 it will randomly be either $d(c,a) > d(c,b)$ or $d(c,b) > d(c,a)$. This means that those points will be randomly assigned to $\text{Land}_{ab}$ (or not).
