@@ -1,60 +1,71 @@
 \chapter{Simulations}\label{simulations}
-In this chapter and the following one, we want to explore how tangles perform on triplet data with the methods we proposed in \autoref{methods}. 
+In this chapter and the following one, we explore how tangles perform on triplet data with the methods proposed in \autoref{methods}. 
 At first, we focus on simulations, as this allows us to control our data precisely. 
-We will show in which cases tangles perform well, in which ones they don't and what to keep in mind when applying the algorithm. \\
+We show in which cases tangles perform well, in which ones they don't and what to keep in mind when applying the algorithm. \\
 
-As datasets, we have decided on two different datasets: a mixture of gaussians and a hierarchical block matrix matrix. In both cases, we will then generate triplets from the data points.
-The gaussian setup serves as first baseline: it is a de-facto standard in clustering and a lot of real-life data is approximately gaussian. 
+We use two different datasets: a mixture of gaussians and a hierarchical block matrix matrix. In both cases, we generate triplets from the data points.
+
+The gaussian setup serves as a first baseline: it is a de-facto standard in clustering and a lot of real-life data is approximately gaussian. 
 We have decided against using more complex data sets such as two-moons, as the focus lies on how the algorithms
-interact with the generated triplets under various conditions (triplets being corrupted, triplets missing, et cetera...). The noisy hierarchical block matrix was introduced by \cite{balakrishnanNoiseThresholdsSpectral2011}.
+interact with the generated triplets under various conditions (triplets being corrupted, triplets missing, et cetera...). 
+
+The noisy hierarchical block matrix was introduced by \cite{balakrishnanNoiseThresholdsSpectral2011}.
 We use it to illustrate a second property of tangles: in addition to pure clustering, we also produce a hierarchical tree, 
 which can be used for hierarchical clustering. 
 
 \section{Terms and methods used}
-To evaluate the performance of the tangles algorithm, we will need some metrics and other methods to use as a baseline. To compare a clustering against a ground truth,
-we have to use a scoring function that is independent of the cluster labels. One such function is the \textit{normalized mutual information score} (NMI). 
+To evaluate the performance of the tangles algorithm, we also need metrics on the performance, as well as other methods to use as a baseline. 
+To compare a clustering against a ground truth, we have to use a scoring function that is independent of the cluster labels. 
+One such function is the \textit{normalized mutual information score} (NMI). 
 For the NMI, $1.0$ indicates the same clustering (up to label permutations), $0.0$ indicates absolutely no mutual information between the clusterings (such as when our prediction
-puts all data points in a single cluster). To compare the quality of different hierarchies, we make use of the \textit{average adjusted rand index} (AARI), 
+puts all data points in a single cluster). To compare a hierarchy against a ground truth, we use the \textit{average adjusted rand index} (AARI), 
 introduced by \cite{ghoshdastidarFoundationsComparisonBasedHierarchical2019}. The AARI extends the \textit{adjusted rand index} (ARI), which is a clustering performance measurement
 similar to the NMI, so that is capable of working with hierarchies. In the AARI, we calculate the ARI over all levels of the hierarchies we want to compare and average over all the obtained scores. 
 % A further discussion on how we use the AARI for Tangles can be found in \label{sec:hierarchical_data}.
 
 To generate the triplets, we first take the data and calculate a (dis)similarity on it, for example the euclidean distance between two data points. This allows
-us to determine whether $(a,b,c)$ or $(a,c,b)$.
-Then, we can use two approaches of drawing triplets. The first one is sampling triplets randomly and uniformly from the set of all triplets. The second one is a landmark approach:
-we fix two randomly sampled points $a,b$, with $a \neq b$ and sample all triplets that have the form $(x,a,b)$ or $(x,b,a)$.  For the landmark tangles, only the 
+us to determine whether $(a,b,c)$ ($a$ is closer to $b$ than to $c$) or $(a,c,b)$ ($a$ is closer to $b$ than to $c$) holds.
+Then, we use two different approaches of drawing triplets. The first one is sampling triplets randomly and uniformly from the set of all triplets. The second one is a landmark approach:
+we fix two randomly sampled points $a,b$, with $a \neq b$ and sample all triplets that have the form $(x,a,b)$ or $(x,b,a)$.  For landmark tangles, only the 
 second kind of triplets are useable, as discussed in \autoref{methods}, thus we will mostly stick to this format. 
 
-We now have two possible ways of altering the triplets. First, we can add \textit{noise}
-to the triplets. If we have a noise level of $p$, then every triplet is flipped with probability $p$, meaning that $(a,b,c)$ would be turned into $(a,c,b)$. We can also reduce
-the \textit{density}, meaning that instead of sampling all triplets, we sample only a fraction $d$ of all triplets. From now on, when we use the term density, we
-will refer to triplets sampled in a landmark approach, while when explicitly using the number of drawn triplets, we refer to a uniform sampling.
+We also have two possible ways of altering the triplets. First, we can add \textit{noise}
+to the triplets. If we have a noise level of $p$, then every triplet is flipped with probability $p$, meaning that $(a,b,c)$ would be turned into $(a,c,b)$. 
+We can reduce the total amount of triplets sampled. We will use the term \textit{density} when referring to landmark sampled triplets. 
+If we sample triplets with a density of $d$, that means we sample only a fraction $d$ of all triplets. 
+When explicitly using the number of drawn triplets, we refer to a uniform sampling.
 
-As a baseline, we will be using a combination of ordinal embedding together with a clustering algorithm. 
-We first use an ordinal embedding algorithm to get an embedding of the triplet data. This approach has also been used in \cite{kleindessnerLensDepthFunction2017}. 
+We use multiple baselines to evaluate our tangles algorithms against.
+First, we use a combination of an ordinal embedding together with a clustering algorithm.  This approach also been used in \cite{kleindessnerLensDepthFunction2017}. 
 It has the advantage of also working with triplet data as opposed to clustering on the original data directly, giving a more fair baseline.
 Afterwards, we use a standard clustering algorithm for euclidean data on the obtained embedding.  
-There exist numerous algorithms for ordinal embeddings (see \cite{vankadaraInsightsOrdinalEmbedding2021} for an overview) and for clustering.  We have decided to use Soft Ordinal Embedding (SOE \cite{teradaLocalOrdinalEmbedding2014}), as this has been identified by \cite{vankadaraInsightsOrdinalEmbedding2021} as one of the 
+There exist numerous algorithms for ordinal embeddings (see \cite{vankadaraInsightsOrdinalEmbedding2021} for an overview) and for clustering.  
+We use Soft Ordinal Embedding (SOE \cite{teradaLocalOrdinalEmbedding2014}), as this has been identified by \cite{vankadaraInsightsOrdinalEmbedding2021} as one of the 
 top-performing ordinal embedding algorithms for a variety of use cases, which was also the case for us when comparing different baseline algorithms.
-Additionally, we have included T-Stochatic Triplet Embedding (T-STE \cite{laurensvandermaatenStochasticTripletEmbedding2012}) 
-to have a second baseline. For the clustering algorithm, have decided to go with k-Means \citep{lloydLeastSquaresQuantization1982}, as one of the most basic clustering algorithms with usually good performance.
+Additionally, we include T-Stochatic Triplet Embedding (T-STE \cite{laurensvandermaatenStochasticTripletEmbedding2012}) 
+to have a second baseline. For the clustering algorithm, we use k-Means \citep{lloydLeastSquaresQuantization1982}, as this is one of the most basic clustering algorithms with usually good performance.
 
-As another baseline we have included ComparisonHC \citep{ghoshdastidarFoundationsComparisonBasedHierarchical2019}. This, like tangles, is also an algorithm that does not construct an embedding before clustering,
+As another baseline we included ComparisonHC \citep{ghoshdastidarFoundationsComparisonBasedHierarchical2019}. This, like tangles, is also an algorithm that does not construct an embedding before clustering,
 and thus might allow for a more fair comparison. Especially in the setting of a mixture of gaussians, 
 the fact that ordinal embedding algorithms aim to reconstruct a euclidean embedding seems to already introduce some bias that might benefit the ordinal embedding algorithms.
 Normally, ComparisonHC is a hierachical clustering algorithm, which produces a dendrogram as its output. To use it as a baseline for clustering, we simply
 cut the dendrogram off such that it produces the desired amount of clusters.
 
-In the experiment figures and discussions, we will  use the abbreviations L-Tangles for landmark tangles, and M-Tangles for majority tangles.
+%TODO : Use landmark tangles in the discussion 
+In the experiment figures and discussions, we use the abbreviations L-Tangles for landmark tangles, and M-Tangles for majority tangles.
 
 \section{Gaussian data}\label{sec:gaussian_data}
 \subsection{Experimental setup}
 We generate a mixture of gaussians as follows: We draw a number of points $n$ each from $k$ different gaussian distributions with means $\mu_1, \mu_2, \ldots \mu_k$ and 
 variances $\nu_1, \nu_2, \ldots \nu_k$. Each point gets assigned a label $y_j$ that corresponds to the number $i \in \{1, \ldots k\}$ of the gaussian distribution it was drawn from.
-For all of the experiments, unless mentioned otherwise, we use $n=20$, $k=3$, fixed means $\mu_1 = \begin{bmatrix} -6.0 & 3.0 \end{bmatrix}, 
-\mu_2 = \begin{bmatrix} -6.0 & -3.0 \end{bmatrix},  \mu_3 = \begin{bmatrix} 6.0 & 3.0 \end{bmatrix}$ and a constant variance for all distributions of $\nu = I$, 
-with $I$ as the identity matrix. A plot of the data set can be seen in \autoref{fig:dataset-gauss}. We generate the triplets via the euclidean distance between the points, so that
-the triplet $(a,b,c)$ implies that $\|a - b\| < \|a - c\|$. For the Tangles algorithms, we use an agreement of $a=7$ (around 1/3 the size of the smallest
+For all of the experiments, unless mentioned otherwise, we use 
+\begin{align*}
+    n&=20,\; k=3, \\
+    \mu_1 &= \begin{bmatrix} -6.0 & 3.0 \end{bmatrix}, \mu_2 = \begin{bmatrix} -6.0 & -3.0 \end{bmatrix},  \mu_3 = \begin{bmatrix} 6.0 & 3.0 \end{bmatrix}, \\
+    \nu_i &= I \;\forall i \in \{ 1\ldots k\},
+\end{align*}
+with $I$ as the identity matrix. A sample draw of the data set can be seen in \autoref{fig:dataset-gauss}. We generate the triplets via the euclidean distance between the points, so that
+the triplet $(a,b,c)$ implies that $\|a - b\|_2 < \|a - c\|_2$. For the Tangles algorithms, we use an agreement of $a=7$ (around 1/3 the size of the smallest
 clusters we want to detect, in accordance with \cite{klepperClusteringTanglesAlgorithmic2021}), and a radius of $r=\frac{1}{3}$, for the majority
 tangles, such that the cuts roughly have the diameter of the clusters.
 
@@ -68,23 +79,24 @@ All results are the average of $50$ runs, where we re-draw both the data points 
 \end{figure}
 
 \subsection{Lowering density}\label{sec:lower-density}
-First, we want to observe how our methods behave under different numbers of triplets present. As the number of triplet grows on the order of $O(N^3)$ with the total number of points $N$ in the data set, it is only feasible to obtain
-all triplets for very small datasets. Even with small $N = n \cdot k = 60$, as in our case, there are already $106200$ triplets possible. Those triplets have to be obtained 
-through experiments with real people in most settings. If an algorithm performs better with a lower amount
-of triplets, this can quickly translate into really large time, labor and money savings. 
+First, we want to observe how our methods behave under different numbers of triplets present. 
+As the number of triplet grows on the order of $O(N^3)$ with the total number of points $N$ in the data set, it is only feasible to obtain
+all triplets for very small datasets. Even with small $N = n \cdot k = 60$, as in our case, there are already $106200$ possible triplets. In most settings, the triplets have to be obtained 
+through experiments with real people. If an algorithm performs better with a lower amount
+of triplets, this can quickly translate into large time, labor and money savings. 
 
-To test our algorithm, we have drawn an increasing amount of triplets in a landmark format 
-from our dataset. 
-We have plotted the results for a small (60 points) and a large
-(600 points) dataset in \autoref{fig:density-change}. 
-Usually, the larger the dataset, the smaller the percentage of all triplets we use, as the number of triplets grows with $O(N^3)$. However, ordinal embedding algorithms empirically perform well with a lot
+To test our algorithm, we draw an increasing amount of triplets in a landmark format from the dataset. 
+We plot the results for a small (60 points) and a large (600 points) dataset in \autoref{fig:density-change}. 
+Usually, the larger the dataset, the smaller the percentage of all triplets we use, as the number of triplets grows with $O(N^3)$. 
+However, ordinal embedding algorithms empirically perform well with a lot
+%TODO: Also cite differently here
 less triplets (for example requiring on the order of $O(n d \log(n))$ for euclidean data \citep{jainFiniteSamplePrediction2016}). 
 Ideally, we would like for the Tangles algorithm to behave similarly. 
 
-When looking at the plots, we can see that L-Tangles is performing at least as well as SOE, and even significantly better for a wide range of densities in the case of $n=200$. Tangles thus shows the desired 
-behaviour of requiring a smaller percentage of total triplets with a higher number of data points.
+When looking at the plots, we see that L-Tangles is performing at least as well as SOE, and even significantly better for a wide range of densities in the case of $n=200$. 
+Tangles thus shows the desired behaviour of requiring a smaller percentage of total triplets with a higher number of data points.
 As we would have expected, T-STE performs slightly worse than SOE on the small dataset, but interestingly a lot worse for the larger dataset. ComparisonHC and M-Tangles
-perform about the same level, but both stay far behind L-Tangles and SOE. With the larger dataset, we could not test ComparisonHC, as our obtained implementation requires 
+perform about the same level, but both stay far behind L-Tangles and SOE. With the larger dataset, we could not test ComparisonHC, as our implementation requires 
 constructing a $n^4$ matrix during the training step (this could possibly be remedied using a different implementation). 
 
 \onecolumn
@@ -99,7 +111,7 @@ constructing a $n^4$ matrix during the training step (this could possibly be rem
     \label{fig:density-change-b}
     }
     \caption{
-        We plot the NMI of different clustering method against the percentage of the triplets generated from a draw of a gaussian mixture with $3$ clusters. The triplets are generated in a landmark format.
+        Influence of the triplet density on the performance. We plot the NMI of different clustering methods against the percentage of the triplets generated from a draw of a gaussian mixture with $3$ clusters. The triplets are generated in a landmark format.
         We draw $20$ data points from each cluster for the left plot, and $200$ data points for the right plot.
         On the x-axis we have the density, where a density of $0.1$ means that we only use 10\% of the total number of triplets. The embedding methods (SOE, T-STE) are 
         followed by k-Means. The Tangles methods (L-Tangles, M-Tangles), are applied with $a=7$ for $n=20$ and $a=70$ for $n=200$. ComparisonHC was left out of the right plot due to computational issues.}
@@ -113,11 +125,11 @@ real humans. They might disagree on which objects are closer and which are not, 
 the more disagreement there is about the similarities of objects, so it would matter more about which person you ask than which objects you present them. 
 
 %TODO M-Tangles ComparisonHC
-We have plotted the performance of our algorithms over increasing noise in \autoref{fig:adding-noise}, 
+We plot the performance of our algorithms over increasing noise in \autoref{fig:adding-noise}, 
 with all triplets sampled (density $1.0$). 
-We observe that both landmark and majority tangles off more quickly in performance with increasing noise 
+We observe that both landmark and majority tangles fall off more quickly in performance with increasing noise 
 than the other algorithms, with L-Tangles still being better than M-Tangles. 
-We observe however, that until noise levels of $0.1$, all algorithms performs the same, meaning that L-Tangles can still perform well with low to medium levels of noise. Interestingly, ComparisonHC, which 
+We observe however, that until noise levels of $0.1$, all algorithms perform the same, meaning that L-Tangles can still perform well with low to medium levels of noise. Interestingly, ComparisonHC, which 
 required a lot of triplets to achieve acceptable performance, seems 
 very noise resistant, performing about as well as SOE until noise levels of 0.3.
 
@@ -125,6 +137,7 @@ very noise resistant, performing about as well as SOE until noise levels of 0.3.
     \centering
     \resizebox{0.7\textwidth}{!}{\input{figures/results/adding_noise_small.pgf}}
     \caption{
+        Influence of the triplet noise on the performance.
         We plot the NMI of our chosen clustering methods against the noise that we introduce on 
         the triplets.
         We use $3$ clusters and $20$ data points per cluster and sample all possible triplets. A noise level of $0.1$ means that we flip 10\% of the triplets (turning for example $(a,b,c)$ to $(a,c,b)$). 
@@ -133,13 +146,13 @@ very noise resistant, performing about as well as SOE until noise levels of 0.3.
 \end{figure}
 
 \subsection{Adding noise and lowering density}
-In this experiment, we will merge \autoref{sec:lower-density} and \autoref{sec:adding-noise}. We have seen that L-Tangles perform well with a low
+In this experiment, we will merge \autoref{sec:lower-density} and \autoref{sec:adding-noise}. We have seen that L-Tangles performs well with a low
 amount of triplets (a bit better than SOE) and has reasonable performance for noisy triplets (albeit worse than SOE for high noise). We are now interested to see how large the area is
 where L-Tangles can still outperform SOE when we consider both a low density and noisy triplets, as these two factors are probably the most interesting variables
 when choosing an algorithm to evaluate triplet data. 
 
-We have generated two heat maps, which can be found in \autoref{fig:noise-density-heatmaps}. 
-There we can see that L-Tangles outperforms SOE in quite a large region in the low-noise , low-density regime. We would imagine this effect to be even larger
+We generate two heat maps in \autoref{fig:noise-density-heatmaps}. 
+There, we can see that L-Tangles outperforms SOE in quite a large region in the low-noise, low-density regime. We would imagine this effect to be even larger
 for a $n=200$ setup, but found this computationally too intensive. On the contrary, SOE performs better in the high-density, high-noise regions, with about similar performance
 for the cases of low-noise high-density (perfect clustering) and high-noise low-density (random clustering).
 % TODO: green border around the parts where L-Tangles outperforms?
@@ -155,7 +168,9 @@ for the cases of low-noise high-density (perfect clustering) and high-noise low-
         \resizebox{0.5\textwidth}{!}{\includegraphics{figures/results/gaussian_small_lower_density_noise_heatmap_l_tangles.pdf}}
     }
     \caption{
-        We plot a heatmap of the NMI of SOE and L-Tangles over noise (y-axis) and density (x-axis) of our the triplets, generated from a mixture of gaussians with 3 clusters and 20 data points per cluster. The triplets are drawn in a landmark format. 
+        L-Tangles shows a performance advantage over SOE in the low-density, low-noise regime. 
+        We plot a heatmap of the NMI of SOE and L-Tangles over noise (y-axis) and density (x-axis) of our the triplets, 
+        generated from a mixture of gaussians with 3 clusters and 20 data points per cluster. The triplets are drawn in a landmark format. 
         The regions with a darker shade of blue indicate better performance of the algorithm. 
         Note that the noise increases as we move down, and the
         density decreases as we move right. This means that clustering gets harder when moving right and/or down and easier when moving left and/or up.
@@ -163,28 +178,30 @@ for the cases of low-noise high-density (perfect clustering) and high-noise low-
     \label{fig:noise-density-heatmaps}
 \end{figure}
 
-\subsection{Missing triplets}
+\subsection{Missing triplets and imputations}
 % TODO
-In this experiment, we will use the small gaussian data set and gradually sample an increasing number of triplets for it. 
+In this experiment, we use the small gaussian data set and gradually sample an increasing number of triplets for it. 
 This is very similar to the setup in \autoref{sec:lower-density}, but this time we sample triplets uniformly at random without replacement
-from the set of all triplets. In this setup, we will not be able to use landmark tangles as is, as there will be missing values in the cuts. 
+from the set of all triplets. In this setup, we are not able to use L-Tangles as is, as there will be missing values in the cuts. 
 
 An idea would be to impute the missing triplets for the cuts.  For, this we just build up our landmark cuts as we did before,
 but we mark entries for which we don't have triplet information. These missing values can then be imputed via different methods.
 We have used \textit{random}, \textit{$k$-nearest neighbour }($k$-NN) and \textit{mean} imputation. Random simply sets all missing values to 0 or 1 with equal probability, $k$-NN imputes
 a missing entry in a landmark cut with the value that the most similar cut has in that position (closeness being calculated via the manhattan distance), and mean 
 imputes the value with the mean of all other cuts in that position. 
-We have shown the results for our imputation method in \autoref{fig:missing-triplet-imputations}.  One can see that $k$-NN performs quite reasonably, and the simplest choice of $k=1$ even achieves the best performance.
+We show the results for different imputation methods in \autoref{fig:missing-triplet-imputations}.  One can see that $k$-NN performs quite reasonably, 
+and the simplest choice of $k=1$ even achieves the best performance.
 
-We have compared the performance of our different algorithms versus the number of triplets drawn in
+We compare the performance of our different algorithms versus the number of triplets drawn in
 \autoref{fig:missing-triplet-performance}, where L-Tangles was imputed with $1$-NN. Here, L-Tangles loses out against SOE, which achieves an acceptable level of performance at much lower amounts of triplets. 
-However, we can see that it is competitive against M-Tangles and ComparisonHC. T-STE also reaches an acceptable performance earlier, but saturates quicker at an NMI of $0.8$, compared to the other methods, which
+However, we can see that L-Tangles is competitive against M-Tangles and ComparisonHC. T-STE also reaches an acceptable performance earlier, but saturates quicker at an NMI of $0.8$, compared to the other methods, which
 achieve an NMI of $>0.9$ with $>10000$ triplets
 
 \begin{figure}[ht]
     \centering
     \resizebox{0.7\textwidth}{!}{\input{figures/results/imputing_missing_small.pgf}}
     \caption{
+        1-NN performs well for imputing missing triplets for L-Tangles.
         We plot the performance of L-Tangles over the number of triplets available for different imputation methods over our small gaussian dataset with $3$ clusters
         and $n=20$. We use different imputation methods to fill in the missing values and then cluster the resulting cuts with L-Tangles.
         The \textit{k-NN} methods use k-nearest neighbour imputation, \textit{random} assigns 0 or 1 to the missing values with equal probability, and \textit{mean} assigns the missing
@@ -197,6 +214,7 @@ achieve an NMI of $>0.9$ with $>10000$ triplets
     \centering
     \resizebox{0.7\textwidth}{!}{\input{figures/results/reducing_triplets_small.pgf}}
     \caption{
+        Influence of missing triplets, when triplets are not drawn in a landmark format but uniformly at random.
         Analog to \autoref{fig:missing-triplet-imputations}, but this time we plot the performance of various other evaluation methods on the small gaussian data set against L-Tangles.
         We impute the missing values in the L-Tangles algorithm with $1$-NN.
     }
@@ -215,8 +233,8 @@ achieve an NMI of $>0.9$ with $>10000$ triplets
 \section{Hierarchical data}\label{sec:hierarchical_data}
 \subsection{Experimental setup}
 We generate a noise hierarchical block matrix \citep{balakrishnanNoiseThresholdsSpectral2011}.
-The hierarchy described by this model has the form of a complete binary tree, and the similarities of the data points are described via a similarity matrix $M$, where the entry $M_{i,j}$ describes the similarity
-between the points $i$, $j$.
+The hierarchy described by this model has the form of a complete binary tree, and the similarities of the data points are described via a similarity matrix $M$, 
+where the entry $M_{i,j}$ describes the similarity between the points $i$, $j$.
 In this matrix, the elements in the same cluster have the highest similarity $\mu_0$, 
 and for each level $l$ that two classes are removed
 from each other in the hierarchy, their similarity decreases by $\delta$. 
@@ -229,8 +247,9 @@ More about the generation process can be read in \cite{ghoshdastidarFoundationsC
 
 We choose a relatively simple setup of $4$ clusters with $10$ data points each, an initial class similarity $\mu_0 = 5$ and a similarity decrease of $\delta = 1$.
 In this setup, there are two kinds of noise we encounter: the noise that is injected into the hierarchy itself via the noise matrix and the noise that is added to the triplets.
-The triplet noise has the same form as in \autoref{sec:gaussian_data}, on noise $p$ we simply flip every triplet with probability $p$. We will investigate how our algorithm does
-under both noise models, as well as under a lowered density.  When evaluating, we compare both the final clustering (the lowest level of the hierarchical block matrix) as well as the obtained hierarchy to each other. 
+The triplet noise has the same form as in \autoref{sec:gaussian_data}: on noise $p$, every triplet has a chance of $p$ percent to be flipped. 
+We investigate how our algorithms perform under both noise models, as well as under a lowered density.  
+When evaluating, we compare both the final clustering (the lowest level of the hierarchical block matrix) as well as the obtained hierarchy to each other. 
 To produce a hierarchy with SOE, we have applied an agglomerative clustering algorithm with average linkage (AL) on the obtained embedding.
 As in the gaussian setting, all results are the average of $50$ runs, where we re-draw both the data points as well as the triplets randomly. 
 % TODO: Explain more about the AARI?
@@ -239,8 +258,7 @@ As in the gaussian setting, all results are the average of $50$ runs, where we r
 
 \subsection{Lowering density}
 As in \autoref{sec:lower-density}, we investigate how our algorithms perform under a lowered density. 
-We again draw the triplets in a landmark-format. The results can be seen in 
-\autoref{fig:hierarchy-lowering-density}. 
+We draw the triplets in a landmark-format. The results can be seen in \autoref{fig:hierarchy-lowering-density}. 
 
 %TODO: Fix this section with correct plot
 We can see that L-Tangles performs about on-par with SOE in the final clustering case (not taking the hierarchy into account), and greatly outperforms all the other 
@@ -256,7 +274,7 @@ algorithms, while M-Tangles and ComparisonHC perform about equally well, wtih Co
     \resizebox{0.5\textwidth}{!}{\input{figures/results/hierarchical_lower_densityh.pgf}}
     }
     \caption{
-        We plot the performance of our algorithms against the density of the triplets drawn. We draw the triplets in a landmark format 
+        Performance of our algorithms against the density of the triplets drawn. We draw the triplets in a landmark format 
         and they are generated from a hierarchical noise matrix with $4$ clusters and $10$ data points each. In the left, we see the NMI of 
         the obtained clusterings versus the ground truth, where we only use the final clustering to evaluate. The ordinal embedding algorithms
         (T-STE, SOE) have been followed by k-Means. On the right, 
@@ -267,8 +285,8 @@ algorithms, while M-Tangles and ComparisonHC perform about equally well, wtih Co
 \end{figure}
 
 \subsection{Adding triplet noise}\label{sec:h-triplet-noise}
-Similar to the gaussian setup in \autoref{sec:adding-noise}, we have simply increased the noise on the sampled triplets and have evaluated the performance of our algorithms. The results
-can be seen in \autoref{fig:hierarchy-add-triplet-noise}. We have have repeated the setup under two different densities, with 10\% and with 5\% to see if the density had influence
+Similar to the gaussian setup in \autoref{sec:adding-noise}, we increase the noise on the sampled triplets and evaluate the performance of our algorithms. The results
+can be seen in \autoref{fig:hierarchy-add-triplet-noise}. We repeat the setup under two different densities, with 10\% and with 5\%, to see if the density has an influence
 on the noise suspectibility of the algorithms.
 %TODO: Describe the plot
 \onecolumn
@@ -288,71 +306,76 @@ on the noise suspectibility of the algorithms.
     \resizebox{0.5\textwidth}{!}{\input{figures/results/hierarchical_add_triplet_noise_005h.pgf}}
     }
     \caption{
-        Here we plot the performance of our algorithms against the noise introduced on the triplets, meaning that if we
-        have a noise of 0.1, we flip a triplet with probability 10\%.  We again use a hierarchical block matrix with $4$ clusters and $10$ points each. 
+        Performance of our algorithms against the noise introduced on the triplets. 
+        If we have a noise of 0.1, we flip a triplet with probability 10\%.  
+        We again use a hierarchical block matrix with $4$ clusters and $10$ points each. 
         On the top row, we draw all triplets in a landmark format, on the bottom row we drawn 10\% of them.    
         We draw $20$ data points from each cluster in the left column, and $200$ data points in the right one.
     }
     \label{fig:hierarchy-add-triplet-noise}
 \end{figure}
 
-First, we will look at the pure clustering. In the 10\% density case, SOE outperforms all other methods unless the noise is
+First, we look at the pure clustering. In the 10\% density case, SOE outperforms all other methods unless the noise is
 low ($<0.2$), where L-Tangles performs better. If the density decreases (5\%), L-Tangles keeps the 
 advantage until higher noise levels (to about 0.35). 
-This is similar to what we have seen in the gaussian setup.
+This is similar to what we see in the gaussian setup.
 L-Tangles and SOE however perform a lot better than ComparisonHC and M-Tangles in for both densities and all noise levels.  For the hierarchy, L-Tangles greatly outperforms all other methods for both densities,
 with the other methods performing on roughly the same level. Interestingly, 
 we see that for both comparing hierarchies as well as clustering, 
 ComparisonHC seems very dependent on the number of triplets present, as the NMI on all noise levels
-about doubles when we go from 5\% to 10\% density.
-
+roughly doubles when we go from 5\% to 10\% density.
 
 \subsection{Adding hierarchy noise}\label{sec:adding-hierarchy-noise}
-This setup is a bit different than the experiments done on the gaussian data. Here, we vary the noise that we add directly to the hierarchical block matrix $M' = M + R$. 
-$R$ is a matrix whose entries all consist of gaussian noise that is drawn from a normal distribution with mean $0$ and variance $\sigma^2$. We now set $\sigma^2$ to various 
-values and evaluate the performance of our algorithms. The result can be seen in \autoref{fig:hierarchy-add-hierarchy-noise}. In the normal clustering case, SOE performs the best over the board, with L-Tangles
+This setup differs from the experiments done on the gaussian data. Here, we vary the noise that we add directly to the hierarchical block matrix $M' = M + R$. 
+$R$ is a matrix whose entries all consist of gaussian noise that is drawn from a normal distribution with mean $0$ and variance $\sigma^2$. We set $\sigma^2$ to various 
+values and evaluate the performance of our algorithms. The result can be seen in \autoref{fig:hierarchy-add-hierarchy-noise}. In the normal clustering case, 
+SOE performs the best over the board, with L-Tangles
 falling off pretty sharply on the introduction of noise into the hierarchy, but still outperforming M-Tangles and ComparisonHC. In the hierarchical case, L-Tangles outperforms all other methods until hierarchy noise of $2$, whereafter SOE and L-Tangles achieve similar performance. We assume that this is because 
 the similarity difference between two completely unrelated classes is at most $2$. After a noise level 
 of $2$, we thus get into a regime where the noise simply overpowers the information left in the similarity matrix.
 
-We can see one interesting effect here: L-Tangles shows a steep decline in performance after the introduction of even a small amount of noise, which we not present in our other noise model, where the
-noise was added to the triplets directly (see \autoref{sec:h-triplet-noise}).
-In the other noise model, we saw a much smoother decline in performance with added noise on the triplets. 
-In fact, we have tested this, and even when adding a vanishingly small amount of noise (say $10^{-6}$) we
-see the decline in performance. This could illustrate a potential shortcoming of the tangles algorithm,
-which we will now elaborate on.
+We can see an interesting effect here: L-Tangles shows a steep decline in performance after the introduction of even a small amount of noise, which is not present in our other noise model, 
+where the noise was added to the triplets directly (see \autoref{sec:h-triplet-noise}).
+In the other noise model, we see a much smoother decline in performance with added noise on the triplets. 
+In fact, even when adding a vanishingly small amount of noise (say $10^{-6}$) we see the same steep decline in performance. 
+This illustrate a potential shortcoming of the tangles algorithm, which we will now elaborate on.
 
 First, we want to get some intuition about the hierarchical model.
-As it is a bit hard to visualize, We have plotted a representation of our hierarchical model in \autoref{fig:hier_noise_repr}. Care should be taken: this does not accurately visualise the distances between
-the points in any way, but is merely a useful tool to illustrate cuts on the data. We will now look at the landmark cuts that we retrieve under our two noise models, with a noise of $0.1$ in the triplet noise case and vanishingly small noise $\epsilon = 10^{-6}$ in the hierarchy noise case. 
+As a visualisation aid, We have plot a representation of the hierarchical model in \autoref{fig:hier_noise_repr}. Care should be taken: this does not accurately visualise the distances between
+the points in any way, but is merely a useful tool to illustrate cuts on the data. We now look at the landmark cuts that we retrieve under the two noise models, with a noise of $0.1$ in the triplet 
+noise case and vanishingly small noise $\epsilon = 10^{-6}$ in the hierarchy noise case. 
 
 Assume that we select two points, one from one of the left clusters, and one from one of the right clusters. When we generate the landmark cut that is associated by those two points
-(by putting all points that are closer to the left point in the cut, and taking all points that are closer to the the right point out of the cut) we receive is a \textit{coarse} cut, that divides
-a higher level of the hierachy (roughly into left and right). As we see in \autoref{fig:hier_noise_cuts-a} and \autoref{fig:hier_noise_cuts-b}, this cut looks pretty similar under both noise models. 
+(by putting all points that are closer to the left point in the left set of the cut, and putting all points that are closer to the the right point in the right set) 
+we receive is a \textit{coarse} cut, that divides a higher level of the hierachy (roughly into left and right). As we see in \autoref{fig:hier_noise_cuts-a} and \autoref{fig:hier_noise_cuts-b}, 
+this cut looks pretty similar under both noise models. 
 In the triplet noise case, we can see that  some of the data points have been assigned to the wrong cluster, but this is expected. 
 
 Next, we will take two points, $a$ from the bottom-left, $b$ from the top-left cluster. The resulting landmark cut is a \textit{fine cut}, that separates between lower levels of the hierarchy.
-In this setting, something interesting happens in the hierarchical noise model: the points from the right clusters get randomly assigned to in-cut or out-cut. To understand this, let's first look at what happens when we have no hierarchy noise. 
-In the hierarchical block model, all distances are only dependent on how far removed the points are in the hierarchy, thus the bottom-left and top-left clusters are correctly separated by the cut. All points from
-the bottom-left cluster will be in the landmark cut, all cuts from the top-left cluster
-will be out of it.
+In this setting, something interesting happens in the hierarchical noise model: the points from the right clusters get randomly assigned to left-set or right-set. 
+To understand this, let's first look at what happens when we have no hierarchy noise. 
+In the hierarchical block model, all distances only depend on how far removed the points are in the hierarchy, 
+thus the bottom-left and top-left clusters are correctly separated by the cut. All points from
+the bottom-left cluster will be in the left set, all cuts from the top-left cluster will in the right set.
 Let now $c$ be a point from the bottom-right or top-right cluster. Then, $d(c,a) = d(c,b)$. 
-If we don't have noise on the hierarchy, this does not pose a problem: in our landmark cut implementation, we have decided to break ties deterministically, ruling $c$ is in the landmark cut $(a,b)$ only if $d(c,a) < d(c,b)$. Thus, $c$ will not be contained in $(a,b)$. As a result, the cut $(a,b)$ will contain 
+If we don't have noise on the hierarchy, this does not pose a problem: in our landmark cut implementation, we decided to break ties deterministically, ruling $c$ is in the 
+$\text{Land_{ab}} $ only if $d(c,a) < d(c,b)$. Thus, $c$ will not be contained in $(a,b)$. As a result, the set $\text{Land_{ab}} $ will contain 
 only the bottom-left cluster and no other points.
-However, when we add the tiniest amount of noise to the hierarchical model, then for all points $c'$ from on of the right clusters 
-it will randomly be either $d(c,a) > d(c,b)$ or $d(c,b) > d(c,a)$. This means that those points will be randomly assigned to the landmark cut $(a,b)$ as either in-cut or out-cut. 
-This can also be seen in \autoref{fig:hier_noise_cuts-c}. For the triplet noise case, we have the ideal assignment (all points from the right clusters are assigned out-cut), 
+However, when we add even the tiniest amount of noise to the hierarchical model, then for all points $c'$ from on of the right clusters 
+it will randomly be either $d(c,a) > d(c,b)$ or $d(c,b) > d(c,a)$. This means that those points will be randomly assigned to $\text{Land}_{ab}$ (or not).
+This can also be seen in \autoref{fig:hier_noise_cuts-c}. For the triplet noise case, we have the ideal assignment (all points from the right clusters are assigned to the right set), 
 but some points are again randomly assigned wrongly, see \autoref{fig:hier_noise_cuts-d}.
 
 Now, how does that influence our clustering? Let us step through an example clustering that L-Tangles would make with a hierarchical noise model. 
 At first, tangles would receive the coarse cuts (they are cheaper as they are more balanced and more frequently present) and subdivide the points into the
-left and the right clusters. Next, at some point, we would need to align one of the fine cuts. This will subdivide either the left or right clusters (depending on which cut we receive). but
+left and the right clusters. Next, at some point, we would need to orient one of the fine cuts. This will subdivide either the left or right clusters (depending on which cut we receive). but
 the random assignment in the other cluster (that one which is not subdivided) prevents us from orienting the fine cut of the other clusters consistently (depending on agreement, but if we 
-have to align two fine cuts of the same cluster after another, even a very small agreement will not allow consistent alignment). Thus, we will end up with three clusters, the two clusters that are
+have to orient two fine cuts of the same cluster after another, even a very small agreement will not allow consistent orientation). Thus, we will end up with three clusters, the two clusters that are
 subdivided by the first fine cut that appeared, and the other two clusters merged to one. 
 
-On the other hand, if we only have to deal with (low) triplet noise, we can align the first coarse cut in any way we want, and the fine cut then gets aligned in one direction in the left subtree
-and in the other direction in the other subtree. We end up with the correct amount of clusters, and the missclassifications will only be a few random points that are assigned to a wrong cluster due to triplet noise.
+On the other hand, if we only deal with (low) triplet noise, we can orient the first coarse cut in any way we want, and the fine cut then gets orient in one direction in the left subtree
+and in the other direction in the other subtree. We end up with the correct amount of clusters, and the missclassifications will only be a few random points that are assigned to a wrong cluster 
+due to triplet noise.
 
 % TODO: Add more information?
 
@@ -360,7 +383,7 @@ and in the other direction in the other subtree. We end up with the correct amou
     \centering
     \resizebox{0.8\textwidth}{!}{\input{figures/results/hierarchical_model_repr.pgf}}
     \caption{
-        Here we plot a euclidean representation of our hierarchical model with a few more data points drawn. We can see a sort-of hierarchy between the clusters, where
+        A euclidean representation of the hierarchical model with a few more data points drawn. We can see a sort-of hierarchy between the clusters, where
         the left and right side are two far removed clusters, which can be subdivided in bottom-left, top-left and bottom-right, top-right.
         Keep in mind that this representation is only a visualisation aid and does not accurately reflect the actual similarity between data points.
     }
@@ -389,7 +412,7 @@ and in the other direction in the other subtree. We end up with the correct amou
     \label{fig:hier_noise_cuts-d}
     }
     \caption{
-        Visualisations of the cuts we would receive under both noise models we deal with in a hierarchical setting, analog to \autoref{fig:hier_noise_repr}.
+        Visualisations of the cuts we receive under both noise models of the hierarchical setting, analog to \autoref{fig:hier_noise_repr}.
         Hierarchical noise means noise that we add directly to the hierarchical similarity matrix, while triplet noise means the 
         percents of triplets answered wrongly. We assume landmark cuts. The coarse cuts are those that separated higher levels of the hierarchy (so left and right clusters), while
         the fine cuts further subdivide left and right into bottom-left, top-left, bottom-right and top-right.
@@ -417,7 +440,7 @@ and in the other direction in the other subtree. We end up with the correct amou
 
 \subsection{Discussion}
 In this section, we have reported the performance of the Tangles algorithm on two synthetic data sets, gaussian and hierarchical data. 
-We could see that with landmark triplets, L-Tangles consistently had the best or among the best performance, even outperforming the 
+We could see that with landmark triplets, L-Tangles consistently had the best or among the best performance, even outperforming 
 SOE in regimes of low noise. Additionally, L-Tangles proved to be the best performing algorithm when 
 trying to determine the hierarchy in our hierarchical model.  If we are not presented with landmark triplets, we could observe that L-Tangles is still capable of reaching 
 an acceptable performance (a bit better than ComparisonHC, which is a state-of-the-art clustering method for clustering triplets without creating an intermediate representation). Interestingly, we found ComparisonHC to be very reliant on a having a large amount of triplets available to have an acceptable performance, being outperformed by L-Tangles in almost all settings (besides in the case of high noise and almost
@@ -441,11 +464,11 @@ from their own cluster (maybe we have an image of a banana and an image of a zuc
 hidden way to compare items from entirely unrelated hierarchies. In general, apples might always be more similar to potatoes than to zucchinis for example. As a consequence, if we for example have a landmark
 cut from an apple and a banana, it would contain all the apples and all the potatoes. 
 
-In the case of hierarchy noise, we simply have some objects that are flat out more similar to one category than another. For example, in the set of apple images, we might have a lot of green apples, which 
+In the case of hierarchy noise, we have some objects that are flat out more similar to one category than another. For example, in the set of apple images, we might have a lot of green apples, which 
 are almost always more similar to zucchinis than to potatoes, and a lot of yellow apples, for which it is the other way around. For this reason, when we look at a landmark cut of a zucchini, this one
 might contain all bananas and all green apples. As explained in \autoref{sec:adding-hierarchy-noise}, clustering this poses a problem for the tangles algorithm. The actual amount of noise added doesn't matter
 (as long as it is smaller than the similarity decreases between distances),  as this information gets lost when turning the similarity matrix into triplets.
 
-Overall, which of the two noise models sounds more realistic might depend completely on the problem setup, how we present the items, how we ask the triplet questions et cetera. Nontheless, even in the
+Overall, which of the two noise models sounds more realistic might depend on the problem setup, how we present the items, how we ask the triplet questions et cetera. Nontheless, even in the
 hierarchical noise model, L-Tangles has a very good performance, meaning it can be used without thinking too much about which noise model we are confronted with.
 

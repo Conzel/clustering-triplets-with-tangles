@@ -14,7 +14,7 @@ Recently, interesting areas of application have been proposed:
 be used in image analysis.
 \cite{diestelTanglesSocialSciences2019} describes how tangles can be used in social sciences, for 
 example to identify different mindsets in people answering questionnaires.
-\citep{fluckTanglesSingleLinkage2019} shows that, under specific circumstances, tangles can be
+\cite{Fluck2019} shows that, under specific circumstances, tangles can be
 used to reconstruct the dendrogram in a hierarchical clustering setting. 
 
 In recent times, \cite{klepperClusteringTanglesAlgorithmic2021} describes a very flexible setup,
@@ -24,15 +24,14 @@ basic problem settings.
 Additionally, it introduces simplified notations, adapted to the domain of computer science. 
 When talking about tangles, we will use the definitions introduced therein. 
 
-In this section, we now give a very brief introduction to the basic notions, theory and applications of tangles in a clustering context.
+In this section, we now give an introduction to the basic notions, theory and applications of tangles in a clustering context.
 For in-depth explanations of the algorithms and exact procedures, refer to 
 \cite{klepperClusteringTanglesAlgorithmic2021}.
 
 
 \subsection{Definitions}
 \textbf{Cuts.} The central object in tangles theory is a \textit{cut} (also referred to as a bipartition in other works). 
-A cut division of a set $V =  \{ v_1, v_2, \ldots \}$ into two distinct subsets $A, B \subset V$, such that
-
+A cut is a division of a set $V =  \{ v_1, v_2, \ldots \}$ into two distinct subsets $A, B \subset V$, such that
 \begin{align*}
 A \cap B = \emptyset\;\text{and}\;A \cup B = V.
 \end{align*}
@@ -45,7 +44,7 @@ structure of our data. This means that an informative cut should not separate gr
 On a graph, an informative cut $P = \{A, \overline{A}\}$ might separate the set of nodes $V$ such that there 
 are only a few edges between $A$ and $\overline{A}$. How informative a cut is, is quantified by a \textit{cost function} $c: \mathcal{P}(V) \to \R$, 
 with $\mathcal{P}(V)$ denoting the power set of V. 
-One needs to choose the cost function and the performance of tangles will also depend on how well the cost function and the problem setting fit together. 
+One needs to choose an appropriate cost function beforehand and the performance of tangles will also depend on how well the cost function and the problem setting fit together. 
 For example, on an unweighted graph we might want to choose $c(P)$ as the number of edges
 going between the nodes of the two sets $A, \overline{A}$. \\
 
@@ -54,7 +53,7 @@ going between the nodes of the two sets $A, \overline{A}$. \\
 An \textit{orientation} of a cut means that we pick a specific side of a cut. 
 An \textit{orientation} of a set of cuts 
 $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \}$ is  
-then a set of orientations of cuts $O = {o_1, o_2, \ldots o_n}$
+then a set of orientations of cuts $O = \{o_1, o_2, \ldots o_n\}$
 where $o_i$ corresponds to either the partition $A_i$ 
 (oriented \textit{left}) or $\overline{A_i}$ (oriented \textit{right}). \\ 
 
@@ -66,14 +65,13 @@ This information in the cuts is aggregated and brought into a useable form by th
 For this, we find in $\mathcal{B}$ the set of consistent orientations (also called \textit{tangles}).  
 These correspond to specific ways of orienting the cuts such that they point to cohesive structures in the data.  
 A tangle is an an orientation for which:
-
-\begin{align}
+\begin{align}\label{eq:consistency}
     \forall A,B,C \in O: \left| A \cap B \cap C \right| \ge a
 \end{align}
-for some fixed parameter $a \in \N$, which we refer to as \textit{agreement} parameter. \\
+for some fixed parameter $a \in \N$, which we refer to as \textit{agreement} parameter. \autoref{eq:consistency} is also called the \textit{consistency condition}. \\
 
 \noindent
-\textbf{Order.} With how we have defined tangles so far, a lot of sets of cuts wouldn't allow for any tangles, as there are too many cuts to consistently orient them. 
+\textbf{Order.} With our definition of tangles, a lot of sets of cuts wouldn't allow for any tangles, as there are too many cuts to consistently orient them. 
 Imagine that a set of cuts would contain a few random cuts. 
 In expectation, each of these halve our set of points, so we can at most orient on the order of $O(\log(n))$ many random cuts consistently.
 This is resolved using the cost function: one restricts the tangles to a set of low-cost (and thus very insightful) cuts $P_{\psi}$, using a threshhold $\psi \in \R$ such that
@@ -125,7 +123,7 @@ We then try to add the cut $\{A_k, \overline{A_k}\}$ in left orientation to $n_j
 orientation is consistent with respect to $a$, we add the orientation $n_j \cup A_k$ as a left child. 
 We then try to add the cut in right orientation as well, and append $n_j \cup \overline{A_k}$ as right child if it is consistent.
 By construction, each node in the tangle search tree then represents a tangle, and 
-every level of the tree contains all possible tangles of threshhold $\psi_k$ which directly corresponds to the cost of cut $c(\{A_k, \overline{A_k}\})$ of cut $k$. 
+every level of the tree contains all possible tangles of threshhold $\psi_k$ which directly corresponds to the cost of the $k$-th cut $c(\{A_k, \overline{A_k}\})$. 
 
 An exemplary tangle search tree is illustrated in \autoref{fig:tangles-tree-example}. 
 By the construction above, we can now determine the value of each node. 
@@ -150,9 +148,9 @@ We will now try to understand how to use the tangle search tree for clustering.
 First, observe that a cheaper cut cuts through more loosely connected structures
 of the data set, while a more expensive cut can cut through more densely connected structures.
 Thus, in the tangles search tree we will start with coarse divisions of our data
-at the root, and proceed to finer divisions as we go down the tree. With respect to clustering, the interesting nodes in the tangle tree are now the leaves and
+at the root, and proceed to finer divisions as we go down the tree. With respect to clustering, the interesting nodes in the tangle tree are the \textit{leaves} and
 the \textit{splitting nodes} (nodes with two children). \\
-\textbf{Leaves} are interpreted as the final clusters, as we cannot add more cuts to the tangles and thus cannot subdivide the structure the tangle points to further. In the end, we will have
+\textbf{Leaves} are the final clusters, as we cannot add more cuts to the tangles and thus cannot subdivide the structure the tangle points to further. In the end, we will have
 exactly one cluster for each leaf node.\\
 \textbf{Splitting nodes} represent meaningful paths in our tree. If a node only has one children,
 the cut that was added last only further restricts the data set. If a node has two children, 
@@ -163,7 +161,7 @@ For the splitting nodes, we are interested in which cuts are really the ones det
 which cluster a point belongs to. Naively, we could use only the cut that produced the split,
 and assign all points that are contained in the left orientation of the cut to the
 left child and all that are contained in the right orientation to the right child. This
-however seems to waste information contained in the cuts further down in the tree. 
+however seems to waste information contained in the cuts further down the tree. 
 We thus determine determine the set of \textit{characterizing cuts}.  
 A cut belongs to this set, if it is both oriented the same way inside the subtrees, and oriented in a different way between the two subtrees. Thus, all characterizing cuts make a meaningful decision between left and right subtree and are coherent in their decision inside the subtree. 
 To illustrate this, we take a look at the exemplary tree in \autoref{fig:tangles-tree-example}. Here, for the root node, $P_1$ is a characterizing cut,
@@ -181,33 +179,39 @@ We then orient them in the same way they are oriented in the left subtree and co
 splitting node, we receive the probability $p_L$ that $x$ belongs to the left cluster. As the characterising cuts are always oriented differently in the two subtrees, the probability
 of $a$ belonging to the right cluster is then given by $1 - p_L$. We can include these probabilites on the edges of our tree. 
 To find out with what probability $x$ belongs to $C$, 
-we now take the product of all edge probabilities on the path from root to the leaf node that corresponds to $C$. 
+we now take the product of all edge probabilities on the path from the root to the leaf node that corresponds to $C$. 
 By assigning each node to the cluster it belongs to with the highest probability, we can also obtain the corresponding \textit{hard} clustering.
 
 \section{Ordinal constraints and triplet data}
 Assume that we have a set of objects for which we don't know absolute distance information
 between them. 
-A dataset of ordinal constraints now consists of set of comparisons on these
+A dataset of ordinal constraints is then a set of comparisons on these
 objects such as \textit{item $i$ is closer to item $j$ than to item $k$}. 
 Formally, we assume that $i, j, k$ are from 
 a set $D$ where we can define a dissimilarity function $d: D \times D \to \R$. Note that $d$ can be a proper metric on $D$, but does not have to be.
 Using $d$, we can express the constraint \textit{item $i$ is closer to item $j$ than to item $k$} 
 as $d(i, j) < d(i, k)$. Such data is often encountered when humans are asked to judge objects, 
-as they often naturally perform better on comparing objects
-than on accurately placing them on an abstract scale \citep{demiralpLearningPerceptualKernels2014}. 
+as they naturally are better at comparing objects
+than at accurately placing them on an abstract scale \citep{demiralpLearningPerceptualKernels2014}. 
 Applications consist of estimating perceptual scales in psychophysics 
 \citep{haghiriEstimationPerceptualScales2020} or crowd-sourcing clustering algorithms \citep{ukkonenCrowdsourcedCorrelationClustering2017}. 
-We focus mainly on the realm of here psychophysics.
+We focus mainly on the realm of psychophysics.
 
 Ordinal constraints are usually presented in one of two forms: quadruplets (used for example in \cite{ghoshdastidarFoundationsComparisonBasedHierarchical2019}) and triplets (used for example in \cite{vankadaraInsightsOrdinalEmbedding2021,haghiriComparisonBasedFrameworkPsychophysics2019}).
 Let $D$ be a set of objects, and $a,b,c,d \in D$, and $d$ be a dissimilarity function on $D$.
-A quadruplet (a,b,c,d) expresses the following constraint on our data points: $\text{d}(a,b) < \text{d}(c,d)$. 
-Analogously, a triplet (a,b,c) expresses $\text{d}(a,b) < \text{d}(a,c)$. 
+A quadruplet (a,b,c,d) expresses the following constraint on our data points: 
+\begin{align*}
+\text{d}(a,b) < \text{d}(c,d)
+.\end{align*}
+Analogously, a triplet (a,b,c) expresses 
+\begin{align*}
+\text{d}(a,b) < \text{d}(a,c) 
+.\end{align*}
 A triplet (a,b,c) can also be expressed by the quadruplet (a,b,a,c), making quadruplets strictly more general. 
 
-Datasets of triplet comparisons (which we also simply call triplet data) are almost always obtained by asking humans participants. For example, we might 
+Datasets of triplets (which we also simply call triplet data) are almost always obtained by asking humans participants. For example, we might 
 collect triplet data on images by presenting human participants with three images $a,b,c$, 
-with image $a$ as anchor point and ask them, \textit{$a$ more similar to $b$ or $c$?}.
+ask them: \textit{is $a$ more similar to $b$ or $c$?}.
 The way that this question is formulated varies on the context of the experiment (and might also influence their answers). 
 Other possible experiment setups are for example presenting the participant with three images, and asking \textit{which is the most central image?}, or \textit{which is the odd one out?},
 but the results can then always transformed back to triplet format for further prcoessing. 
@@ -215,13 +219,17 @@ For example, if $a$ is the \textit{odd-one-out} of the three elements $a,b,c$,
 then we know that $d(b,c) < d(b,a)$ and $d(c, b) < d(c,a)$. 
 
 \section{Algorithms on triplet data}
-%TODO_: this is a horrible draft written in the bus
-The task of dealing with triplet data is not an easy one. %?
-Triplet data has an unusual format, which is why the one of the most common evaluation
-methods is to first use an ordinal embedding algorithm on the triplet data, to transform it into
-euclidean space, before evaluating the triplet data. We therefore divide the algorithmic approaches presented in this section into two parts, ordinal embedding, and algorithms to directly achieve
-end tasks without applying an ordinal embedding beforehand. The latter category is exactly
-where our tangles approach fits in.
+Most of the algorithms that the machine learning community uses require euclidean data 
+($k$-Means, support vector machines, neural networks, et cetera...).
+Triplet data is an unusual format, which is why one of the most common evaluation
+methods is to first use an ordinal embedding algorithm on the triplet data to transform
+it into euclidean space, before processing it further.  
+We therefore divide the algorithmic approaches presented in this section into two parts, 
+ordinal embeddings, and other algorithms, which achieve
+end tasks directly without applying an ordinal embedding beforehand. 
+The latter category is where the tangles algorithm belongs to. Not using an ordinal embedding
+as a first processing step can have distinct advantages: 
+we introduce additional distortions to the data and we avoid eventual biases that the ordinal embedding algorithms might have.
 
 \subsection{Ordinal embeddings}
 One of the most central problems when dealing with triplet data consists of finding a so called \textit{ordinal embedding} of the data. If we have a set of triplet comparisons $T = \{t_1, t_2, \ldots t_n\}$, 
@@ -231,17 +239,17 @@ as metric. Formally, we want to minimize \citep{vankadaraInsightsOrdinalEmbeddin
 \begin{align*}
     \min_{y_1, \ldots y_n \in \R^{m}} \sum_{t=\left( i,j,k \right)  \in T} \mathbbm{1}_{ \|y_i - y_j\|_2 < \|y_i - y_k\|_2 }
 .\end{align*}
-This problem is difficult to optimize and thus various algorithms have been proposed that solve a relaxed or modified version of this objective function. They are mostly formulated
+This problem is difficult to optimize and thus various algorithms have been proposed that solve a relaxed or modified version of this objective function. The algorithms are mostly formulated
 for quadruplets, as this is more general: we can convert triplets to quadruplets but not 
 necessarily vice versa.
 
 \begin{itemize}
     \item Soft Ordinal Embedding  \citep[SOE,][]{teradaLocalOrdinalEmbedding2014} 
-        introduces a scale parameter and not only punishes violated ordinal constraints
+        introduces a scale parameter $\delta$ and not only punishes violated ordinal constraints
         with a binary value, but also by how much they are violated using the
-        actual distance of the embedded points.
-        The authors assume we have a set of quadruplets $Q$ on our data set
-        and then propose the following error function, which their algorithm minimizes:
+        actual distance between embedded points.
+        The authors assume we have a set of quadruplets $Q$ on our data set. 
+        They propose the following error function, which their algorithm minimizes:
         \begin{align*}
             \text{Err}_{\text{soft}}(X  \mid  \delta) = \sum_{i<j} \sum_{k<l} o_{i,j,k,l} 
             \max [0, d_{ij}(X) + \delta - d_{kl}(X)]
@@ -267,8 +275,9 @@ necessarily vice versa.
         for the constraints on $K$, and $K \succeq 0$ indicates that $K$ must be
         positive semidefinite. The actual embedding $X$ can be recovered from the gram matrix by
         spectral decomposition. 
-    \item T-Stochatic Triplet Embedding \citep[T-STE][]{laurensvandermaatenStochasticTripletEmbedding2012} use an approach similar to the well-known t-stochastic neighbour embedding \citep[t-SNE][]{maatenVisualizingDataUsing2008}. 
-        They measure the similarities between points in their embedding using a Student-t kernel 
+    \item t-Stochatic Triplet Embedding \citep[t-STE,][]{laurensvandermaatenStochasticTripletEmbedding2012} uses an approach similar to the well-known t-stochastic neighbour embedding 
+        \citep[t-SNE,][]{maatenVisualizingDataUsing2008}. 
+        The authors measure the similarities between points in their embedding using a Student-t kernel 
         with $\alpha$ degrees of freedom: 
         \begin{align*}
             p_ijl = \frac
@@ -288,13 +297,12 @@ necessarily vice versa.
         also decreases the distance between $x_i$ and $x_j$, and increases the distance
         between $x_i$ and $x_k$. 
 \end{itemize}
-
 Other approaches include for example 
-Crowd Kernel Learning \citep[CKL,][]{tamuzAdaptivelyLearningCrowd2011}), Fast Ordinal Triplets Embedding \citep[FORTE,][]{jainFiniteSamplePrediction2016} and various others. 
+Crowd Kernel Learning \citep[CKL,][]{tamuzAdaptivelyLearningCrowd2011}, Fast Ordinal Triplets Embedding \citep[FORTE,][]{jainFiniteSamplePrediction2016} and various others. 
 
 It has been proven that if the original points come from the space $\R^{m}$, one can recover the points (up to scaling and orthogonal transformations) with $O(mn\log(n))$ many triplet comparisons
 \citep{jainFiniteSamplePrediction2016}. On this basis, an ordinal embedding can be used together with more classical machine learning algorithms, such as support vector machines or k-Means,
-for other machine learning tasks. Researchers use this for example for classification \citep{tamuzAdaptivelyLearningCrowd2011, kleindessnerLensDepthFunction2017} or clustering \citep{kleindessnerLensDepthFunction2017}.
+for other machine learning tasks. This approach has for example been demonstrated for classification \citep{tamuzAdaptivelyLearningCrowd2011, kleindessnerLensDepthFunction2017} or clustering \citep{kleindessnerLensDepthFunction2017}.
 
 \subsection{Other algorithmic approaches}
 Other algorithmic approaches rely on extracting information from the triplet data directly.

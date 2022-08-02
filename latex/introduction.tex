@@ -1,9 +1,9 @@
 \chapter{Introduction}\label{Introduction}
 We consider the task of clustering data $X = \{x_1, x_2, \ldots x_n \}$ for which neither 
 explicit features nor concrete distances between the data points are known to us. 
-The only form of information we have on the data is in the form of so-called 
+The only form of information we have on the data are so-called 
 \textit{triplet comparisons} or \textit{triplets} for short. A triplet 
-on $X$ is a triple $(x_i, x_j, x_k)$ which tells us that $x_i$ is closer to $x_j$ than to $x_k$. 
+on $X$ is written as $(x_i, x_j, x_k)$ and tells us that $x_i$ is closer to $x_j$ than to $x_k$. 
 This problem setting often arises when one works with data from human observers. 
 An example, investigated among others by \citep{shepardAnalysisProximitiesMultidimensional1962}, 
 is human color perception. It would be hard for human observers to accurately rate colors in 
@@ -36,13 +36,13 @@ often cannot satisfy all triplet comparisons on the original data, and is theref
 necessarily a faithful representation. 
 An alternative approach is devising an algorithm to solve the desired task directly 
 using the triplets, which has shown promising results.
-\citep{kleindessnerLensDepthFunction2017} estimated the lens-depth function
+\cite{kleindessnerLensDepthFunction2017} estimated the lens-depth function
 of the data using triplets (of a slightly altered format) and used this for 
 medoid estimation, outlier identification, clustering and classification. 
-\citep{kleindessnerKernelFunctionsBased2017} constructed a kernel function from
+\cite{kleindessnerKernelFunctionsBased2017} constructed a kernel function from
 the triplets, which they demonstrated to work well with 
 different kernel-based clustering algorithms.
-\citep{ghoshdastidarFoundationsComparisonBasedHierarchical2019} used the 
+\cite{ghoshdastidarFoundationsComparisonBasedHierarchical2019} used the 
 triplets to estimate a similarity function between the data points and applied 
 a linkage algorithm to obtain a hierarchical clustering from the data.
 
@@ -50,22 +50,22 @@ In a recent work, \cite{klepperClusteringTanglesAlgorithmic2021} proposed a nove
 for clustering based on tangles, which are a mathematical tool originating from graph theory 
 \citep{robertsonGraphMinorsObstructions1991}. The tangles algorithm has been shown to have 
 interesting properties, such as inherent explainability (under certain conditions) and being suitable for hierarchical clustering.
-One of the central objects in this framework are bipartions, ways of dividing a set into
+One of the central objects in this framework are cuts, ways of dividing a set into
 two distinct, non-overlapping subsets. To cluster data using the tangles framework, we first
-need to obtain a set of bipartitions on the data. We additionally require that these bipartitions
+need to obtain a set of cuts on the data. We additionally require that these cuts
 hold a little bit of information about the cluster structure of the data. The 
-tangles framework can then aggregate the information contained in these bipartitions to a
+tangles framework can then aggregate the information contained in these cuts to a
 clustering. 
 
-In this work, we present two novel methods to generate bipartitions suitable for the
-tangles algorithm, using only triplets. Using these methods, we 
-demonstrate that the tangles algorithm can be successfully applied to (hierarchically) cluster data for which we only know triplets without creating an intermediate ordinal embedding. 
+In this thesis, we present two novel methods to generate cuts suitable for the
+tangles algorithm out of triplets. Using these methods, we 
+demonstrate that the tangles algorithm can be successfully applied to (hierarchically) cluster triplet data without creating an intermediate ordinal embedding. 
 We evaluate our approach by simulated and experimental data and show that it is competitive 
 in performance to ordinal embedding based approaches, while providing explainable results. 
 
-This thesis is organized as follows: In \autoref{theory}, we give an introduction to tangles and ordinal data, which lays the necessary foundations for the rest of the thesis. 
-In \autoref{methods}, we present our two extensions of the tangles framework, named \textit{landmark tangles} and \textit{majority tangles}.
-We use simulated data in \autoref{simulations} to show the performance of our algorithms under different circumstances, such as the noise level or availability of the triplets. 
-In \autoref{real} we showcase an example evaluation with real data from the domain of psychophysics, to establish tangles as a practical tool on triplet data.
-Doing so, we also highlight the inherent explainability of the clustering produced by 
+This thesis is organized as follows: In \autoref{theory}, we give an introduction to tangles and ordinal data, which lays the necessary foundations for the rest of the work. 
+In \autoref{methods}, we present our two cut finding algorithms, named \textit{landmark cuts} and \textit{majority cuts}.
+We use simulated data in \autoref{simulations} to show the performance of tangles using our cuts under different circumstances, such as the noise level or availability of the triplets. 
+In \autoref{real} we showcase an example evaluation with real data from the domain of psychophysics to establish tangles as a practical tool for triplet data.
+While doing so, we also highlight the inherent explainability of the clustering produced by 
 the tangles algorithm. 
