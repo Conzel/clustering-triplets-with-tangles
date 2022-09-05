@@ -7,7 +7,10 @@ from matplotlib.cm import get_cmap
 import numpy as np
 import pandas as pd
 from sklearn.metrics import normalized_mutual_info_score
-from torch import isin
+import matplotlib.pyplot as plt
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from PIL import Image
+
 
 #CB_COLOR_CYCLE = ["#006BA4", "#FF800E", "#ABABAB", "#595959", "#5F9ED1", "#C85200", "#898989", "#A2C8EC", "#FFBC79", "#CFCFCF",]
 # repeated cycle
@@ -219,9 +222,14 @@ class ThesisPlotter:
         plt.xlabel("x")
         plt.ylabel("y")
     
-    def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray, markersize=8):
+    def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray, markersize=8, reverse=False):
         plt.figure(figsize=(4.2,3.2))
-        for i, label in enumerate(np.unique(ys)):
+        labels = np.unique(ys)
+        if reverse:
+            iterator = reversed(list(enumerate(np.unique(ys))))
+        else:
+            iterator = enumerate(np.unique(ys))
+        for i, label in iterator:
             mask = (ys == label)
             if isinstance(label, (np.integer, int)):
                 label = "Cluster " + str(label + 1)
@@ -240,7 +248,9 @@ class ThesisPlotter:
             methods = methods & methods_to_use
         
         style_cycler = ThesisStyleCycler()
-        for method in methods:
+        methods_sorted = list(methods)
+        methods_sorted.sort()
+        for method in methods_sorted:
             if self.style_dict is not None and use_style_dict:
                 line_style, color, marker_size = self.style_dict[method]
             else:
@@ -276,6 +286,29 @@ class ThesisPlotter:
         plt.gca().invert_xaxis()
         plt.xscale("log")
     
+    def plot_images(self, paths, coordinates, size=None):
+            
+        x = coordinates[:, 0]
+        y = coordinates[:, 1]
+
+        # see https://stackoverflow.com/questions/22566284/matplotlib-how-to-plot-images-instead-of-points
+        fig, ax = plt.subplots(figsize=(20,20))
+        ax.scatter(x, y) 
+
+        for x0, y0, path in zip(x, y,paths):
+            if size is not None:
+                image = OffsetImage(Image.open(path).resize(size), zoom=1)
+            else:
+                image = OffsetImage(Image.open(path), zoom=1)
+            ab = AnnotationBbox(image, (x0, y0), frameon=False)
+            ax.add_artist(ab)
+        ax.tick_params("x", labelsize=30)
+        x_lim_left, x_lim_right = ax.get_xlim()
+        ax.set_xlim(x_lim_left * 1.1, x_lim_right * 1.1)
+        ax.tick_params("y", labelsize=30)
+        y_lim_left, y_lim_right = ax.get_ylim()
+        ax.set_ylim(y_lim_left * 1.05, y_lim_right * 1.05)
+
     
     def save(self,name: str):
         """

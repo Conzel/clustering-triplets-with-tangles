@@ -1,41 +1,45 @@
 \chapter{Conclusion}\label{conclusion}
 In this work, we demonstrated a suitable extension for the tangles algorithm to apply it to clustering and hierarchy reconstruction. 
-We validated its properties on simulated and experimental data under different external circumstances. 
+We validated its properties on simulated and experimental triplet data.  
+As we compared different algorithms in our experiments, we can also give recommendations as when to use which clustering algorithm and which conditions on the data
+have to be met for tangles to be effective. 
 
-As we compared different algorithms in our experiments, we can also give recommendations as when to use which clustering algorithm. Especially, we can make out
-some conditions where tangles could provide a substantial benefit over others. 
-
-First off, if the goal is explainability, tangles can be a great choice. We could not find any other clustering algorithm that works with triplet data directly and produces
-explainable clusterings. An alternative could be using an explainable algorithm such as \textit{explainable k-Means} \citep{moshkovitzExplainableKMeansKMedians2020} on the embedding created 
-by an ordinal embedding directly, but this was out of the scope of this work. 
+First off, if the goal is explainability, tangles can be a great choice. 
 The importance of explainable algorithms is likely to increase, especially with 
 a \textit{right to explanation} shifting more into the focus of policy makers and legal
 scholars \citep{selbstMeaningfulInformationRight2017}, thus tangles could provide a substantial benefit over other algorithms for clustering triplets.
+To our knowledge, there is no other clustering algorithm that both works with triplet data directly and is explainable. 
+An alternative could be using an explainable algorithm such as \textit{explainable k-Means} \citep{moshkovitzExplainableKMeansKMedians2020} on the embedding created 
+by an ordinal embedding directly, but this was out of the scope of this work. 
 
-For standard clustering, we observed a very good overall performance of landmark tangles, provided the triplets were sampled in a landmark-approach. 
+For standard clustering, we have to differ between the format of the triplets: sampled in a landmark-fashion or uniformly at random.
+For triplets in a landmark fashion, we observed a very good overall performance of landmark tangles.
 If data is already present in this format, we can recommend
 tangles as a clustering method, as it often shows better performance than the state-of-the-art algorithm SOE. This is especially true in the low-triplet regime. 
-If a new experiment is to be designed, the experimentator might think
-about whether it is feasible to sample data in a landmark format to utilize tangles, especially if its other properties (explainability and hierarchy reconstruction) are desired. 
-If the data is expected to be very noisy however, SOE might still outperform tangles. 
-
-If the data is not in landmark format, we only recommend using tangles (majority tangles in this case), if explainability and/or reconstructing hierarchies are desired, as SOE 
+An experimentator that designs a new experiment, might think about whether it is feasible to sample data in a landmark format to utilize tangles, 
+especially if its other properties (explainability and hierarchy reconstruction) are desired. 
+If the data is expected to be very noisy however, SOE might still outperform tangles.  
+For triplets that are sampled uniformly at random, we only recommend using tangles (majority tangles in this case), if explainability and/or reconstructing hierarchies are desired, as SOE 
 outperforms majority tangles in all our simulated experiments.
 
-In the case of hierarchy reconstruction, we can give a clear recommendation of tangles. We have seen that landmark tangles performs best out of our evaluated algorithms, and majority tangles 
-comes directly afterwards at around the performance of soft ordinal embedding combined with average linkage. 
-It can be problematic that tangles cannot construct a true dendrogram, which is what the hierarchical clustering literature focusses on (such as in \cite{ghoshdastidarFoundationsComparisonBasedHierarchical2019}). 
-For practical applications however, the output from tangles can be good enough. 
+In the case of hierarchy reconstruction, we can give a clear recommendation of tangles. We have seen that landmark tangles performs best out of our evaluated algorithms. Majority tangles 
+showed the second best performance, roughly on par with SOE combined with average linkage. 
+It can be problematic that tangles cannot construct a true dendrogram, which is what the hierarchical clustering literature focusses on (such as in \cite{ghoshdastidarFoundationsComparisonBasedHierarchical2019}).  For practical applications however, the output from tangles can be good enough. 
 
 We also see that despite the setting not being optimal (no landmark triplets), we still receive good practical results with majority tangles in the setting of psychophyics, 
 confirming and expanding on the insights that the original author had gained through an ordinal embedding. We envision that tangles could also be used as an additional tool supplementing an evaluation done via an ordinal embedding. 
 
 Through our work, we also uncovered some problems and potential new research directions for clustering triplet data with tangles. 
-The tangles framework by \cite{klepperClusteringTanglesAlgorithmic2021} is very flexible and has multiple areas where it can be expanded or modified on. As we demonstrated, changing how to 
-preprocess triplets to cuts is an effective method. Further work could explore other ways of doing this preprocessing step, which is still lacking for non-landmark triplets. 
-A part of the tangles algorithm that we have not touched is the cost function. One could imagine different cost functions than the one we used, for example calculating some 
-type of cost on the cuts using the triplet information. Additionally, one could think about modifying parts of the tangles framework themselves, which could maybe help with the problem of 
+The tangles framework by \cite{klepperClusteringTanglesAlgorithmic2021} is very flexible and has multiple areas where it can be expanded on or modified. 
+As we demonstrated, changing how to preprocess triplets to cuts is an effective method to apply tangles to triplets. 
+Further work could explore other ways of doing this preprocessing step, which is still lacking for non-landmark triplets. 
+A part of the tangles algorithm that we have not touched is the cost function. 
+One could imagine different cost functions than the one we used. An idea could be to estimate a similarity on the data points using the triplets, for example done in 
+\cite{kleindessnerKernelFunctionsBased2017}, or use the average-linkage cluster similarity in \cite{ghoshdastidarFoundationsComparisonBasedHierarchical2019} and use this to calculate the cost 
+of a cut.
+Additionally, one could think about modifying parts of the tangles framework themselves, which could help with the problem of 
 hierarchy noise we encountered in \autoref{sec:adding-hierarchy-noise}.
 
-A big missing piece is still the performance of landmark tangles on real data. So far, we could not find any data sets that exhibit a useable cluster structure, and consisted of landmark 
-triplets. This data could be easily generated in a controlled environment (for example using the approach from \cite{inesschonmannSimilarityJudgementsNatural2021}), evaluated and compared to ordinal embeddings. 
+A missing piece is the performance of landmark tangles on real data. So far, we could not find any data sets that both exhibit a useable cluster structure, and consist of triplets
+sampled in a landmark-fashion. This data could be generated in a controlled environment (for example using the approach from \cite{inesschonmannSimilarityJudgementsNatural2021}), 
+evaluated and compared to ordinal embeddings. 

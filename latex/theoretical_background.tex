@@ -1,7 +1,7 @@
 \chapter{Theoretical Background}\label{theory}
 % chapter is not capitalized here, as it is not a title: https://academia.stackexchange.com/questions/9454/capitalisation-of-section-and-chapter-in-a-ph-d-thesis
-In this chapter we will a brief introduction to the theoretical concepts used in this work. 
-In particular, we will give an in-depth explanation about tangles, triplet data, and state-of-the-art methods of evaluating triplet data.
+In this chapter we introduce the theoretical concepts used in this work. 
+In particular, we give an in-depth explanation about tangles, triplet data, and state-of-the-art methods of evaluating triplet data.
 % This explanation should suffice to understand the rest of this work.
 
 \section{Tangles}\label{theory:tangles}
@@ -24,7 +24,7 @@ basic problem settings.
 Additionally, it introduces simplified notations, adapted to the domain of computer science. 
 When talking about tangles, we will use the definitions introduced therein. 
 
-In this section, we now give an introduction to the basic notions, theory and applications of tangles in a clustering context.
+In this section, we give an introduction to the basic notions, theory and applications of tangles in a clustering context.
 For in-depth explanations of the algorithms and exact procedures, refer to 
 \cite{klepperClusteringTanglesAlgorithmic2021}.
 
@@ -35,8 +35,9 @@ A cut is a division of a set $V =  \{ v_1, v_2, \ldots \}$ into two distinct sub
 \begin{align*}
 A \cap B = \emptyset\;\text{and}\;A \cup B = V.
 \end{align*}
-We can also write a cut as $P = \{A, \overline{A}\}$, with $A \subset V$ and $\overline{A}$ being the
-complement of $A$ with respect to $V$. \\
+We usually write a cut as $P = \left( A, \overline{A} \right)$, with $A \subset V$ and $\overline{A}$ being the
+complement of $A$ with respect to $V$. As a side note, $\left( A, \overline{A} \right)$ and $\left( \overline{A}, A \right)$ are
+equivalent cuts, the order of the two elements only matters when it comes to orientations (see below). \\
 
 \noindent
 \textbf{Cost function.} For a cut to be useful in clustering, we expect it to hold some degree of information about the cluster 
@@ -46,32 +47,32 @@ are only a few edges between $A$ and $\overline{A}$. How informative a cut is, i
 with $\mathcal{P}(V)$ denoting the power set of V. 
 One needs to choose an appropriate cost function beforehand and the performance of tangles will also depend on how well the cost function and the problem setting fit together. 
 For example, on an unweighted graph we might want to choose $c(P)$ as the number of edges
-going between the nodes of the two sets $A, \overline{A}$. \\
+between the nodes of the two sets $A, \overline{A}$. \\
 
 \noindent
 \textbf{Orientations.}
-An \textit{orientation} of a cut means that we pick a specific side of a cut. 
+An \textit{orientation} $o$ of a cut $P = \left(   A, \overline{A} \right) $ is a choice of either $A$ or $\overline{A}$. We call a cut \textit{left} oriented
+if we pick $A$ and \textit{right} oriented if we pick $\overline{A}$.
 An \textit{orientation} of a set of cuts 
 $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \}$ is  
 then a set of orientations of cuts $O = \{o_1, o_2, \ldots o_n\}$
-where $o_i$ corresponds to either the partition $A_i$ 
-(oriented \textit{left}) or $\overline{A_i}$ (oriented \textit{right}). \\ 
+where $o_i$ corresponds to either the partition $A_i$ or $\overline{A_i}$. \\
 
 \noindent
-\textbf{Tangles and agreement.} Assume that for a set of elements $V$ we have a set of cuts $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \} $ on $V$.
+\textbf{Consistency condition.} Assume that for a set of elements $V$ we have a set of cuts $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, \{A_n, \overline{A_n}\} \} $ on $V$.
 This set of cuts, together with the cost function, should tell us a lot about the cluster structure of the data:
 for all cuts, we know how much they do or don't separate dense regions in $V$. 
 This information in the cuts is aggregated and brought into a useable form by the tangles framework. 
-For this, we find in $\mathcal{B}$ the set of consistent orientations (also called \textit{tangles}).  
+For this, we find in $\mathcal{B}$ the set of \textit{tangles}.  
 These correspond to specific ways of orienting the cuts such that they point to cohesive structures in the data.  
-A tangle is an an orientation for which:
+A tangle is an orientation for which:
 \begin{align}\label{eq:consistency}
     \forall A,B,C \in O: \left| A \cap B \cap C \right| \ge a
 \end{align}
 for some fixed parameter $a \in \N$, which we refer to as \textit{agreement} parameter. \autoref{eq:consistency} is also called the \textit{consistency condition}. \\
 
 \noindent
-\textbf{Order.} With our definition of tangles, a lot of sets of cuts wouldn't allow for any tangles, as there are too many cuts to consistently orient them. 
+\textbf{Order.} Using this definition of tangles, a lot of sets of cuts wouldn't allow for any tangles, as there are too many cuts to consistently orient them. 
 Imagine that a set of cuts would contain a few random cuts. 
 In expectation, each of these halve our set of points, so we can at most orient on the order of $O(\log(n))$ many random cuts consistently.
 This is resolved using the cost function: one restricts the tangles to a set of low-cost (and thus very insightful) cuts $P_{\psi}$, using a threshhold $\psi \in \R$ such that
@@ -81,20 +82,21 @@ P_{\psi} = \{ c(P) \le \psi \}
 A tangle on $P_{\psi}$ is said to have \textit{order} $\psi$. \\
 
 \noindent
-To illustrate some of the concepts better, we have included a schematic drawing of a tangle on 
+To illustrate some of the concepts better, we include a schematic drawing of a tangle with agreement $3$ on 
 a simple data set composed of two clusters in \autoref{fig:tangles-example}. 
 Here, we might already gain some intuition on why tangles are able to find dense structures in data. 
-The tangle that is depicted in the figure orients all cuts to the left side 
+The tangle that is depicted in the figure orients all cuts left 
 (indicated by the arrows), so that they point towards the cluster on the left. 
 Another possible tangle might orient all cuts to the right, pointing to the right cluster. 
 Notice that a tangle on this set of cuts can only either orient all cuts to the left or to the 
-right, else the consistency criterion is violated. All in all, 
+right, else the consistency criterion is violated, as else the intersection of the orientations of the cuts contains at most one point. 
+All in all, 
 there is exactly one tangle for each cluster.
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/tangles-example.pdf}
-    \caption{An example of how a simple tangle might look like if we assume a reasonably sized agreement (say $a = 3$). 
+    \caption{A simple tangle for a reasonably sized agreement ($a = 3$). 
         The data set consists of two clusters, one left (blue), one right (orange).
         We assume that we have obtained three cuts on the data set, represented 
         by red lines.
@@ -109,21 +111,22 @@ there is exactly one tangle for each cluster.
 In \autoref{fig:tangles-example}, each of the tangles we found clearly pointed in the direction 
 of exactly one cluster. However, tangles on real data sets
 are usually much more complex. In this section, we explain an algorithmic procedure how clusters 
-can be identified through tangles. We assume that we first have chosen an appropriate
+can be identified through tangles. We assume that we have chosen an appropriate
 cost function $c$ and an agreement parameter $a$. 
 
-We assume that we are given a set of cuts $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \ldots, 
-\{A_n, \overline{A_n}\}\} $ which are sorted in  
+We are given a tuple of cuts $\mathcal{B} = \left(  \left( A_1, \overline{A_1} \right) , \ldots, 
+\left( A_n, \overline{A_n} \right)\right) $ which are sorted in  
 ascending order according to the cost function $c$.  Next, we build a tree structure
-on the set of these cuts, the so-called \textit{tangle search tree}. 
-In the tree, the value of each node of level $i$ is an orientation on the set of cuts $\mathcal{B}_{1:i} = \{\{A_1, \overline{A_1}\}, \ldots \{A_i, \overline{A_i}\}\}$, with the value of $n_0 = \emptyset$.
+on these cuts, the so-called \textit{tangle search tree}. 
+In the tree, the value of each node of level $i$ is an orientation on the set of cuts $\mathcal{B}_{1:i} = \{\{A_1, \overline{A_1}\}, \ldots \{A_i, \overline{A_i}\}\}$, with the value of 
+$n_0 = \emptyset$.
 We build the tree in an iterative manner: to determine the nodes of level $k$, we 
 iterate through all nodes $n_j$ of level $k-1$. 
 We then try to add the cut $\{A_k, \overline{A_k}\}$ in left orientation to $n_j$. If this
 orientation is consistent with respect to $a$, we add the orientation $n_j \cup A_k$ as a left child. 
 We then try to add the cut in right orientation as well, and append $n_j \cup \overline{A_k}$ as right child if it is consistent.
 By construction, each node in the tangle search tree then represents a tangle, and 
-every level of the tree contains all possible tangles of threshhold $\psi_k$ which directly corresponds to the cost of the $k$-th cut $c(\{A_k, \overline{A_k}\})$. 
+every level of the tree contains all possible tangles of threshhold $\le \psi_k$ which directly corresponds to the cost of the $k$-th cut $c(\{A_k, \overline{A_k}\})$. 
 
 An exemplary tangle search tree is illustrated in \autoref{fig:tangles-tree-example}. 
 By the construction above, we can now determine the value of each node. 
@@ -132,37 +135,38 @@ get to the node, we have to go right from the root, adding cut $P_1$ in a right-
 way. We then go right again for $P_2$, and left for $P_3$. Thus, we know that the node (and the 
 corresponding tangle) in level 3 has the value $T = \{\overline{A_1}, \overline{A_2}, A_3\}$. 
 By the construction of the tangle tree, we also know that this tangle is now the only one on
-on the set $\{P_1, P_2, P_3\}$.
+on the set $\{P_1, P_2, P_3\}$; however, there exist 3 tangles on $\{P_1, P_2\}$.
 
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/tangles-tree-example.png}
-    \caption{An example of a possible tangles search tree for a set of cuts $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \{A_2, \overline{A_2}\}, \{A_3, \overline{A_3}\} \}$. 
+    \caption{A possible tangles search tree for a set of cuts $\mathcal{B} = \{\{A_1, \overline{A_1}\}, \{A_2, \overline{A_2}\}, \{A_3, \overline{A_3}\} \}$. 
         Each level corresponds to the tangles of the order given by the cut $P_i$ that is written on the dashed line to the left of it.
         Figure taken with permission from \cite{klepperClusteringTanglesAlgorithmic2021}.}
     \label{fig:tangles-tree-example}
 \end{figure}
 
-We will now try to understand how to use the tangle search tree for clustering. 
+We now discuss how to use the tangle search tree for clustering. 
 First, observe that a cheaper cut cuts through more loosely connected structures
 of the data set, while a more expensive cut can cut through more densely connected structures.
 Thus, in the tangles search tree we will start with coarse divisions of our data
 at the root, and proceed to finer divisions as we go down the tree. With respect to clustering, the interesting nodes in the tangle tree are the \textit{leaves} and
 the \textit{splitting nodes} (nodes with two children). \\
-\textbf{Leaves} are the final clusters, as we cannot add more cuts to the tangles and thus cannot subdivide the structure the tangle points to further. In the end, we will have
-exactly one cluster for each leaf node.\\
-\textbf{Splitting nodes} represent meaningful paths in our tree. If a node only has one children,
-the cut that was added last only further restricts the data set. If a node has two children, 
+\textbf{Leaves} are the final clusters, as we cannot add more cuts to the tangles and thus cannot subdivide the structure the tangle points to further. In the end, 
+there will each leaf node will correspond to exactly one cluster and vice versa.\\
+\textbf{Splitting nodes} represent meaningful paths in our tree. If a node only has one child,
+the cut that was added last could only be added in one orientation. This cut might make it harder to add more cuts further down the tree, but it does not present
+a meaningful division of our cluster. If a node has two children, 
 the cut however presents a decision, as we can either follow the left or the right
 child of the cut when deciding how to subdivide our cluster further. 
 
 For the splitting nodes, we are interested in which cuts are really the ones determining 
-which cluster a point belongs to. Naively, we could use only the cut that produced the split,
+which cluster a point belongs to. An initial idea would be to only cut that produced the split,
 and assign all points that are contained in the left orientation of the cut to the
 left child and all that are contained in the right orientation to the right child. This
 however seems to waste information contained in the cuts further down the tree. 
-We thus determine determine the set of \textit{characterizing cuts}.  
+Thus, one determines the set of \textit{characterizing cuts}.  
 A cut belongs to this set, if it is both oriented the same way inside the subtrees, and oriented in a different way between the two subtrees. Thus, all characterizing cuts make a meaningful decision between left and right subtree and are coherent in their decision inside the subtree. 
 To illustrate this, we take a look at the exemplary tree in \autoref{fig:tangles-tree-example}. Here, for the root node, $P_1$ is a characterizing cut,
 while $P_2$ is not: below the node $A_1$, the cut is both oriented to the left and to to the right, violating the requirement that the cuts are always oriented
@@ -173,7 +177,7 @@ With this knowledge, we can now obtain a soft, hierarchical clustering from the 
 a probability of belonging to each cluster. 
 \textit{Hierarchical} means that we have a hierarchy on the resulting clusters, which arises naturally
 from the form of the tangles search tree. 
-For a soft clustering, we determine with what probability a point $x$ belongs to a cluster $C$. 
+For a soft clustering, we determine the probability of a point $x$ belonging to a cluster $C$. 
 To do this, we start from the root. At every splitting node of the tree (which includes the root), we examine the set of characterising cuts.
 We then orient them in the same way they are oriented in the left subtree and count how many of these so oriented cuts contain $x$. Divided by the total amount of characterising cuts at the
 splitting node, we receive the probability $p_L$ that $x$ belongs to the left cluster. As the characterising cuts are always oriented differently in the two subtrees, the probability
@@ -219,7 +223,7 @@ For example, if $a$ is the \textit{odd-one-out} of the three elements $a,b,c$,
 then we know that $d(b,c) < d(b,a)$ and $d(c, b) < d(c,a)$. 
 
 \section{Algorithms on triplet data}
-Most of the algorithms that the machine learning community uses require euclidean data 
+Most of the algorithms that the machine learning community uses require feature-based data 
 ($k$-Means, support vector machines, neural networks, et cetera...).
 Triplet data is an unusual format, which is why one of the most common evaluation
 methods is to first use an ordinal embedding algorithm on the triplet data to transform
@@ -248,7 +252,7 @@ necessarily vice versa.
         introduces a scale parameter $\delta$ and not only punishes violated ordinal constraints
         with a binary value, but also by how much they are violated using the
         actual distance between embedded points.
-        The authors assume we have a set of quadruplets $Q$ on our data set. 
+        The authors consider a set of quadruplets $Q$ on a data set. 
         They propose the following error function, which their algorithm minimizes:
         \begin{align*}
             \text{Err}_{\text{soft}}(X  \mid  \delta) = \sum_{i<j} \sum_{k<l} o_{i,j,k,l} 
@@ -354,10 +358,29 @@ These algorithms are hand-crafted for the desired target tasks, such as classifi
 
         %The lens depth function can for example be used to obtain a $k$-nearest neighbour 
         %graph. As the lens close-by points will have
+
     \item %TODO 
-        Add Kleindessner and Kernels
+        \cite{kleindessnerKernelFunctionsBased2017} uses the triplets directly to estimate a kernel function between the points in the dataset. 
+        They present two different kernel functions. In both approaches, they start by determining a similarity between all pairs of points $x$ and $y$ out of the dataset $X$.
+        For the first kernel function $k_1$, they rank all other points $x \in X$ by their closeness to $x$, and repeat the same for $y$. Then, they take 
+        the Kendall tau correlation coefficient (which is a kernel function on the set of total rankings) between the two rankings and use this to generate a feature
+        map that serves as the value of the kernel function $k_1(x,y)$. 
+
+        For the second kernel function $k_2$, they determine how similar two points $x$ and $y$ are by counting the number of triplets that they agree on. 
+        They do this by determining all pairs of points $x_i, x_j$ for which both $(x_i, x_a, x_j)$ and $(x_i, x_b, x_j)$ hold. From the number of these pairs, 
+        they subtract the number of all pairs for which either $(x_i, x_j, x_a)$ and $(x_i, x_b, x_j)$ or $(x_i, x_a, x_j)$ and $(x_i, x_j, x_b)$. This similarity is used in 
+        a feature map from which they construct $k_2(x,y)$.
+
+        The kernel functions can then be used in any kernel machine, such as kernel SVM for classification or regression. 
+
     \item %TODO 
-        Add ghoshdastidar
+        \cite{kleindessnerKernelFunctionsBased2017} presents methods to hierarchically cluster data from a set of quadruplets $Q$. They argue that single-linkage and complete-linkage can be
+        naturally implemented for a quadruplet setting, as they only require us to know which objects are the closest together or farthest away from each other, without requiring
+        absolute distance values. As single-linkage and complete-linkage have weak statistical guarantees, they present two methods to implement average linkage for quadruplet data. 
+        For the first one, they use a kernel similar to \cite{kleindessnerKernelFunctionsBased2017} to estimate similarities between the objects using the quadruplets $Q$, and then use standard
+        linkage procedure (iteratively merge the two most similar clusters). For the second one, they estimate whether two clusters $G_1, G_2$ are more similar to each other than two clusters $G_3, G_4$ directly using the quadruplets. This is done
+        by counting the number of quadruplets $(i,j,k,l) \in Q$ and subtracting the number of quadruplets $(k, l, i, j)$ for which $x_i \in G_1, x_j \in G_2, x_k \in G_3, X_l \in G_4$. 
+        The similarity between clusters can then again be used in a standard linkage procedure.
 
 \end{itemize}
 % Kleindessner Lenses

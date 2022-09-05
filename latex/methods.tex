@@ -1,11 +1,12 @@
-\chapter{Clustering Tangles using Triplet Data}\label{methods}
+\chapter{Clustering Triplet Data with Tangles}\label{methods}
 As we described in \autoref{theory:tangles}, the tangles algorithm operates on cuts of data that contain some information about the cluster structure.
 If we want to cluster a set of triplet data using tangles, we are first faced with the task of processing the triplets to appropriate cuts. In this work, we present two 
 methods for this which we call \textit{landmark cuts} and \textit{majority cuts}. We elaborate on the methods and their motivations in the following sections.
 
 \section{Landmark cuts}\label{theory:landmark_cuts}
-In recent years, algorithms have been developed that hope to speed up ordinal embedding by focussing on so-called \textit{landmarks} \citep{ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}. Landmarks are objects in the dataset for which we know all triplet comparisons.  
-The definition of what constitutes a landmark varies in the literature, but we will use by \cite{haghiriComparisonBasedFrameworkPsychophysics2019}.
+In recent years, algorithms have been developed that hope to speed up ordinal embedding by focussing on so-called \textit{landmarks} 
+\citep{ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}. Landmarks are objects in the dataset for which we know all triplet comparisons.  
+The definition of what constitutes a landmark varies in the literature, but we use the one by \cite{haghiriComparisonBasedFrameworkPsychophysics2019}.
 Assume we have a set of objects $D$, as well as a set of triplet constraints $T$. The triplets 
 have the form $(a,b,c)$, indicating that $d(a,b) < d(a,c)$. In a landmark setting, we have a set 
 of $m$ objects $L \subset D$, for which 
@@ -30,7 +31,7 @@ we require that there exists a set of tuples $L' = \{ (y, z)  \mid y, z \in D \}
 This will be used in the simulations, as then we can create landmark cuts for tangles by 
 repeatedly picking some objects $y, z \in D$ and sampling all triplet comparisons to all other objects $x \in D$. \\
 
-Landmark cuts intuitively capture a cluster structure: 
+Landmark cuts intuitively capture some cluster information: 
 the closer $x$ is to $l_i$ according to $d$, the more likely it is that $\text{Land}_{ij}$ contains $x$. 
 In the euclidean space, this notion is easily captured: A landmark cut between $l_i, l_j$ is
 a linear cut between the two points, as illustrated in \autoref{fig:landmark_cut}.
@@ -38,9 +39,9 @@ a linear cut between the two points, as illustrated in \autoref{fig:landmark_cut
     \begin{figure}[ht]
         \centering
         \includegraphics[width=0.8\textwidth]{figures/landmark_cut.pdf}
-        \caption{Example of a landmark cut on a euclidean data set, with the two diamonds 
-            being the landmarks $l_1, l_2$. All blue items (left of the line) 
-            are contained in $\text{Land}_{1,2}$, all red items in $\overline{\text{Land} _{1,2}}$.}
+        \caption{A landmark cut on a euclidean data set. The two diamonds 
+            are the landmarks $l_1$ (red) $l_2$ (blue). All red points (left of the line) 
+            are contained in $\text{Land}_{1,2}$, all blue points in $\overline{\text{Land} _{1,2}}$.}
         \label{fig:landmark_cut}
     \end{figure}
 
@@ -49,7 +50,11 @@ In most experiments involving triplets, the triplets are either sampled uniforml
 \citep{kleindessnerLensDepthFunction2017, haghiriEstimationPerceptualScales2020} 
 or according to a chosen metric, for example maximizing a measure of gained information \citep{roadsEnrichingImageNetHuman2021}. 
 There is no experimental dataset available which is both sampled according to a landmark approach and exhibits a cluster structure. 
-We thus we rely on simulations for testing landmark cuts. These simulations can be found in \autoref{simulations}.
+We thus rely on simulations for testing landmark cuts. These simulations can be found in \autoref{simulations}.
+
+To make landmark tangles work with a set of triplets that are sampled uniformly at random, one can impute the missing triplets with standard methods.
+An example would be random imputation. There, one would randomly either add $(a,b,c)$ or $(a,c,b)$ to the set of triplets, if none of them were present.
+We will explore this more in-depth in \autoref{simulations}.
 
 \section{Majority cuts}\label{theory:majority_cuts}
 As explained in \autoref{theory:landmark_cuts}, sampling triplet data in a landmark-fashion is not very widely used in current practice. Due to this, we 
@@ -58,7 +63,7 @@ also present a more general approach to processing triplets to cuts that can be 
 
 As a motivation, we first think about cuts that are well suited for clustering with tangles.
 We assume that the objects are clustered based on their similarities to each other, so that 
-similar objects also belong to the same cluster. Based on this, a cut $P = \{A, \overline{A}\}$ works well for clustering if the objects in $A$ are similar to each other and
+similar objects also belong to the same cluster. Based on this, a cut $P = \left(   A, \overline{A} \right) $ is more informative for clustering if the objects in $A$ are similar to each other and
 dissimilar to the objects in $\overline{A}$. If we fix a point $a$, one way
 to generate such a cut is as follows: 
 we center a ball of radius $r$ on $a$ and add all objects contained by the ball to $A$, 
@@ -106,33 +111,30 @@ $\text{Maj} _a(r)$ is then a ball around $a$ that contains the $n \cdot \frac{r}
 $r = 0.5$ we thus expect $P_a(0.5)$ to be a ball around $a$ that contains the $\frac{n}{3}$ points that are closest to $a$. To visualize this, we plot a majority cut with a fixed anchor point on a 
 mixture of gaussians in \autoref{fig:majority_cut}. 
 As the number of triplets increases, we get closer to a true ball around $a$ containing the $\frac{n}{3}$ closest points. 
-When we have fewer than all triplets available, the majority cut contains noise: 
-some points lie outside of the desired ball, but are included in the cut, and some points
-lie inside the ball, but are not included in the cut.
+When we have fewer than all triplets available, ball around $a$ becomes corrupted by noise.
 
 What remains is the question of how to choose the radius. We can imagine that if we pick a smaller radius, we will detect smaller clusters, and if we pick a larger radius, we will detect larger
 clusters. 
 %TODO: Investigate this claim?
 In particular, we should not pick a radius smaller than the smallest cluster we want to detect, else there might exist no tangles on the cuts. 
-On the contrary, we are safe if we pick a radius that is a bit larger, as the tangles algorithm shows good performance on cuts that contain a cluster together with some additional data points 
-(as long as they are not always the same points on all cuts).
+On the contrary, we are safe if we pick a radius that is a bit larger, as the tangles algorithm shows good performance on cuts that contain a cluster together with some additional data points.
 
 \onecolumn
 \begin{figure}[ht]
     \centering
-    \subfloat[500 triplets]{%
+    \subfloat[500 (0.47\%) triplets]{%
       \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-500.pgf}}
   }
-    \subfloat[5000 triplets]{%
+    \subfloat[5000 (4.7\%) triplets]{%
       \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-5000.pgf}}}
     \hfill
-    \subfloat[20000 triplets]{%
+    \subfloat[20000 (18.8\%) triplets]{%
       \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-20000.pgf}}}
-    \subfloat[All (106200) triplets]{%
+    \subfloat[106200 (100\%) triplets]{%
       \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-106200.pgf}}}
     \caption{Majority cuts more closely resemble a ball around their anchor point as the number of 
         sampled triplets increases. 
-        We plot $\text{Maj}_a$ with radius $r=0.5$, generated according to the procedure in \autoref{theory:majority_cuts}. The big X marks the anchor point $a$. 
+        We plot $\text{Maj}_a$ with radius $r=0.5$, generated according to the procedure in \autoref{theory:majority_cuts}. The black X marks the anchor point $a$. 
         The set $\text{Maj}_a$ consists of the orange triangles, which are the points that are twice as often closer to $a$ than they are not (according to the drawn triplets). 
         The blue points are those not in $P_a$.}
     \label{fig:majority_cut}

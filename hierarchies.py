@@ -13,31 +13,39 @@ from utils import index_cluster_list
 
 class DendrogramLike(ABC):
     """
-    Interface for a class that behaves like a Dendrogram: 
+    Interface for a class that behaves like a Dendrogram:
     We can cut off the class at some point and get the clusters of the current level.
 
     We can calculate the AARI for classes that implement this interface.
     """
+
     @abstractmethod
     def clusters_at_level(self, level: int) -> list[list[int]]:
         pass
 
 
-class BinaryClusterTree():
+class BinaryClusterTree:
     """
-    A simple binary tree that serves as helper structure for 
-    other trees used for clustering. 
+    A simple binary tree that serves as helper structure for
+    other trees used for clustering.
     Values are stored in the leaves and represented by lists of integers.
 
 
     """
-    class Node:
-        """The class that we use to represent the nodes of the tree with. """
 
-        def __init__(self, value: Optional[list[int]], parent: Optional[BinaryClusterTree.Node], children: Optional[list[BinaryClusterTree.Node]]) -> None:
+    class Node:
+        """The class that we use to represent the nodes of the tree with."""
+
+        def __init__(
+            self,
+            value: Optional[list[int]],
+            parent: Optional[BinaryClusterTree.Node],
+            children: Optional[list[BinaryClusterTree.Node]],
+        ) -> None:
             self.value = value
             self.children: Union[list[BinaryClusterTree.Node], None] = children
             self.parent = parent
+            self.image = None
 
         def __str__(self) -> str:
             if self.value is not None or self.children is None:
@@ -57,6 +65,7 @@ class BinaryClusterTree():
 
         def elements_flat(self) -> list[int]:
             """Returns a list of all the elements that this node and its children hold."""
+
             def helper(node):
                 res = []
                 if node.children is None or node.children == []:
@@ -68,19 +77,20 @@ class BinaryClusterTree():
                     child_flat = helper(child)
                     res.extend(child_flat)
                 return res
+
             return helper(self)
 
     def __init__(self, tree_list: list):
         """
         Builds the tree from a nested list
-        Args: 
+        Args:
             tree_list: Nested list that represents the tree.
             Example: [[[1,2], [3,4]], 5,6] is parsed to the following tree:
 
                 | -- [5,6]
-                1   
+                1
                 |     | -- [1,2]
-                | -- 
+                | --
                       | -- [3,4]
         """
         self.root = self.Node(None, None, None)
@@ -88,7 +98,9 @@ class BinaryClusterTree():
         self._recalculate_properties()
 
     @staticmethod
-    def _build_tree(tree_list: list, parent: BinaryClusterTree.Node) -> list[BinaryClusterTree.Node]:
+    def _build_tree(
+        tree_list: list, parent: BinaryClusterTree.Node
+    ) -> list[BinaryClusterTree.Node]:
         """
         Builds up a tree from a nested list with the given parent. Returns
         list of nodes, these have to be set to the children of the given
@@ -121,7 +133,7 @@ class BinaryClusterTree():
         """
         Fills the tree with nodes such that every level is completely filled.
 
-        Mutates the tree. Node values are transferred to leftmost child 
+        Mutates the tree. Node values are transferred to leftmost child
         for nodes not on the bottom level.
         """
         target_level = self.root.depth()
@@ -133,12 +145,15 @@ class BinaryClusterTree():
                 value = node.value
                 node.value = None
                 node.children = [
-                    self.Node(value, node, None), self.Node(None, node, None)]
+                    self.Node(value, node, None),
+                    self.Node(None, node, None),
+                ]
             if len(node.children) == 1:
                 node.children.append(self.Node(None, node, None))
             # fallthrough to here is by done on purpose
             for child in node.children:
                 fill_helper(child, level - 1)
+
         fill_helper(self.root, target_level)
         self._recalculate_properties()
 
@@ -175,9 +190,9 @@ class BinaryClusterTree():
 class BinaryHierarchyTree(BinaryClusterTree, DendrogramLike):
     """
     A tree that represents a hierarchy of clusterings in binary format.
-    Each leaf is a cluster, and each internal node represents one level 
+    Each leaf is a cluster, and each internal node represents one level
     of splitting the clusters. The tree is built from a nested list
-    and filled with nodes such that every level is completely filled. 
+    and filled with nodes such that every level is completely filled.
     For details, see the fill method in the BinaryClusterTree class.
 
     The hierarchy is assumed to save a set of unique, contigous integers
@@ -201,20 +216,21 @@ class BinaryHierarchyTree(BinaryClusterTree, DendrogramLike):
         Returns all clusters at the given level. Assumes that
         the tree is filled.
 
-        If level > depth, appends empty lists to the cluster 
+        If level > depth, appends empty lists to the cluster
         result until we have 2**level clusters.
 
         Examples:
-        [[[0,1], [2,3]], [[4,5], [6,7]]] 
+        [[[0,1], [2,3]], [[4,5], [6,7]]]
             level 0 -> [[0,1,2,3,4,5,6,7]]
             level 1 -> [[0,1,2,3], [4,5,6,7]]
             level 2 -> [[0,1], [2,3], [4,5], [6,7]]
         """
         if level < 0:
             raise ValueError(
-                f"Level {level} is not in the range of the hierarchy: {self.depth}")
+                f"Level {level} is not in the range of the hierarchy: {self.depth}"
+            )
         if level > self.depth:
-            lists_to_fill = 2**level - 2**self.depth 
+            lists_to_fill = 2**level - 2**self.depth
             level = self.depth
         else:
             lists_to_fill = 0
@@ -239,21 +255,24 @@ class BinaryHierarchyTree(BinaryClusterTree, DendrogramLike):
                 raise ValueError(f"Element {element} is not an integer.")
         if not len(np.unique(self.elements)) == len(self.elements):
             raise ValueError(f"Elements are not unique: {self.elements}")
-        if not (min(self.elements) == 0 and max(self.elements) == len(self.elements) - 1):
+        if not (
+            min(self.elements) == 0 and max(self.elements) == len(self.elements) - 1
+        ):
             raise ValueError(f"Elements are not contigous: {self.elements}")
 
 
-def aari(hierarchy_left: DendrogramLike, hierarchy_right: DendrogramLike, depth: int) -> float:
+def aari(
+    hierarchy_left: DendrogramLike, hierarchy_right: DendrogramLike, depth: int
+) -> float:
     """
-    Returns the similarity between the two hierarchies according to the 
+    Returns the similarity between the two hierarchies according to the
     Average Adjusted Rand Index (see the appendix Ghoshdastidar et al., 2019
     for a more thorough definition).
     """
     aris = []
     for l in range(1, depth + 1):
         clusters_left = index_cluster_list(hierarchy_left.clusters_at_level(l))
-        clusters_right = index_cluster_list(
-            hierarchy_right.clusters_at_level(l))
+        clusters_right = index_cluster_list(hierarchy_right.clusters_at_level(l))
         aris.append(adjusted_rand_score(clusters_left, clusters_right))
     return np.mean(aris)
 
