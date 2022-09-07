@@ -1,50 +1,66 @@
-\chapter{Case Study: Data from Psychophysics}\label{real}
+\chapter{Real World Data from Psychophysics}\label{real}
 Psychophysics is a field of study that investigates the influence of physical stimuli on human perception. An example would be the relationship between the wavelength of 
 light and the color sensation that the light produces (see \autoref{shepardAnalysisProximitiesMultidimensional1962a}). To investigate this relationship, researchers in psychophysics
 often set up experiments to collect triplets from human participants. For the example of color perception, a researcher might place a participant in front of a computer 
-screen, and repeatedly show them three different colors, $a$, $b$, $c$, together with the question \textit{is a more similar to b or to c?} 
-The answers of the participants then constitute our triplet data set, which are often analysed using ordinal embeddings afterwards.
+screen, and repeatedly show them three different colors, $a$, $b$, $c$, together with the question \textit{is a more similar to b or c?} 
+The answers of the participants then constitute our triplet data set, which is often analyzed using ordinal embeddings afterward.
 
-In this chapter, we choose a data set consisting of triplets from psychophysics and analyse it using tangles. 
-This shows the viability of tangles as a data evaluation tool and serves as an 
-instructive application for how researchers can use tangles for their own analysis. 
+In this chapter, we choose a data set consisting of triplets from psychophysics and analyze it using tangles. 
+We compare the results of our analysis with the results that other researchers have received using more established methods in psychophysics, such as ordinal embeddings.
+This chapter thus shows the strengths and weaknesses of tangles on real experimental data.
 
 \section{Data background}
 The data we use was collected by Schönmann during her bachelor thesis in \cite{inesschonmannSimilarityJudgementsNatural2021}. Schönmann originally
 constructed the dataset to investigate how the formulation of a triplet question influences 
 the perception of a person. It consists of the triplet data obtained from multiple
-participants using different questions and image sets. The resulting data sets could then be analysed to show differing similarity perceptions of the
-participant depending on how the triplet questions were formulated and which image set was used.
-To collect the data, the participants were presented with three images randomly drawn from the a specific set of images, and together with one out of four different questions. 
+participants using different questions and image sets.  The resulting data sets were then analyzed to show differing similarity perceptions of the
+participants depending on how the triplet questions were formulated and which image set was used.
+To collect the data, the participants were presented with three images randomly drawn from the specific set of images, and together with one out of four different questions. 
 
 The possible questions are: \textit{Which is the odd one out?}, \textit{Which one is more similar?},
-\textit{Which one looks more similar?} and \textit{Which concept is more similar?}, out of which we only study the question \textit{Which the odd one out?} 
+\textit{Which one looks more similar?} and \textit{Which concept is more similar?}, out of which we only study the question \textit{Which is the odd one out?} 
 The images that are shown to the participants come from three different image sets: \textit{action}, \textit{taxonomic} and \textit{thematic}, out of which we only use the thematic image set.
 Out of the three image sets, we only use the thematic image set. It consists of 5 classes which can be roughly divided into two themes: barn (straw, hay, pitchforks) and kitchen (forks, dishwashers).
 
 The responses of the participants are converted to triplets as follows: if the participant is presented with images $a, b, c$ and signals that $a$ is the odd one out, 
 we know that $b$ must be more similar to $c$ than to $a$ and $c$ must be more similar to $b$ than to $a$. Thus, we can gain two triplets from this answer: $(b,c,a)$ and $(c,b,a)$.
-For each combination of participant, image set, and question combination, the data set consists of $462$ unique triplets. 
-Participant $2$ has repeated the experiment over a month later, but we have decided not to include those triplets to stay faithful to the original evaluation.
+For each combination of a participant, image set, and question, the data set consists of $462$ unique triplets. 
+Participant $2$ repeated the experiment over a month later, but we have decided not to include those triplets to stay faithful to the original evaluation.
+
+The data set is particularly suited for our tangles experiment, as the image set consists of images from different classes (for example straw, hay, et cetera). 
+We expect that this makes the resulting triplets particularly suited for clustering. Additionally, the analysis done by Schönmann already identified certain 
+clusters in the data, which we can expect to see in the tangles analysis as well.
 
 \section{Applying Tangles}
-In the following, we show how to apply tangles to the triplet data of Schönmann.
+\subsection{Setup}
+In this section, we show how to apply tangles to the triplet data set of Schönmann.
 As there is a lot of data present, it is not feasible to repeat our evaluations for all possible data points.
-We choose one particular example to step through rigorously, and then compare it to one other example. 
-For our evaluations, we use the odd-one out triplets, as these have been reported in the work by Schönmann as 
-having a higher embedding accuracy. We also use the thematic image set, as Schönmann has reported embeddings that can be cleanly 
-separated into different categories.
+We choose the triplets of participant 2 to step through rigorously, and then briefly repeat our evaluations for participant 3. We expect similar results for both observers,
+as we keep the question and the image set the same.
 
-We start out with participant 2. We first reproduce the results by Schönmann by embedding the data with SOE into two dimensions 
-(see \autoref{fig:ines-embedding-a}). One can linearly separate two sets of clusters, which correspond to a divide between kitchen objects 
-(dish-washer, fork) and barn objects (hay, straw, pitchfork).  We then apply majority tangles with an agreement of 3 and a radius of 1 to the 
-triplets to obtain a clustering. These clusters are visualised in \autoref{fig:ines-embedding-b} using the previously obtained embedding. Care must be taken: the embedding
-from SOE is not a ground-truth embedding and just serves as a visualisation aid. If the elements of a cluster are far 
-apart in this visualisation, this does not mean that the clustering is wrong – it could just as well be that the embedding is wrong or simply cannot capture
-the cluster structure appropriately. 
+For the image set, we use the thematic one, as Schönmann has reported embeddings that can be cleanly 
+separated into different categories.  We also use the odd-one out triplets, as these have been reported in the work by Schönmann as 
+having a higher embedding accuracy. As the triplets are not in a landmark format, but uniformly sampled from the set of all triplets, we use majority tangles. 
 
-\onecolumn
-\begin{figure}[ht]
+We apply majority tangles on the triplets using an agreement of 3 and a radius of 1 to obtain a clustering. As a visualization aid, 
+we plot the clustering onto a 2d-embedding from SOE. Care must be taken: the embedding
+from SOE is not a ground-truth embedding and just serves as a visualization aid. If the elements of a cluster are far 
+apart in this visualization, this does not mean that the clustering is wrong – it could just as well be that the embedding does not correctly 
+represent the ground truth similarity of the data points.
+
+In the analysis, Schönmann qualitatively identified different clusters for participant 2 on the thematic image set with the odd-one-out triplets. 
+To do this, she identified a separating line in the SOE embedding of the triplets, which divided the objects into the two categories \textit{barn} (hay, pitchfork, straw) and 
+\textit{kitchen} (dishwasher, fork). We expect to see a similar divide in the clusters produced by tangles. 
+As a follow-up, we use the hierarchical clusterings and the explanations produced by tangles to get further insights into the produced clustering. 
+
+\subsection{Embedding and clustering}
+We first reproduce the results by Schönmann by embedding the data with SOE into two dimensions 
+(see \autoref{fig:ines-embedding-a}). In this embedding, one can linearly separate two sets of clusters, which correspond to a divide between kitchen objects 
+(dishwasher, fork) and barn objects (hay, straw, pitchfork), as reported by Schönmann in her thesis.  We then apply majority tangles to the 
+triplets and obtain a clustering. These cluster labels are visualised in \autoref{fig:ines-embedding-b}) using the embedding from SOE. 
+
+
+\begin{figure}[h]
     \centering
     \subfloat[Original classes]{%
     \resizebox{0.5\textwidth}{!}{\input{figures/results/ines_vp2_odd_thematic_classes.pgf}}
@@ -58,26 +74,28 @@ the cluster structure appropriately.
     \subfloat[Embedding with images]{%
     \centering
     \resizebox{0.85\textwidth}{!}{\includegraphics{figures/results/vp2_embedding_thematic_stimuli_images.pdf}}
+    \label{fig:ines-embedding-c}
     }
     \caption{
-        Embedding of the odd-one-out triplet data from participant 2 on the thematic image set.
+        Embedding of the odd-one-out triplets from participant 2 on the thematic image set.
         In a), we see the original classes, and in b) we see the predictions that we receive by
         applying majority tangles with an agreement of 3 and a radius of 1.
-        In c), we have plotted the original images at the coordinates of their respective SOE embedding.
+        In c), we plotted the original images at the coordinates of their respective SOE embedding as a visualization aid.
     }
     \label{fig:ines-embedding}
 \end{figure}
 
 We can see that the clustering from tangles (\autoref{fig:ines-embedding-b}) also produces a similar divide between kitchen (orange triangles) and barn (blue circles) items. 
-However, we see a third cluster structure (grey squares), which is a mix between two pitchforks and a kitchen fork. 
-When we look at these items (depicted in \autoref{fig:thematic-images-forks-a}), we notice that they look more dissimilar to their
-counterparts in the kitchen or barn cluster. The fork (left in \autoref{fig:thematic-images-forks-a}) has a design that is more reminiscent of pitchforks, and the two pitchforks
-look more clean than the other pitchforks in \autoref{fig:thematic-images-forks-c} (no dirt on them, not depicted lying in grass). Thus, it makes sense that these three items are judged
-as more similar to each than their counterparts in the kitchen and barn cluster and thus get put into a separate clustering. Interestingly, that is an insight that could not be reached from the 
-SOE embedding alone and might provide valuable information for a researcher.
+However, we see a third cluster structure (grey squares), which is a mix between two pitchforks and a kitchen fork. We want to determine whether this is an error of our
+method or possibly a new insight that could be gained.
 
-\onecolumn
-\begin{figure}[ht]
+When we look at items in the grey squares cluster (depicted in \autoref{fig:thematic-images-forks-a}), we notice that they look more dissimilar to their
+counterparts in the kitchen or barn cluster. The fork (left in \autoref{fig:thematic-images-forks-a}) has a design that is more reminiscent of pitchforks, and the two pitchforks
+look cleaner than the other pitchforks in \autoref{fig:thematic-images-forks-c} (no dirt on them, not depicted lying in grass). Thus, it makes sense that these three items are judged
+as more similar to each than their counterparts in the kitchen and barn cluster and thus get put into a separate clustering. 
+Interestingly, that is an insight that could not be reached from the SOE embedding alone, as the items are relatively far away from each other in the embedding. Thus, tangles might provide valuable information for a researcher. 
+
+\begin{figure}[h]
     \centering
     \subfloat[Third cluster of different forks (gray squares)]{%
         \label{fig:thematic-images-forks-a}
@@ -110,50 +128,51 @@ SOE embedding alone and might provide valuable information for a researcher.
     \label{fig:thematic-images-forks}
 \end{figure}
 
-Next, we explore how to use the hierarchy reconstruction and the explanatory power that tangles provides. 
+\FloatBarrier
+\subsection{Hierarchical clustering}
+Next, we explore what the hierarchy of the clusters looks like.
 For this, we plot the hierarchy that we receive from the tangles algorithm in \autoref{fig:soft-tree-vp2}. 
-As expected, we first see a coarse, thematic divide between kitchen (node 2) and barn (node 1), with 
+As expected, we first see a coarse, thematic divide between the kitchen and the barn cluster, with 
 the clean-looking pitchforks being placed together with the kitchen cluster. 
 We then see a finer clustering of the kitchen cluster (node 2), which is split into a set of various kitchen items (node 5), and the cluster of special forks (node 6). 
 The fact that the special forks belong to the coarse kitchen cluster and only get separated off in a later step could be interpreted as the participant thinking of the 
-clean-looking pitchforks as belonging more into a kitchen than a barn. This is an insight that we didn't see from the ordinal embedding alone,
+clean-looking pitchforks as belonging more to a kitchen than a barn. This is an insight that we didn't see from the ordinal embedding alone,
 highlighting a possible strength of tangles.
 
 % contains the color scale
-%TODO: Increase bar font, remove x,y font?
-\onecolumn
+%TODO: Increase bar font, remove x,y font.
 \begin{figure}[ht]
     \centering
     \resizebox{\textwidth}{!}{\includegraphics{figures/results/vp2_soft_tree.pdf}}
     \caption{
         The hierarchy produced by the tangles algorithm on the thematic image set for participant 2. 
-        Each node represents a (soft) clustering, which we plot in its place. The points are embedded via SOE as a visualisation aid.
+        Each node represents a (soft) clustering, which we plot in its place. The points are embedded via SOE as a visualization aid.
         The color of a point corresponds to the probability that the point belongs to the given cluster, the darker, the more probable. 
-        The label of the node is an internal, unique number that can be used to identify it.
     }
     \label{fig:soft-tree-vp2}
 \end{figure}
 
-The last step showcased the strength of the hierarchical clustering of tangles. Next, we show how we can use tangles to explain the clustering:
+\FloatBarrier
+\subsection{Explainability}
+So far we have inspected the clusters that tangles produced. Now, we show how we can use tangles to explain the clustering:
 why does a particular image belong to the kitchen or barn cluster? For this, we can look at the characterizing cuts of the clusters. As a reminder, 
 these are the cuts at the splitting nodes that contain a meaningful decision between the left and the right subtree.
 
-We visualize the characterising cuts in \autoref{fig:characterising_cuts}, together with the images that induce the particular cuts. As our cuts are interpretable (a majority cut 
+We visualize the characterizing cuts in \autoref{fig:characterising_cuts}, together with the images that induce the particular cuts. As our cuts are interpretable (a majority cut 
 with anchor point $a$ contains points that are close to $a$), we can directly use this interpretation for our clustering. As we can see in \autoref{fig:characterising_cuts_a}, 
 the items in the barn cluster are there because they are similar to the two straw/hay images shown in \autoref{fig:characterising_cuts_b}. 
-%This is similar to our intuition, straw and hay intuitively belong in a barn setting and definitely not in a kitchen, while pitchforks are might be a bit more ambiguous.
+%This is similar to our intuition, straw and hay intuitively belong in a barn setting and not in a kitchen, while pitchforks might be a bit more ambiguous.
 
 Our interpretation is that the items that are in the cluster of other kitchen items are there because they are similar to
-the dishwashers we have plotted in \autoref{fig:characterising_cuts_d}. This also makes sense, as we would interpret the dishwashers to very clearly belong into a kitchen environment, while the forks might be more ambiguous.
+the dishwashers we have plotted in \autoref{fig:characterising_cuts_d}. This also makes sense, as we would interpret the dishwashers to very clearly belong in a kitchen environment, while the forks might be more ambiguous.
 
 Overall, there is some small caveat to our explanation. In a majority cut, we only have a satisfying explanation in one direction: We know that if a point $b$ is in the majority cut that has anchor point $a$, 
 then $b$ is close to $a$. However, the reverse direction might be unsatisfying: if a point $c$ is not in the majority cut, we know that it is not close to $a$. 
 If we want to know how the cluster of forks and pitchforks formed, saying that they are dissimilar to the dishwashers plotted in \autoref{fig:characterising_cuts_d} is not a strong argument.
-For example, we would rather know that they are similar to a certain other item.  To remedy this, we can use more interpretable cuts. 
+For example, we would rather know that they are similar to a certain item.  To remedy this, we can use more interpretable cuts. 
 If we would have sampled the data in a landmark format, we would have been able to make statements of the form: $a$ is in a certain cluster because it is closer to $b$ than to $c$.
 
 
-\onecolumn
 \begin{figure}[ht]
     \centering
     \subfloat[Characterising cuts coarse cluster (kitchen-barn)] {
@@ -162,47 +181,47 @@ If we would have sampled the data in a landmark format, we would have been able 
         \resizebox{0.5\textwidth}{!}{\import{figures/results}{node_18T_characterizing_23.pgf}}
     }
     \hfill
-    \subfloat[Images of data points point inducing characterising cuts for coarse cluster] {
+    \subfloat[Images of data points point inducing characterizing cuts for coarse cluster] {
         \label{fig:characterising_cuts_b}
         \resizebox{0.25\textwidth}{!}{\includegraphics{figures/thematic_stimuli/straw_hay_01b.jpg}}
         \resizebox{0.25\textwidth}{!}{\includegraphics{figures/thematic_stimuli/hay_02s.jpg}}
     }
     \hfill
-    \subfloat[Characterising cuts fine cluster (kitchen items - special forks)]{
+    \subfloat[Characterising cuts fine cluster (kitchen/special forks)]{
         \label{fig:characterising_cuts_c}
         \resizebox{0.333\textwidth}{!}{\import{figures/results}{node_19F_characterizing_0.pgf}}
         \resizebox{0.333\textwidth}{!}{\import{figures/results}{node_19F_characterizing_1.pgf}}
         \resizebox{0.333\textwidth}{!}{\import{figures/results}{node_19F_characterizing_3.pgf}}
     }
     \hfill
-    \subfloat[Images of data points inducing characterising cuts for fine cluster] {
+    \subfloat[Images of data points inducing characterizing cuts for fine cluster] {
         \label{fig:characterising_cuts_d}
         \resizebox{0.25\textwidth}{!}{\includegraphics{figures/thematic_stimuli/dishwasher_03s.jpg}}
         \resizebox{0.25\textwidth}{!}{\includegraphics{figures/thematic_stimuli/dishwasher_09s.jpg}}
         \resizebox{0.25\textwidth}{!}{\includegraphics{figures/thematic_stimuli/dishwasher_05s.jpg}}
     }
     \caption{
-        Depiction of the characterising cuts of all splitting nodes on the thematic image data set.  We draw the orientation that corresponds to the left subtree 
-        (which is inverted for the right subtree). This means, if a datapoint is often contained in the cuts that we depicted above, it is placed in the left subtree
-        with high probability. In a), we plotted the characterising cuts for the root node and in c) have plotted
-        the characterising cuts for node 2. As these cuts come from our set of majority cuts, we have marked the data point that 
-        induced the particular cut with a black X. Below the characterising cuts in b) and d), we have plotted the images corresponding to the marked points.
+        Depiction of the characterizing cuts of all splitting nodes on the thematic image data set.  We draw the orientation that corresponds to the left subtree 
+        (which is inverted for the right subtree). This means, that if a datapoint is often contained in the cuts that we depicted above, it is placed in the left subtree with high probability. In a), we plotted the characterizing cuts for the root node and in c) have plotted
+        the characterizing cuts for the kitchen/special forks cluster. As these cuts come from our set of majority cuts, we have marked the data point that 
+        induced the particular cut with a black X. Below the characterizing cuts in b) and d), we have plotted the images corresponding to the marked points.
     }
     \label{fig:characterising_cuts}
 \end{figure}
 
+\FloatBarrier
+\subsection{Evaluation of another participant}
 Next, we check if the results can be repeated for another participant. 
-We select the odd triplets generated from the thematic image set of participant 3 and expect to see a behaviour similar to our evaluations for participant 2. 
+We select the odd triplets generated from the thematic image set of participant 3 and expect to see similar behavior to our evaluations for participant 2. 
 In \autoref{fig:ines-embedding-vp3} we plot the embedding
-from Schönmann again together with the tangles clustering. This time, we see three clusters (hay-straw, pitchforks and dishwashers-forks). These clusters coincide nicely
+from Schönmann again together with the tangles clustering. This time, we see three clusters (hay/straw, pitchforks and dishwashers/forks). These clusters coincide nicely
 with our classes, aside from one fork being clustered together with the pitchforks. We note that this is not the fork from \autoref{fig:thematic-images-forks-a} that was clustered together 
-with the pitchforks, so this might be a missclassification. 
-If we look at the hierarchy in \autoref{fig:soft-tree-vp3}, we see that (contrary to participant 2) the pitchforks (node 1) first get split off, 
-and then the dishwashers-forks cluster (node 5) from the straw-hay (node 6).
+with the pitchforks, so this might be a misclassification. 
+If we look at the hierarchy in \autoref{fig:soft-tree-vp3}, we see that (contrary to participant 2) the pitchforks first get split off, 
+and then the kitchen from the straw-hay cluster. 
 %TODO: Ask David
 %This could again lead to interesting conclusions, which should probably be discussed by someone with more expert knowledge in the field, possibly using other evaluation data.
 
-\onecolumn
 \begin{figure}[ht]
     \centering
     \subfloat[Original classes]{%
@@ -218,42 +237,46 @@ and then the dishwashers-forks cluster (node 5) from the straw-hay (node 6).
     }
     \caption{
         Analog to \autoref{fig:ines-embedding}. In a), we plot the original classes over an SOE embedding, in b) we plot the prediction of majority tangles with agreement 3 and radius 1 over 
-        a 2-dimensional SOE-embedding. In c), we see the original images at the coordinages of their respective SOE embedding.
+        a 2-dimensional SOE embedding. In c), we see the original images at the coordinates of their respective SOE embedding.
     }
     \label{fig:ines-embedding-vp3}
 \end{figure}
 
-\onecolumn
 \begin{figure}[ht]
     \centering
     \subfloat[]{%
     \resizebox{\textwidth}{!}{\includegraphics{figures/results/vp3_soft_tree.pdf}}
     }
     \caption{
-        Analog to \autoref{fig:soft-tree-vp2}. We plot the hierarchy of a tangles clustering on the triplets from participant 3 on the thematic image set. 
+        Tangles produce similar clusters on participant 3 and participant 2. We plot the hierarchy of a tangles clustering on the triplets from participant 3 on the thematic image set. 
         On each node, we plot the soft clustering corresponding to it.
     }
     \label{fig:soft-tree-vp3}
 \end{figure}
 
-
+\FloatBarrier
 \section{Discussion}
-In this chapter, we showed that tangles can be used as a tool in evaluating triplet experiments, providing valuable insights. 
-To our knowledge, hierarchical and explainable methods
-have not been used in psychophysics to this date, allowing tangles to fill a potential niche.
-The more flexible clustering by tangles can show new dependencies between data points, as we 
-made out a cluster of forks being perceived differently by participant 2. The hierarchy 
-provided by tangles can help put these new dependencies into a better perspective, 
-allowing us to gather that the pitchforks in the special fork cluster were perceived to 
-belong more in a kitchen setting than in a barn setting.
-The explanations by tangles were used to discover the more defining items of a cluster (straw/hay for
-a barn, dishwashers for a kitchen). 
+In this chapter, we evaluated tangles on real-world data.  
+We first clustered the data with majority tangles, which agreed well with the qualitative analysis that Schönmann has done on the data using more established methods. 
+In addition, the more flexible clustering by tangles can show new dependencies between data points, as we 
+made out a cluster of forks being perceived differently by participant 2. 
 
-However, we think that not all of the potential of tangles could be showcased here. 
-In our simulations, landmark tangles performed much better than majority tangles on all data sets.
+The hierarchy provided by tangles can help put these new dependencies into a better perspective, 
+and allowed us to gather that the pitchforks in the special fork cluster were perceived to 
+belong more in a kitchen setting than in a barn setting.
+The explanations by tangles were then used to discover the more defining items of a cluster (straw/hay for
+a barn, dishwashers for a kitchen).  To our knowledge, hierarchical and explainable methods
+have not been used on triplets in psychophysics to this date, allowing tangles to fill a potential niche.
+
+However, we think that tangles could perform better under different circumstances.
+As the analyzed data set consisted of uniformly sampled triplets, we had to use majority tangles in our analysis.
+However, in our simulations, landmark tangles performed much better than majority tangles on all data sets.
 Also, landmark tangles can provide explanations that are more intuitive than those from majority tangles,
-as the cuts are inherently more explainble. An interesting addition to our research would 
-be applying tangles to an \textit{ideal} real-world data set. This means that we have objects
-that exhibit a cluster structure, and that we have triplets sampled in a landmark format.
-To our knowledge, such a data set does not exist yet.
+as the cuts are inherently more explainable. 
+An addition to our research would be applying tangles to a more favorable real-world data set. This means that the data set contains both:
+\begin{itemize}
+    \item objects that exhibit a cluster structure, for example, distinct classes, such as the analyzed data set from Schönmann
+    \item triplets sampled in a landmark format
+\end{itemize}
+To our knowledge, such a data set did not exist when we conducted our evaluations.
 

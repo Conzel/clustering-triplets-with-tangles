@@ -48,8 +48,8 @@ a linear cut between the two points, as illustrated in \autoref{fig:landmark_cut
 The landmark approach is an unusual way of sampling triplets.
 In most experiments involving triplets, the triplets are either sampled uniformly at random
 \citep{kleindessnerLensDepthFunction2017, haghiriEstimationPerceptualScales2020} 
-or according to a chosen metric, for example maximizing a measure of gained information \citep{roadsEnrichingImageNetHuman2021}. 
-There is no experimental dataset available which is both sampled according to a landmark approach and exhibits a cluster structure. 
+or according to a chosen metric, for example, maximizing a measure of gained information \citep{roadsEnrichingImageNetHuman2021}. 
+There is no experimental dataset available that is both sampled according to a landmark approach and exhibits a cluster structure. 
 We thus rely on simulations for testing landmark cuts. These simulations can be found in \autoref{simulations}.
 
 To make landmark tangles work with a set of triplets that are sampled uniformly at random, one can impute the missing triplets with standard methods.
@@ -62,14 +62,14 @@ also present a more general approach to processing triplets to cuts that can be 
 %For this, we again use the intuition that triplets tell us something about the closeness of data points, and thus about the cluster structure. 
 
 As a motivation, we first think about cuts that are well suited for clustering with tangles.
-We assume that the objects are clustered based on their similarities to each other, so that 
+We assume that the objects are clustered based on their similarities to each other so that 
 similar objects also belong to the same cluster. Based on this, a cut $P = \left(   A, \overline{A} \right) $ is more informative for clustering if the objects in $A$ are similar to each other and
 dissimilar to the objects in $\overline{A}$. If we fix a point $a$, one way
 to generate such a cut is as follows: 
 we center a ball of radius $r$ on $a$ and add all objects contained by the ball to $A$, 
 and all others to $\overline{A}$. This is not perfect, but we know that the objects
 contained in $A$ have at least some level of closeness (they all have 
-at maximum $2r$ distance from each other). 
+a maximum distance of $2r$ from each other). 
 
 Next, assume that we have a set of $n$ objects $D$ and a set of triplets $T$ on the
 objects. We now develop a method of approximating a ball around a point $a$ using the
@@ -111,7 +111,7 @@ $\text{Maj} _a(r)$ is then a ball around $a$ that contains the $n \cdot \frac{r}
 $r = 0.5$ we thus expect $P_a(0.5)$ to be a ball around $a$ that contains the $\frac{n}{3}$ points that are closest to $a$. To visualize this, we plot a majority cut with a fixed anchor point on a 
 mixture of gaussians in \autoref{fig:majority_cut}. 
 As the number of triplets increases, we get closer to a true ball around $a$ containing the $\frac{n}{3}$ closest points. 
-When we have fewer than all triplets available, ball around $a$ becomes corrupted by noise.
+When we have fewer than all triplets available, the ball around $a$ becomes corrupted by noise.
 
 What remains is the question of how to choose the radius. We can imagine that if we pick a smaller radius, we will detect smaller clusters, and if we pick a larger radius, we will detect larger
 clusters. 

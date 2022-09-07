@@ -11,14 +11,14 @@ terms of features, let alone define sensible features in the first place.  It wo
 Additionally, the experiment designer would have to deal with uniting differing internal scales of different observers during data evaluation. 
 A preferred approach might be to gather triplets on the data. 
 To obtain these triplets, the experiment designer can repeatedly draw
-three different colors, which are presented to a human , together with a 
-suitable question. For example, we might draw the colors violet, red, yellow,
-and ask the the observer \textit{is violet more similar to red or to yellow?} These questions
+three different colors, which are presented to a human, together with a 
+suitable question. For example, we might draw the colors violet, red and yellow,
+and ask the observer \textit{is violet more similar to red or yellow?} These questions
 are comparatively easy to answer for humans. 
 What remains is the question of how to evaluate the obtained triplet data.
 
 A small research community has formed around the task of dealing with triplets.
-Most of this community focusses on ordinal embeddings
+Most of this community focuses on ordinal embeddings
 \citep{agarwalGeneralizedNonmetricMultidimensional2007, tamuzAdaptivelyLearningCrowd2011,
 laurensvandermaatenStochasticTripletEmbedding2012,   teradaLocalOrdinalEmbedding2014, jainFiniteSamplePrediction2016, ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}.
 An ordinal embedding is an algorithm that aims to place the data points into a euclidean space
@@ -28,12 +28,12 @@ no matter the dimension of the embedding space or how the points are placed in i
 This can for example be the case if the triplets are created using a distance function that does not obey the triangle inequality. Another possible complication can be contradicting triplets,
 which often occur when gathering data from human observers. 
 
-A big advantage of ordinal embeddings however, is precisely that we obtain a euclidean representation of the data. 
+However, a big advantage of ordinal embeddings is exactly that we obtain a euclidean representation of the data. 
 For euclidean data, there are many good, readily available algorithms for almost all tasks. 
 Thus, clustering on triplet data can be tackled by getting a euclidean representation of the data
 from an ordinal embedding and applying a classical clustering algorithm, such as k-means \citep{lloydLeastSquaresQuantization1982}, on 
 this representation. An example of this approach can be seen in \citep{kleindessnerLensDepthFunction2017}. However, as mentioned before, an ordinal embedding 
-often cannot satisfy all triplet comparisons on the original data, and is therefore not 
+often cannot satisfy all triplet comparisons on the original data and is therefore not 
 necessarily a faithful representation. 
 An alternative approach is devising an algorithm to solve the desired task directly 
 using the triplets, which has shown promising results.
@@ -47,11 +47,11 @@ different kernel-based clustering algorithms.
 triplets to estimate a similarity function between the data points and applied 
 a linkage algorithm to obtain a hierarchical clustering from the data.
 
-In a recent work, \cite{klepperClusteringTanglesAlgorithmic2021} proposed a novel framework
+In a recent paper, \cite{klepperClusteringTanglesAlgorithmic2021} proposed a novel framework
 for clustering based on tangles, which are a mathematical tool originating from graph theory 
 \citep{robertsonGraphMinorsObstructions1991}. The tangles algorithm has been shown to have 
-interesting properties, such as inherent explainability (under certain conditions) and being suitable for hierarchical clustering.
-One of the central objects in this framework are cuts, which are ways of dividing a set into
+interesting properties, such as inherent explainability (under certain conditions) and is suitable for hierarchical clustering.
+Central objects in this framework are cuts, which are ways of dividing a set into
 two distinct, non-overlapping subsets. To cluster data using the tangles framework, one first
 needs to obtain a set of cuts on the data. These cuts are required to
 hold a little bit of information about the cluster structure of the data. The 
@@ -62,7 +62,7 @@ In this thesis, we present two novel methods to process triplets to cuts suitabl
 tangles algorithm. Using these methods, we 
 demonstrate that the tangles algorithm can be successfully applied to (hierarchically) cluster triplet data without creating an intermediate ordinal embedding. 
 We evaluate our approach by simulated and experimental data and show that it is competitive 
-in performance to ordinal embedding based approaches, while providing explainable results. 
+in performance to approaches based on ordinal embeddings, while providing explainable results. 
 
 This thesis is organized as follows: In \autoref{theory}, we give an introduction to tangles and ordinal data, which lays the necessary foundations for the rest of the work. 
 In \autoref{methods}, we present our two cut finding algorithms, named \textit{landmark cuts} and \textit{majority cuts}.

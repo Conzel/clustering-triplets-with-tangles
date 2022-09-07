@@ -18,7 +18,7 @@ CB_COLOR_CYCLE = ["#006BA4", "#FF800E", "#ABABAB", "#595959", "#5F9ED1", "#006BA
 LINE_STYLES = ["-o", "-^", "-s", 
                "-*", "-D", 
                "--o", "--^", "--s", "--*", "--D"]
-SYMBOLS = ["o", "^", "s", "*", "D"]
+SYMBOLS = ["o", "^", "s", "D", "*", "P", "p", "X"]
 MARKER_SIZES = [8,8,8, 
                 10,8,8,
                 8,8,10]
@@ -215,14 +215,14 @@ class ThesisPlotter:
         for i in range(np.max(ys.astype(int)) + 1):
             mask = (ys == i)
             if alternative_symbols:
-                symbol = SYMBOLS[i % 5]
+                symbol = SYMBOLS[i % 8]
             else:
                 symbol = "."
             plt.plot(xs[:, 0][mask], xs[:, 1][mask], symbol, label="Cluster " + str(i + 1))
         plt.xlabel("x")
         plt.ylabel("y")
     
-    def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray, markersize=8, reverse=False):
+    def assignments_different_symbols(self, xs: np.ndarray, ys: np.ndarray, markersize=8, reverse=False, start_at: int = 0):
         plt.figure(figsize=(4.2,3.2))
         labels = np.unique(ys)
         if reverse:
@@ -233,7 +233,7 @@ class ThesisPlotter:
             mask = (ys == label)
             if isinstance(label, (np.integer, int)):
                 label = "Cluster " + str(label + 1)
-            plt.plot(xs[:, 0][mask], xs[:, 1][mask], SYMBOLS[i % 5], c=CB_COLOR_CYCLE[i], markersize=markersize, label=label)
+            plt.plot(xs[:, 0][mask], xs[:, 1][mask], SYMBOLS[(i + start_at) % 8], c=CB_COLOR_CYCLE[i + start_at], markersize=markersize, label=label)
         plt.xlabel("x")
         plt.ylabel("y")
     
