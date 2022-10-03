@@ -1,7 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% LaTeX-Rahmen fuer das Erstellen von Masterarbeiten
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% allgemeine Einstellungen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -70,22 +69,22 @@
  
 \begin{titlepage}
  \begin{center}
-  {\LARGE Eberhard Karls Universit\"at T\"ubingen}\\
-  {\large Mathematisch-Naturwissenschaftliche Fakult\"at \\
-Wilhelm-Schickard-Institut f\"ur Informatik\\[4cm]}
+  {\LARGE Eberhard Karls University of T\"ubingen}\\
+  {\large Department of Mathematics and Natural Sciences \\
+Wilhelm Schickard Institute for Computer Science\\[4cm]}
   {\huge Master Thesis Computer Science\\[2cm]}
-  {\Large\bf  Tangles on Ordinal Data\\[1.5cm]}
+  {\Large\bf  Clustering Triplets with Tangles \\[1.5cm]}
  {\large Alexander Conzelmann}\\[0.5cm]
-Datum\\[4cm]
+18.10.2022\\[4cm]
 {\small\bf Reviewers}\\[0.5cm]
   \parbox{7cm}{\begin{center}{\large Prof. Dr. Ulrike von Luxburg}\\
    Theory of Machine Learning\\
-  {\footnotesize Wilhelm-Schickard-Institut f\"ur Informatik\\
-	Universit\"at T\"ubingen}\end{center}}\hfill\parbox{7cm}{\begin{center}
+  {\footnotesize Wilhelm Schickard Institute for Computer Science\\
+	University of T\"ubingen}\end{center}}\hfill\parbox{7cm}{\begin{center}
   {\large Prof. Felix Wichmann, DPhil}\\
   Neural Information Processing\\
-  {\footnotesize Wilhelm-Schickard-Institut f\"ur Informatik\\
-	Universit\"at T\"ubingen}\end{center}
+  {\footnotesize Wilhelm Schickard Institute for Computer Science\\
+	University of T\"ubingen}\end{center}
  }
   \end{center}
 \end{titlepage}
@@ -99,7 +98,7 @@ Datum\\[4cm]
 \begin{minipage}{11.2cm}
 \textbf{Conzelmann, Alexander}\\
 \emph{Tangles on Ordinal Data}\\ Master Thesis Computer Science\\
-Eberhard Karls Universit\"at T\"ubingen\\
+Eberhard Karls University of T\"ubingen\\
 Thesis period: 04/2022-10/2022
 \end{minipage}
 \newpage
@@ -115,27 +114,41 @@ Thesis period: 04/2022-10/2022
 
 
 \section*{Abstract}
-We investigate a new algorithm for clustering triplet data (comparison-based data 
+We investigate a new algorithm for clustering triplets (comparison-based data 
 without absolute distance information). This new approach is based on the tangles framework,
 a tool previously used to find dense structures in graphs, which 
-we extend to work on triplet data. Current work focusses
-on embedding triplet data into a euclidean space, resulting possibly in distortions of our data,
+we extend to work on triplets. Current work on clustering triplets focusses
+on embedding the triplets into a euclidean space, resulting possibly in distortions of our data,
 and then following up with a classical clustering algorithm. In contrast, our proposed method
 does not construct an intermediate embedding, potentially introducing fewer distortions
 on our data and achieving a higher clustering accuracy. In addition to being
 competitive in performance, our approach provides both explainability as well as a cluster 
-hierarchy on top with no added cost. We validate the tangles algorithm both on synthetic data 
-under a diverse range of external influences as well as experimental data from the realm of psychophysics.
+hierarchy on top with no added cost. We evaluate the tangles algorithm both on synthetic data 
+under a diverse range of settings as well as experimental data from the realm of psychophysics.
 
 \newpage
 \section*{Zusammenfassung}
+Wir untersuchen einen neuen Algorithmus, um Triplets zu clustern. Triplets sind Daten, die 
+Vergleichen zwischen Datenpunkten basieren, jedoch keine absoluten Distanzinformationen beinhalten. Unser neuer Ansatz basiert
+auf dem Tangles-Framework, welches in der Vergangenheit verwendet wurde, um dichte Strukturen in Graphen 
+zu untersuchen. Wir erweitern in dieser Arbeit den Tangles-Algorithmus, um ihn auch auf Triplets anzuwenden.
+Die bisherige Forschung zur Clusterung von Triplet verwendet größtenteils ordinale Einbettungen. In diesen 
+werden die Triplet zuerst in einen euklidischen Raum eingebettet, was die Daten verzerren kann. 
+Danach wird ein klassischer Clustering-Algorithmus verwendet. Im Gegensatz dazu verwendet unsere Methode keine euklidische Zwischenrepräsentation.
+So können wir potentiell Verzerrungen in den Daten umgehen und ein präziseres Clustering generieren. 
+Unser Ansatz zeigt nicht nur eine kompetitive Leistung, sondern bietet auch die Möglichkeit, die Ergebnisse zu erklären und 
+hierarchisch aufzuschlüsseln. Wir evaluieren den Tangles-Algorithm auf synthetischen Daten in einer Reihe von verschiedenen Szenarien
+und außerdem auf experimentellen Daten aus dem Forschungsgebiet der Psychophysik.
 
-Bei einer englischen Masterarbeit muss zus\"atzlich eine deutsche Zusammenfassung verfasst werden.
 
 \newpage
 \section*{Acknowledgements}
-
-Write here your acknowledgments.
+I would like to thank Prof. Ulrike von Luxburg for welcoming me so warmly into her group and for providing me room to grow as a researcher. \\
+I would also like to extend my deepest gratitude to Solveig Klepper for countless inspiring discussions, 
+for always providing valuable insights and for her great attention to detail. \\
+Thanks also to David-Elias Künstle for his help whenever I needed to know something about psychophysics.\\
+Lastly, I want to thank all my friends who were always there for me, and I especially thank Levin Güver for helping me with all the little details 
+of research work and for always providing an interested audience when I needed to explain wild ideas to someone.
 
 \cleardoublepage
 

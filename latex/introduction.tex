@@ -5,7 +5,7 @@ The only form of information we have on the data are so-called
 \textit{triplet comparisons} or \textit{triplets} for short. A triplet 
 on $X$ is written as $(x_i, x_j, x_k)$ and tells us that $x_i$ is closer to $x_j$ than to $x_k$. 
 This problem setting often arises when one works with data from human observers. 
-An example, investigated among others by \citep{shepardAnalysisProximitiesMultidimensional1962}, 
+An example, investigated among others by \cite{shepardAnalysisProximitiesMultidimensional1962}, 
 is human color perception. It would be hard for humans to accurately rate colors in 
 terms of features, let alone define sensible features in the first place.  It would also be hard to rate colors in terms of concrete distances to each other.
 Additionally, the experiment designer would have to deal with uniting differing internal scales of different observers during data evaluation. 
@@ -15,14 +15,14 @@ three different colors, which are presented to a human, together with a
 suitable question. For example, we might draw the colors violet, red and yellow,
 and ask the observer \textit{is violet more similar to red or yellow?} These questions
 are comparatively easy to answer for humans. 
-What remains is the question of how to evaluate the obtained triplet data.
+What remains is the question of how to evaluate the obtained triplets.
 
 A small research community has formed around the task of dealing with triplets.
 Most of this community focuses on ordinal embeddings
 \citep{agarwalGeneralizedNonmetricMultidimensional2007, tamuzAdaptivelyLearningCrowd2011,
 laurensvandermaatenStochasticTripletEmbedding2012,   teradaLocalOrdinalEmbedding2014, jainFiniteSamplePrediction2016, ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}.
 An ordinal embedding is an algorithm that aims to place the data points into a euclidean space
-such that the euclidean distances between the embedded points respect as many of the original triplet comparisons as possible. 
+such that the euclidean distances between the embedded points respect as many of the original triplets as possible. 
 However, this approach is not always perfect: we often cannot satisfy all triplet comparisons, 
 no matter the dimension of the embedding space or how the points are placed in it. 
 This can for example be the case if the triplets are created using a distance function that does not obey the triangle inequality. Another possible complication can be contradicting triplets,
@@ -30,9 +30,9 @@ which often occur when gathering data from human observers.
 
 However, a big advantage of ordinal embeddings is exactly that we obtain a euclidean representation of the data. 
 For euclidean data, there are many good, readily available algorithms for almost all tasks. 
-Thus, clustering on triplet data can be tackled by getting a euclidean representation of the data
+Thus, clustering on triplets can be tackled by getting a euclidean representation of the data
 from an ordinal embedding and applying a classical clustering algorithm, such as k-means \citep{lloydLeastSquaresQuantization1982}, on 
-this representation. An example of this approach can be seen in \citep{kleindessnerLensDepthFunction2017}. However, as mentioned before, an ordinal embedding 
+this representation. An example of this approach can be seen in \cite{kleindessnerLensDepthFunction2017}. But, as mentioned before, an ordinal embedding 
 often cannot satisfy all triplet comparisons on the original data and is therefore not 
 necessarily a faithful representation. 
 An alternative approach is devising an algorithm to solve the desired task directly 
@@ -60,12 +60,11 @@ clustering.
 
 In this thesis, we present two novel methods to process triplets to cuts suitable for the
 tangles algorithm. Using these methods, we 
-demonstrate that the tangles algorithm can be successfully applied to (hierarchically) cluster triplet data without creating an intermediate ordinal embedding. 
+demonstrate that the tangles algorithm can be successfully applied to (hierarchically) cluster triplets without creating an intermediate ordinal embedding. 
 We evaluate our approach by simulated and experimental data and show that it is competitive 
 in performance to approaches based on ordinal embeddings, while providing explainable results. 
 
 This thesis is organized as follows: In \autoref{theory}, we give an introduction to tangles and ordinal data, which lays the necessary foundations for the rest of the work. 
 In \autoref{methods}, we present our two cut finding algorithms, named \textit{landmark cuts} and \textit{majority cuts}.
 We use simulated data in \autoref{simulations} to show the performance of tangles using our cuts under different circumstances, such as the noise level or availability of the triplets. 
-In \autoref{real} we showcase an example evaluation with real data from the domain of psychophysics to establish tangles as a practical tool for triplet data.
-While doing so, we also highlight the inherent explainability of the clustering produced by the tangles algorithm. 
+In \autoref{real}, we choose a real-world triplet data set from the realm of psychophysics and evaluate our algorithms on this data.

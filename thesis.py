@@ -14,7 +14,13 @@ from sklearn.pipeline import Pipeline
 from cblearn.embedding import SOE, CKL, GNMDS, FORTE, TSTE, MLDS
 from hierarchies import BinaryHierarchyTree, aari
 from questionnaire import Questionnaire
-from estimators import EmbedderHierarchicalClustering, LandmarkTangles, MajorityTangles, SoeKmeans, TsteKmeans
+from estimators import (
+    EmbedderHierarchicalClustering,
+    LandmarkTangles,
+    MajorityTangles,
+    SoeKmeans,
+    TsteKmeans,
+)
 import pandas as pd
 from data_generation import generate_planted_hierarchy
 
@@ -55,9 +61,9 @@ class DataCache:
             if self.verbose:
                 print(f"Previous experiment result found.")
                 print(
-                    f"Loading data from cache at {self.results_folder / self.exp_name}.csv...")
-            self.data = pd.read_csv(
-                self.results_folder / f"{self.exp_name}.csv")
+                    f"Loading data from cache at {self.results_folder / self.exp_name}.csv..."
+                )
+            self.data = pd.read_csv(self.results_folder / f"{self.exp_name}.csv")
             return True
 
 
@@ -70,7 +76,17 @@ class ClusteringEvaluationSuite:
     SOE, CKL, GNMDS, FORTE, TSTE, MLDS in conjunction with a given clusterer (f.e. KMeans).
     """
 
-    def __init__(self, agreement: int, embedding_dim: int, clusterer: sklearn.base.ClusterMixin, seed: int, radius: float = 1 / 2, methods_to_include: Optional[list[str]] = None, methods_to_exclude: Optional[list[str]] = None, imputation: Optional[str] = None):
+    def __init__(
+        self,
+        agreement: int,
+        embedding_dim: int,
+        clusterer: sklearn.base.ClusterMixin,
+        seed: int,
+        radius: float = 1 / 2,
+        methods_to_include: Optional[list[str]] = None,
+        methods_to_exclude: Optional[list[str]] = None,
+        imputation: Optional[str] = None,
+    ):
         """
         Args:
             agreement: Agreement parameter of both tangles methods
@@ -89,22 +105,43 @@ class ClusteringEvaluationSuite:
         self.names: list[str] = []
         self._add_evaluators(methods_to_include)
 
-    def _add_evaluators(self, methods_to_include: Optional[list[str]] = None, methods_to_exclude: Optional[list[str]] = None):
+    def _add_evaluators(
+        self,
+        methods_to_include: Optional[list[str]] = None,
+        methods_to_exclude: Optional[list[str]] = None,
+    ):
         """
         Adds all evaluators to the suite that are in names_to_evaluate. If None, all
         evaluators are set.
         """
-        all_names = ["L-Tangles", "M-Tangles", "ComparisonHC",
-                     "SOE", "CKL", "GNMDS", "FORTE", "TSTE", "MLDS"]
-        embedders = [SOE(n_components=self.embedding_dim, random_state=self.seed), CKL(n_components=self.embedding_dim, random_state=self.seed),
-                     GNMDS(n_components=self.embedding_dim, random_state=self.seed), FORTE(
-            n_components=self.embedding_dim, random_state=self.seed), TSTE(n_components=self.embedding_dim, random_state=self.seed),
-            MLDS(n_components=1, random_state=self.seed)]
-        all_evaluators = [LandmarkTangles(agreement=self.agreement, imputation=self.imputation), MajorityTangles(
-            agreement=self.agreement, radius=self.radius), ComparisonHC(num_clusters=self.clusterer.get_params()["n_clusters"])]
+        all_names = [
+            "L-Tangles",
+            "M-Tangles",
+            "ComparisonHC",
+            "SOE",
+            "CKL",
+            "GNMDS",
+            "FORTE",
+            "TSTE",
+            "MLDS",
+        ]
+        embedders = [
+            SOE(n_components=self.embedding_dim, random_state=self.seed),
+            CKL(n_components=self.embedding_dim, random_state=self.seed),
+            GNMDS(n_components=self.embedding_dim, random_state=self.seed),
+            FORTE(n_components=self.embedding_dim, random_state=self.seed),
+            TSTE(n_components=self.embedding_dim, random_state=self.seed),
+            MLDS(n_components=1, random_state=self.seed),
+        ]
+        all_evaluators = [
+            LandmarkTangles(agreement=self.agreement, imputation=self.imputation),
+            MajorityTangles(agreement=self.agreement, radius=self.radius),
+            ComparisonHC(num_clusters=self.clusterer.get_params()["n_clusters"]),
+        ]
         for embedder in embedders:
-            all_evaluators.append(Pipeline([("embedder", embedder), ("clusterer",
-                                                                     self.clusterer)]))
+            all_evaluators.append(
+                Pipeline([("embedder", embedder), ("clusterer", self.clusterer)])
+            )
 
         if methods_to_include is None and methods_to_exclude is None:
             self.evaluators = all_evaluators
@@ -113,11 +150,15 @@ class ClusteringEvaluationSuite:
             self.evaluators = []
             self.names = []
             for i, name in enumerate(all_names):
-                if (methods_to_include is not None and name in methods_to_include) or (methods_to_exclude is not None and name not in methods_to_exclude):
+                if (methods_to_include is not None and name in methods_to_include) or (
+                    methods_to_exclude is not None and name not in methods_to_exclude
+                ):
                     self.evaluators.append(all_evaluators[i])
                     self.names.append(name)
 
-    def score_all_once(self, triplets: np.ndarray, responses: np.ndarray, target: np.ndarray) -> pd.DataFrame:
+    def score_all_once(
+        self, triplets: np.ndarray, responses: np.ndarray, target: np.ndarray
+    ) -> pd.DataFrame:
         """
         Returns a dataframe containing the results of all embedders applied
         to the given triplets.
@@ -148,15 +189,16 @@ class ClusteringEvaluationSuite:
                 Run denoms is a dictionary that contains the denominators for each run
                 (run number, density, noise, ...)
 
-        Returns: 
-            Dataframe with columns as described in score_all_once, 
+        Returns:
+            Dataframe with columns as described in score_all_once,
             with the run number added.
         """
         run = 0
         dfs = []
         for triplets, responses, target, run_denoms in data_generator:
-            dfs.append(self.score_all_once(
-                triplets, responses, target).assign(**run_denoms))
+            dfs.append(
+                self.score_all_once(triplets, responses, target).assign(**run_denoms)
+            )
             run += 1
         return pd.DataFrame(pd.concat(dfs, axis=0))
 
@@ -166,16 +208,23 @@ def eval_hierarchical(noise=0.0, density=0.1, hier_noise=0.0, n_runs=1):
     Evaluates a simple hierarchical block matrix and returns the mean of the results
     (landmark, soe, majority, comparison, hierarchical landmarks, hierarchical comparisonhc)
     """
-    l, s, m, c, tste, hl, hc, hm, hs = [], [], [], [], [], [], [], [], []
-    true_hierarchy = BinaryHierarchyTree([[list(range(0, 10)), list(range(10, 20))], [
-                                         list(range(20, 30)), list(range(30, 40))]])
+    l, s, m, c, tste, hl, hc, hm, hs, ht = [], [], [], [], [], [], [], [], [], []
+    true_hierarchy = BinaryHierarchyTree(
+        [
+            [list(range(0, 10)), list(range(10, 20))],
+            [list(range(20, 30)), list(range(30, 40))],
+        ]
+    )
     for _ in range(n_runs):
-        data = generate_planted_hierarchy(2, 10, 5, 1, hier_noise)
+        data = draw_hierarchy(hier_noise)
         q = Questionnaire.from_precomputed(
-            data.xs, density=density, use_similarities=True, noise=noise, verbose=False).impute("random")
+            data.xs, density=density, use_similarities=True, noise=noise, verbose=False
+        ).impute("random")
         t, r = q.to_bool_array()
         soe_al = EmbedderHierarchicalClustering(SOE(4), 4, linkage="average")
         soe_al.fit(t, r)
+        tste_al = EmbedderHierarchicalClustering(TSTE(4), 4, linkage="average")
+        tste_al.fit(t, r)
         chc = ComparisonHC(4)
         y_chc = chc.fit_predict(t, r)
         lt = LandmarkTangles(4).fit(t, r, data.ys)
@@ -189,5 +238,21 @@ def eval_hierarchical(noise=0.0, density=0.1, hier_noise=0.0, n_runs=1):
         hc.append(aari(true_hierarchy, chc, 2))
         hm.append(aari(true_hierarchy, BinaryHierarchyTree(mt.hierarchy_), 2))
         hs.append(aari(true_hierarchy, soe_al, 2))
+        ht.append(aari(true_hierarchy, tste_al, 2))
 
-    return np.mean(l), np.mean(s), np.mean(m), np.mean(c), np.mean(hl), np.mean(hc), np.mean(hm), np.mean(hs)
+    return (
+        np.mean(l),
+        np.mean(s),
+        np.mean(m),
+        np.mean(c),
+        np.mean(tste),
+        np.mean(hl),
+        np.mean(hc),
+        np.mean(hm),
+        np.mean(hs),
+        np.mean(ht),
+    )
+
+
+def draw_hierarchy(hier_noise):
+    return generate_planted_hierarchy(2, 10, 5, 1, hier_noise)

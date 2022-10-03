@@ -1,47 +1,48 @@
 \chapter{Clustering Triplet Data with Tangles}\label{methods}
 As we described in \autoref{theory:tangles}, the tangles algorithm operates on cuts of data that contain some information about the cluster structure.
-If we want to cluster a set of triplet data using tangles, we are first faced with the task of processing the triplets to appropriate cuts. In this work, we present two 
+If we want to cluster a set of triplet data using tangles, we are first faced with the task of processing the triplets to appropriate cuts. In this chapter, we present two 
 methods for this which we call \textit{landmark cuts} and \textit{majority cuts}. We elaborate on the methods and their motivations in the following sections.
 
 \section{Landmark cuts}\label{theory:landmark_cuts}
 In recent years, algorithms have been developed that hope to speed up ordinal embedding by focussing on so-called \textit{landmarks} 
 \citep{ghoshLandmarkOrdinalEmbedding2019, andertonScalingOrdinalEmbedding2019}. Landmarks are objects in the dataset for which we know all triplet comparisons.  
 The definition of what constitutes a landmark varies in the literature, but we use the one by \cite{haghiriComparisonBasedFrameworkPsychophysics2019}.
-Assume we have a set of objects $D$, as well as a set of triplet constraints $T$. The triplets 
+Assume we have a set of objects $D$, as well as a set of triplets $T$, which
 have the form $(a,b,c)$, indicating that $d(a,b) < d(a,c)$. In a landmark setting, we have a set 
 of $m$ objects $L \subset D$, for which 
-\begin{align*}
+\begin{align}
 \forall l_i, l_j \in L \; \forall x \in D: (x, l_i, l_j) \in T \vee (x, l_j, l_i) \in T. 
-\end{align*}
+\end{align}
 If we have landmarks, they make it very easy to define a set of cuts on triplet data:
-for a combination of landmarks $l_i, l_j$, we can make a cut $P = \{A, \overline{A}\}$ by assigning all points closer to $l_i$ to $A$ and all those closer to $l_j$ to $\overline{A}$. 
+for a combination of landmarks $l_i, l_j$, we can make a cut $(A, \overline{A})$ by assigning all points closer to $l_i$ to $A$ and all those closer to $l_j$ to $\overline{A}$. 
 Formally, for two landmark points $l_i, l_j$, we define the set
-\begin{align*}
+\begin{align}
     \text{Land} _{ij} = \{ x \in D \mid \left( x, l_i, l_j \right) \in T \}
-,\end{align*}
-and call the corresponding cut $P_{ij} = \{\text{Land}_{ij}, \overline{\text{Land}_{ij}}\}$ a \textit{landmark cut}.
+,\end{align}
+and call the corresponding cut $P_{ij} = (\text{Land}_{ij}, \overline{\text{Land}_{ij}})$ a \textit{landmark cut}.
 
 For the tangles algorithm, we can relax the requirement on the landmarks, as we do not actually
 need to know the triplet comparisons between every possible combination of landmarks. Rather, 
 we require that there exists a set of tuples $L' = \{ (y, z)  \mid y, z \in D \}$ for which:
 
-\begin{align*}
+\begin{align}
     \forall (x,y) \in L' \; \forall x \in D: (x, y, z) \in T \vee (x, z, y) \in T.
-.\end{align*}
+.\end{align}
 This will be used in the simulations, as then we can create landmark cuts for tangles by 
 repeatedly picking some objects $y, z \in D$ and sampling all triplet comparisons to all other objects $x \in D$. \\
 
 Landmark cuts intuitively capture some cluster information: 
 the closer $x$ is to $l_i$ according to $d$, the more likely it is that $\text{Land}_{ij}$ contains $x$. 
 In the euclidean space, this notion is easily captured: A landmark cut between $l_i, l_j$ is
-a linear cut between the two points, as illustrated in \autoref{fig:landmark_cut}.
+a linear cut between the two points $i,j$, as illustrated in \autoref{fig:landmark_cut}.
 
     \begin{figure}[ht]
         \centering
         \includegraphics[width=0.8\textwidth]{figures/landmark_cut.pdf}
         \caption{A landmark cut on a euclidean data set. The two diamonds 
-            are the landmarks $l_1$ (red) $l_2$ (blue). All red points (left of the line) 
-            are contained in $\text{Land}_{1,2}$, all blue points in $\overline{\text{Land} _{1,2}}$.}
+            are the landmarks $l_1$ (red) and $l_2$ (blue). All red points (left of the line) 
+            are contained in $\text{Land}_{1,2}$, all blue points in $\overline{\text{Land} _{1,2}}$.
+        }
         \label{fig:landmark_cut}
     \end{figure}
 
@@ -52,60 +53,60 @@ or according to a chosen metric, for example, maximizing a measure of gained inf
 There is no experimental dataset available that is both sampled according to a landmark approach and exhibits a cluster structure. 
 We thus rely on simulations for testing landmark cuts. These simulations can be found in \autoref{simulations}.
 
-To make landmark tangles work with a set of triplets that are sampled uniformly at random, one can impute the missing triplets with standard methods.
+To make landmark cuts work with a set of triplets that are sampled uniformly at random, one can impute the missing triplets with standard methods.
 An example would be random imputation. There, one would randomly either add $(a,b,c)$ or $(a,c,b)$ to the set of triplets, if none of them were present.
 We will explore this more in-depth in \autoref{simulations}.
 
 \section{Majority cuts}\label{theory:majority_cuts}
-As explained in \autoref{theory:landmark_cuts}, sampling triplet data in a landmark-fashion is not very widely used in current practice. Due to this, we 
+As explained in \autoref{theory:landmark_cuts}, sampling triplets in a landmark-fashion is not very widely used in current practice. Due to this, we 
 also present a more general approach to processing triplets to cuts that can be applied to any set of triplets $T$ regardless of the sampling method.
 %For this, we again use the intuition that triplets tell us something about the closeness of data points, and thus about the cluster structure. 
 
 As a motivation, we first think about cuts that are well suited for clustering with tangles.
 We assume that the objects are clustered based on their similarities to each other so that 
-similar objects also belong to the same cluster. Based on this, a cut $P = \left(   A, \overline{A} \right) $ is more informative for clustering if the objects in $A$ are similar to each other and
+similar objects also more likely belong to the same cluster. Based on this, a cut $P = \left(   A, \overline{A} \right) $ is more informative for clustering if the objects in $A$ are similar to each other and
 dissimilar to the objects in $\overline{A}$. If we fix a point $a$, one way
-to generate such a cut is as follows: 
+to generate such a cut in a metric space would be as follows: 
 we center a ball of radius $r$ on $a$ and add all objects contained by the ball to $A$, 
 and all others to $\overline{A}$. This is not perfect, but we know that the objects
-contained in $A$ have at least some level of closeness (they all have 
+contained in $A$ have at least some level of similarity (they all have 
 a maximum distance of $2r$ from each other). 
 
 Next, assume that we have a set of $n$ objects $D$ and a set of triplets $T$ on the
 objects. We now develop a method of approximating a ball around a point $a$ using the
 triplet information given. Let 
-\begin{align*}
+\begin{align}
 L_x = \{t \in T  \mid  t = (x, b,c), b,c \in D\} 
-.\end{align*}
+.\end{align}
 be the set of all available triplets where $x$ is in the left position. Equivalently, 
 we define 
-\begin{align*}
+\begin{align}
     M_x &=  \{t \in T  \mid  t = (a, x, c), a,c \in D\} \\
     R_x &=  \{t \in T  \mid  t = (a, b, x), a,b \in D\} 
-,\end{align*}
+,\end{align}
 as the sets of triplets where $x$ is in the middle and right position. 
 Using these sets, we define  
-\begin{align*}
+\begin{align}
     \text{Maj} _a := \{x \in D \mid \left| L_a \cap M_x\right| < \left| L_a \cap R_x \right| \}
-,\end{align*}
+,\end{align}
 as the set of all points that are more often closer to $a$ than they are farther away. 
-We can then define the corresponding cut $P_a := \{ \text{Maj}_a, \overline{\text{Maj}_a } \}$, which
+We can then define the corresponding cut $P_a := ( \text{Maj}_a, \overline{\text{Maj}_a })$, which
 we refer to as a \textit{majority cut} with \textit{anchor point} $a$.
 
 Assuming we have all triplets, meaning that 
-\begin{align*}
+\begin{align}
     \forall a,b,c \in D: (a,b,c) \in T \vee (a,c,b) \in T
-.\end{align*}
+.\end{align}
 then $\text{Maj}_a$ is a ball around $a$ whose radius is the median distance of $a$ to all other points $x \in D$, as only those points will appear more often closer to $a$ in the triplets
 than they appear farther away. When $T$ does not contain all possible triplets, we introduce 
-noise on our cuts, and $\text{Maj}_a$ then contains some points outside of a median-sized ball
+noise on our cuts and $\text{Maj}_a$ then contains some points outside of a median-sized ball
 around $a$ as well as it does not contain some points inside the ball.
 
 Majority cuts can be made more flexible by including a ratio $r$ that controls the size of the cuts. 
 We then define 
-\begin{align*}
+\begin{align}
 \text{Maj}_a(r) := \{x \in D \mid \left|   L_a \cap M_x\right| < r \cdot \left| L_a \cap R_x \right| \}
-.\end{align*}
+.\end{align}
 and call $r$ the \textit{radius} of the cut. 
 $\text{Maj} _a(r)$ is then a ball around $a$ that contains the $n \cdot \frac{r}{r+1}$ points that are closest to $a$ . In a euclidean setting for 
 $r = 0.5$ we thus expect $P_a(0.5)$ to be a ball around $a$ that contains the $\frac{n}{3}$ points that are closest to $a$. To visualize this, we plot a majority cut with a fixed anchor point on a 
@@ -123,8 +124,7 @@ On the contrary, we are safe if we pick a radius that is a bit larger, as the ta
 \begin{figure}[ht]
     \centering
     \subfloat[500 (0.47\%) triplets]{%
-      \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-500.pgf}}
-  }
+      \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-500.pgf}}}
     \subfloat[5000 (4.7\%) triplets]{%
       \resizebox{0.5\textwidth}{!}{\input{figures/results/majority-cut-8-n_triplets-5000.pgf}}}
     \hfill
@@ -135,7 +135,8 @@ On the contrary, we are safe if we pick a radius that is a bit larger, as the ta
     \caption{Majority cuts more closely resemble a ball around their anchor point as the number of 
         sampled triplets increases. 
         We plot $\text{Maj}_a$ with radius $r=0.5$, generated according to the procedure in \autoref{theory:majority_cuts}. The black X marks the anchor point $a$. 
-        The set $\text{Maj}_a$ consists of the orange triangles, which are the points that are twice as often closer to $a$ than they are not (according to the drawn triplets). 
-        The blue points are those not in $P_a$.}
+        The set $\text{Maj}_a$ consists of the orange triangles, which are the data points that are twice as often closer to $a$ than they are not (according to the drawn triplets). 
+        The blue circles are the points not in $Maj_a$.}
     \label{fig:majority_cut}
 \end{figure}
+

@@ -21,7 +21,7 @@ LINE_STYLES = ["-o", "-^", "-s",
 SYMBOLS = ["o", "^", "s", "D", "*", "P", "p", "X"]
 MARKER_SIZES = [8,8,8, 
                 10,8,8,
-                8,8,10]
+                8,8,10,8]
 
 class ThesisStyleCycler:
     """
